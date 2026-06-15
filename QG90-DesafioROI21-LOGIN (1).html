@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desafio ROI 21 Dias | QG.90</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap');
+:root{
+  --or:#FF6B00;--or-d:rgba(255,107,0,0.13);--or-m:rgba(255,107,0,0.32);
+  --bg:#0a0a0a;--s1:#141414;--s2:#1c1c1c;--s3:#252525;
+  --bd:rgba(255,255,255,0.07);--bdo:rgba(255,107,0,0.28);
+  --tx:#fff;--tm:rgba(255,255,255,0.68);--td:rgba(255,255,255,0.38);
+  --gr:#22c55e;--gr-d:rgba(34,197,94,0.12);
+  --re:#ef4444;--re-d:rgba(239,68,68,0.12);
+  --am:#f59e0b;--am-d:rgba(245,158,11,0.12);
+  --pu:#a855f7;--bl:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:15px}
+
+/* ── AUTH SCREENS ── */
+.auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;display:none}
+.auth-screen.active{display:flex}
+.auth-box{background:var(--s1);border:1px solid var(--bdo);border-radius:14px;padding:36px 32px;width:100%;max-width:420px}
+.auth-logo{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:38px;color:var(--or);letter-spacing:2px;text-align:center;margin-bottom:2px}
+.auth-sub{text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--td);margin-bottom:28px}
+.auth-err{background:var(--re-d);border:1px solid var(--re);border-radius:6px;padding:10px 14px;font-size:13px;color:var(--re);margin-bottom:14px;display:none}
+.auth-err.show{display:block}
+.auth-ok{background:var(--gr-d);border:1px solid var(--gr);border-radius:6px;padding:10px 14px;font-size:13px;color:var(--gr);margin-bottom:14px;display:none}
+.auth-ok.show{display:block}
+.auth-switch{text-align:center;margin-top:18px;font-size:13px;color:var(--td)}
+.auth-switch a{color:var(--or);cursor:pointer;text-decoration:none;font-weight:600}
+.auth-switch a:hover{text-decoration:underline}
+
+/* ── APP ── */
+.app{display:none}
+.app.show{display:block}
+.topbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:0 20px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:10px}
+.logo{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;color:var(--or);letter-spacing:1px}
+.topbar-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;color:var(--td);text-transform:uppercase;letter-spacing:.5px;border-left:1px solid var(--bd);padding-left:14px;white-space:nowrap}
+.topbar-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.user-chip{background:var(--or-d);border:1px solid var(--bdo);border-radius:20px;padding:4px 12px;font-size:12px;font-family:'Barlow Condensed',sans-serif;font-weight:600;color:var(--or);letter-spacing:.5px;text-transform:uppercase}
+.admin-chip{background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.35);border-radius:20px;padding:4px 12px;font-size:12px;font-family:'Barlow Condensed',sans-serif;font-weight:600;color:var(--pu);letter-spacing:.5px;text-transform:uppercase}
+.btn-logout{background:transparent;color:var(--td);border:1px solid var(--bd);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;transition:all .15s;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px}
+.btn-logout:hover{color:var(--re);border-color:var(--re)}
+
+/* ── BUTTONS ── */
+.btn-or{background:var(--or);color:#000;border:none;border-radius:6px;padding:7px 14px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;letter-spacing:.5px;cursor:pointer;text-transform:uppercase;transition:opacity .15s;white-space:nowrap}
+.btn-or:hover{opacity:.82}.btn-or:disabled{opacity:.4;cursor:not-allowed}
+.btn-gh{background:transparent;color:var(--td);border:1px solid var(--bd);border-radius:6px;padding:7px 12px;font-family:'Barlow',sans-serif;font-size:13px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-gh:hover{color:var(--tx);border-color:var(--bdo)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-danger{background:transparent;color:var(--re);border:1px solid var(--bd);border-radius:4px;padding:3px 8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;cursor:pointer;transition:all .15s}
+.btn-danger:hover{background:var(--re-d);border-color:var(--re)}
+select.fi-sel{background:var(--s2);color:var(--tx);border:1px solid var(--bdo);border-radius:6px;padding:6px 10px;font-family:'Barlow',sans-serif;font-size:13px;cursor:pointer}
+select.fi-sel:focus{outline:none;border-color:var(--or)}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--bd);padding:0 20px;overflow-x:auto}
+.tab{padding:11px 16px;font-size:14px;font-weight:600;color:var(--td);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;text-transform:uppercase;letter-spacing:.4px;font-family:'Barlow Condensed',sans-serif}
+.tab:hover{color:var(--tm)}.tab.active{color:var(--or);border-bottom-color:var(--or)}
+.tab-admin{display:none}.tab-admin.show{display:block}
+
+/* ── LAYOUT ── */
+.main{padding:20px;max-width:1200px;margin:0 auto}
+.panel{display:none}.panel.active{display:block}
+.lbl{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--td);margin-bottom:8px}
+
+/* ── HERO ── */
+.hero{background:var(--s1);border:1px solid var(--bdo);border-radius:12px;padding:24px;margin-bottom:16px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.hero h1{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;color:var(--or);line-height:1;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.hero-sub{font-size:13px;color:var(--td)}
+.dia-box{text-align:center;background:var(--or-d);border:1px solid var(--bdo);border-radius:9px;padding:14px 22px;min-width:100px}
+.dia-num{font-family:'Barlow Condensed',sans-serif;font-size:50px;font-weight:800;color:var(--or);line-height:1}
+.dia-lbl{font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--td);margin-top:2px}
+
+/* ── KPI ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--s1);border:1px solid var(--bd);border-radius:9px;padding:13px 15px}
+.kpi.hi{border-color:var(--bdo)}
+.kpi-lbl{font-size:10px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1.2px;text-transform:uppercase;color:var(--td);margin-bottom:5px}
+.kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;line-height:1}
+.kpi-val.or{color:var(--or)}.kpi-val.gr{color:var(--gr)}.kpi-val.am{color:var(--am)}
+.kpi-sub{font-size:10px;color:var(--td);margin-top:3px}
+
+/* ── ACADEMIAS (admin) ── */
+.ac-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:20px}
+.ac-card{background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden;transition:border-color .2s;cursor:pointer}
+.ac-card:hover{border-color:var(--bdo)}
+.ac-head{padding:13px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+.ac-ico{width:36px;height:36px;border-radius:8px;background:var(--or-d);border:1.5px solid var(--bdo);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;color:var(--or);flex-shrink:0}
+.ac-nm{font-weight:600;font-size:14px}.ac-cid{font-size:11px;color:var(--td)}
+.ac-body{padding:12px 16px}
+.ac-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.ac-stat{text-align:center}
+.ac-stat-num{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;display:block}
+.ac-stat-num.or{color:var(--or)}.ac-stat-num.gr{color:var(--gr)}
+.ac-stat-lbl{font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:.5px}
+
+/* ── CONSULTORAS ── */
+.cons-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:16px}
+.cons-card{background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden;transition:border-color .15s}
+.cons-card:hover{border-color:var(--bdo)}
+.cons-head{padding:12px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--or-d);border:1.5px solid var(--bdo);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--or);flex-shrink:0}
+.cons-nm{font-weight:600;font-size:13px}.cons-meta{font-size:11px;color:var(--td)}
+.cons-funis{display:flex;gap:3px;margin-left:auto;flex-wrap:wrap}
+.fpill{font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:2px 5px;border-radius:3px}
+.cons-body{padding:11px 14px}
+.cons-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:7px}
+.cs{text-align:center}
+.cs-num{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;display:block}
+.cs-num.or{color:var(--or)}.cs-num.gr{color:var(--gr)}
+.cs-lbl{font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:.4px}
+.mini-bar-wrap{height:4px;background:var(--s3);border-radius:4px;overflow:hidden}
+.mini-bar{height:100%;border-radius:4px;background:var(--or)}
+.pct-lbl{font-size:10px;color:var(--td);margin-top:3px;text-align:right}
+
+/* ── FUNIL ── */
+.funil-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px;margin-bottom:16px}
+.funil-card{background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.funil-header{padding:11px 15px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:7px}
+.funil-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.funil-nm{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.funil-body{padding:13px 15px}
+.fi-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd)}
+.fi-row:last-child{border-bottom:none}
+.fi-lbl{font-size:12px;color:var(--tm)}
+.fi-val{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700}
+.fi-val.or{color:var(--or)}.fi-val.gr{color:var(--gr)}.fi-val.am{color:var(--am)}
+.fi-pct{font-size:10px;color:var(--td);margin-left:4px}
+.planos-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:5px;margin-top:8px}
+.plano-m{background:var(--s2);border:1px solid var(--bd);border-radius:5px;padding:6px 7px;text-align:center}
+.plano-m-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--td);display:block;margin-bottom:2px}
+.plano-m-val{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--or)}
+
+/* ── RANKING ── */
+.rank-list{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}
+.rank-item{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:11px 14px;display:flex;align-items:center;gap:10px}
+.rank-pos{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;min-width:24px;text-align:center}
+.gold{color:#FFD700}.silver{color:#C0C0C0}.bronze{color:#CD7F32}.rest{color:var(--td)}
+.rank-nm{flex:1;font-size:14px;font-weight:500}
+.rank-ac{font-size:11px;color:var(--td)}
+.rank-bw{flex:2;height:5px;background:var(--s3);border-radius:4px;overflow:hidden}
+.rank-bar{height:100%;border-radius:4px;background:var(--or)}
+.rank-val{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--or);min-width:36px;text-align:right}
+
+/* ── TABLE ── */
+.tbl-wrap{background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:auto;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{padding:9px 12px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--td);border-bottom:1px solid var(--bd);white-space:nowrap;background:var(--s2)}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--bd);color:var(--tm)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--s2)}
+.bdg{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.4px;text-transform:uppercase}
+.bdg-or{background:var(--or-d);color:var(--or)}.bdg-gr{background:var(--gr-d);color:var(--gr)}
+.bdg-re{background:var(--re-d);color:var(--re)}.bdg-am{background:var(--am-d);color:var(--am)}
+
+/* ── CHART ── */
+.chart-card{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.chart-card h3{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tm);margin-bottom:14px}
+
+/* ── FORM ── */
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:10px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fl{font-size:10px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;color:var(--td)}
+.fi{background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:7px 9px;color:var(--tx);font-family:'Barlow',sans-serif;font-size:13px;transition:border-color .15s;width:100%}
+.fi:focus{outline:none;border-color:var(--or)}
+.fi::placeholder{color:var(--td)}
+.fi-full{grid-column:1/-1}
+
+/* ── MODAL ── */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1000;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
+.modal-ov.open{display:flex}
+.modal{background:var(--s1);border:1px solid var(--bdo);border-radius:12px;width:100%;max-width:600px;padding:22px;margin:auto}
+.modal-lg{max-width:700px}
+.modal-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;border-bottom:1px solid var(--bd);padding-bottom:12px}
+.modal-hd h3{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--or)}
+.btn-x{background:transparent;border:none;color:var(--td);font-size:22px;cursor:pointer;padding:2px 6px;line-height:1;transition:color .15s}
+.btn-x:hover{color:var(--tx)}
+.divider{height:1px;background:var(--bd);margin:14px 0}
+.manage-list{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.manage-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s2);border-radius:6px;font-size:13px}
+.manage-item-nm{flex:1}.manage-item-sub{font-size:11px;color:var(--td)}
+.sec-div{display:flex;align-items:center;gap:10px;margin:12px 0 8px}
+.sec-div-line{flex:1;height:1px;background:var(--bd)}
+.sec-div-lbl{font-size:10px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1.2px;text-transform:uppercase;color:var(--td)}
+.funil-checks{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.funil-check-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--s2);border:1px solid var(--bd);border-radius:7px;cursor:pointer;transition:border-color .15s;user-select:none}
+.funil-check-item:hover{border-color:var(--bdo)}
+.funil-check-item.checked{border-color:var(--bdo);background:var(--or-d)}
+.funil-check-dot{width:15px;height:15px;border-radius:50%;border:2px solid var(--bd);flex-shrink:0;transition:all .15s}
+.funil-check-item.checked .funil-check-dot{border-color:var(--or);background:var(--or)}
+.funil-check-desc{flex:1}
+.funil-check-name{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.funil-check-sub{font-size:10px;color:var(--td);margin-top:1px}
+.lanc-funil-sec{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:13px;margin-bottom:10px}
+.lanc-funil-title{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;display:flex;align-items:center;gap:5px}
+.lanc-funil-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.planos-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(75px,1fr));gap:5px;margin-top:7px}
+
+/* ── LOADING / SYNC ── */
+.loading-ov{position:fixed;inset:0;background:rgba(10,10,10,.9);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.loading-ov.hide{display:none}
+.spinner{width:34px;height:34px;border:3px solid var(--bd);border-top-color:var(--or);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;color:var(--td);letter-spacing:1px;text-transform:uppercase}
+.sync-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.sync-dot.ok{background:var(--gr)}.sync-dot.err{background:var(--re)}.sync-dot.spin{background:var(--am);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;right:20px;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:.5px;padding:9px 16px;border-radius:8px;z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;text-transform:uppercase}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{background:var(--gr);color:#000}
+.toast.err{background:var(--re);color:#fff}
+
+/* ── ADMIN AC SEL ── */
+.admin-ac-row{display:none;align-items:center;gap:8px}
+.admin-ac-row.show{display:flex}
+
+@media(max-width:600px){.hero{grid-template-columns:1fr}.dia-box{display:none}.topbar-title{display:none}}
+</style>
+</head>
+<body>
+
+<div class="loading-ov hide" id="loading-ov">
+  <div class="spinner"></div>
+  <div class="loading-txt">Carregando...</div>
+</div>
+
+<!-- ══ TELA DE LOGIN ══ -->
+<div class="auth-screen active" id="screen-login">
+  <div class="auth-box">
+    <div class="auth-logo">QG.90</div>
+    <div class="auth-sub">Desafio ROI 21 Dias</div>
+    <div class="auth-err" id="login-err"></div>
+    <div class="fg" style="margin-bottom:12px">
+      <label class="fl">E-mail</label>
+      <input class="fi" type="email" id="login-email" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="fg" style="margin-bottom:20px">
+      <label class="fl">Senha</label>
+      <input class="fi" type="password" id="login-senha" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-or" style="width:100%;padding:11px" id="btn-login" onclick="doLogin()">Entrar</button>
+    <div class="auth-switch">Primeira vez? <a onclick="showScreen('screen-cadastro')">Criar conta</a></div>
+  </div>
+</div>
+
+<!-- ══ TELA DE CADASTRO ══ -->
+<div class="auth-screen" id="screen-cadastro">
+  <div class="auth-box">
+    <div class="auth-logo">QG.90</div>
+    <div class="auth-sub">Criar conta — Desafio ROI 21 Dias</div>
+    <div class="auth-err" id="cad-err"></div>
+    <div class="auth-ok" id="cad-ok"></div>
+    <div class="fg" style="margin-bottom:10px">
+      <label class="fl">Nome da Academia</label>
+      <input class="fi" id="cad-academia" placeholder="Ex: Iron Fitness Sorocaba">
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label class="fl">Cidade / Unidade</label>
+      <input class="fi" id="cad-cidade" placeholder="Ex: Sorocaba - SP">
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label class="fl">Seu nome (gestor)</label>
+      <input class="fi" id="cad-nome" placeholder="Ex: Carlos Silva">
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label class="fl">E-mail</label>
+      <input class="fi" type="email" id="cad-email" placeholder="seu@email.com">
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label class="fl">Senha</label>
+      <input class="fi" type="password" id="cad-senha" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="fg" style="margin-bottom:20px">
+      <label class="fl">Confirmar Senha</label>
+      <input class="fi" type="password" id="cad-senha2" placeholder="Repita a senha">
+    </div>
+    <button class="btn-or" style="width:100%;padding:11px" id="btn-cadastrar" onclick="doCadastro()">Criar Conta</button>
+    <div class="auth-switch">Já tem conta? <a onclick="showScreen('screen-login')">Entrar</a></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div class="app" id="app">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="logo">QG.90</span>
+      <span class="topbar-title" id="topbar-ac-nome">Desafio ROI 21 Dias</span>
+    </div>
+    <div class="topbar-r">
+      <span style="font-size:11px;color:var(--td);display:flex;align-items:center">
+        <span class="sync-dot" id="sync-dot"></span><span id="sync-txt">conectando...</span>
+      </span>
+      <div class="admin-ac-row" id="admin-ac-row">
+        <span style="font-size:11px;color:var(--td)">Academia:</span>
+        <select id="sel-ac" class="fi-sel" onchange="switchAc(this.value)"><option value="">— Selecione —</option></select>
+      </div>
+      <span id="user-chip" class="user-chip"></span>
+      <button class="btn-gh btn-sm" id="btn-add-cons-top" onclick="openM('m-cons')" style="display:none">+ Consultora</button>
+      <button class="btn-or" id="btn-lancar-top" onclick="openM('m-lanc')" style="display:none">Lançar Dia</button>
+      <button class="btn-logout" onclick="doLogout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('painel')">Painel</div>
+    <div class="tab" onclick="switchTab('funis')">Funis & Indicadores</div>
+    <div class="tab" onclick="switchTab('consultoras')">Consultoras</div>
+    <div class="tab" onclick="switchTab('relatorio')">Relatório</div>
+    <div class="tab" onclick="switchTab('ranking')">Ranking</div>
+    <div class="tab tab-admin" id="tab-admin" onclick="switchTab('admin')">⚡ Todas as Academias</div>
+  </div>
+
+  <div class="main">
+
+    <!-- PAINEL -->
+    <div id="pan-painel" class="panel active">
+      <div class="hero">
+        <div>
+          <div class="lbl">Academia</div>
+          <h1 id="hero-nm">—</h1>
+          <div class="hero-sub" id="hero-sub"></div>
+        </div>
+        <div class="dia-box">
+          <div class="dia-num" id="roi-dia">0</div>
+          <div class="dia-lbl">de 21 dias</div>
+        </div>
+      </div>
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="chart-card">
+        <h3>Matrículas por dia do desafio</h3>
+        <div style="position:relative;height:180px"><canvas id="ch-evol" role="img" aria-label="Evolução">Sem dados.</canvas></div>
+      </div>
+    </div>
+
+    <!-- FUNIS -->
+    <div id="pan-funis" class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="lbl" style="margin:0">Funis & Indicadores</div>
+        <select class="fi-sel" id="funil-cons-filter" onchange="renderFunis()" style="min-width:160px"><option value="">Todas as consultoras</option></select>
+      </div>
+      <div id="funis-body"><div style="color:var(--td);font-size:13px;padding:20px 0">Carregando...</div></div>
+    </div>
+
+    <!-- CONSULTORAS -->
+    <div id="pan-consultoras" class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="lbl" style="margin:0">Consultoras</div>
+        <button class="btn-gh btn-sm" onclick="openM('m-cons')">+ Consultora</button>
+      </div>
+      <div class="cons-grid" id="cons-grid"></div>
+    </div>
+
+    <!-- RELATÓRIO -->
+    <div id="pan-relatorio" class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="lbl" style="margin:0">Registros Diários</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <select class="fi-sel" id="rel-cons-f" onchange="renderRelatorio()" style="min-width:140px"><option value="">Todas consultoras</option></select>
+          <select class="fi-sel" id="rel-funil-f" onchange="renderRelatorio()" style="min-width:130px"><option value="">Todos funis</option></select>
+          <button class="btn-gh btn-sm" onclick="exportCSV()">CSV</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Dia</th><th>Data</th><th>Consultora</th><th>Funil</th>
+            <th>Lista</th><th>Tent.</th><th>Efetivos</th>
+            <th>Ag.Mat</th><th>Ag.Exp</th><th>Conv.</th>
+            <th>R$ Vendido</th><th>Planos</th><th>Obs.</th>
+          </tr></thead>
+          <tbody id="rel-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RANKING -->
+    <div id="pan-ranking" class="panel">
+      <div class="lbl" id="ranking-lbl">Ranking</div>
+      <div class="rank-list" id="rank-list"></div>
+      <div class="chart-card">
+        <h3 id="ranking-chart-title">Comparativo de matrículas</h3>
+        <div id="ch-rank-wrap" style="position:relative">
+          <canvas id="ch-rank" role="img" aria-label="Ranking">Sem dados.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="pan-admin" class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="lbl" style="margin:0">Visão Geral — Todas as Academias</div>
+        <div id="ac-total-lbl" style="font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--td)"></div>
+      </div>
+      <div class="kpi-grid" id="kpi-master"></div>
+      <div class="ac-grid" id="ac-grid"></div>
+      <div class="chart-card">
+        <h3>Matrículas por academia</h3>
+        <div id="ch-acs-wrap" style="position:relative">
+          <canvas id="ch-acs" role="img" aria-label="Por academia">Sem dados.</canvas>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- MODAL CONSULTORA -->
+  <div class="modal-ov" id="m-cons">
+    <div class="modal">
+      <div class="modal-hd"><h3>Adicionar Consultora</h3><button class="btn-x" onclick="closeM('m-cons')">×</button></div>
+      <div class="form-row">
+        <div class="fg fi-full"><label class="fl">Nome completo</label><input class="fi" id="cons-nm" placeholder="Ex: Ana Paula Silva"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg fi-full"><label class="fl">Meta de Matrículas (21 dias)</label><input class="fi" type="number" id="cons-meta" placeholder="Ex: 30" min="1"></div>
+      </div>
+      <div class="sec-div"><div class="sec-div-line"></div><div class="sec-div-lbl">Funis priorizados (1 a 3)</div><div class="sec-div-line"></div></div>
+      <div class="funil-checks" id="funil-checks-cons"></div>
+      <div style="text-align:right;margin-top:12px">
+        <button class="btn-or" id="btn-add-cons" onclick="addCons()">Adicionar Consultora</button>
+      </div>
+      <div class="divider"></div>
+      <div class="lbl">Consultoras desta academia</div>
+      <div id="cons-manage" class="manage-list"></div>
+    </div>
+  </div>
+
+  <!-- MODAL LANÇAMENTO -->
+  <div class="modal-ov" id="m-lanc">
+    <div class="modal modal-lg">
+      <div class="modal-hd"><h3>Lançar Dia do Desafio</h3><button class="btn-x" onclick="closeM('m-lanc')">×</button></div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">Consultora</label><select class="fi" id="lanc-cons" onchange="renderLancFunis()"></select></div>
+        <div class="fg"><label class="fl">Dia (1–21)</label><input class="fi" type="number" id="lanc-dia" min="1" max="21" placeholder="Ex: 1"></div>
+        <div class="fg"><label class="fl">Data</label><input class="fi" type="date" id="lanc-data"></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label class="fl">Observação</label><input class="fi" id="lanc-obs" placeholder="Ex: Campanha ativa"></div>
+      <div class="sec-div"><div class="sec-div-line"></div><div class="sec-div-lbl">Indicadores por Funil</div><div class="sec-div-line"></div></div>
+      <div id="lanc-funis-body"></div>
+      <div style="text-align:right;margin-top:14px">
+        <button class="btn-or" id="btn-lancar" onclick="lancarDia()">Salvar Lançamento</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════
+// SUPABASE
+// ══════════════════════════════
+const SB_URL='https://iheymzirmhjokeytokol.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloZXltemlybWhqb2tleXRva29sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzE4MDksImV4cCI6MjA5Njg0NzgwOX0.Bi7XXVbg1AhUF-_LcRQoTgUnEDkOds5Pqk51fTzpoF0';
+const H={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=representation'};
+async function sbGet(t,p=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{headers:{...H,'Prefer':''}});if(!r.ok)throw new Error(await r.text());return r.json()}
+async function sbPost(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:H,body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json()}
+async function sbDelete(t,m){const p=Object.entries(m).map(([k,v])=>`${k}=eq.${v}`).join('&');const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{method:'DELETE',headers:{...H,'Prefer':''}});if(!r.ok)throw new Error(await r.text())}
+
+// ══════════════════════════════
+// ADMIN EMAIL — só este vê tudo
+// ══════════════════════════════
+const ADMIN_EMAIL='admin@qg90.com';
+
+// ══════════════════════════════
+// STATE
+// ══════════════════════════════
+let sessao=null;
+let db={acs:{}};
+let acId=null;
+let evolChart=null,acsChart=null,rankChart=null;
+
+const FUNIS=[
+  {id:'f0',nome:'Leads Novos',cor:'#FF6B00',sub:'Mês anterior + vigente',
+   campos:[{k:'tentativas',lbl:'Tentativas',ph:'70'},{k:'efetivos',lbl:'Contatos Efetivos',ph:'23'},{k:'ag_mat',lbl:'Ag. Matrícula',ph:'7'},{k:'ag_exp',lbl:'Ag. Experiência',ph:'5'},{k:'convertidos',lbl:'Convertidos',ph:'7'},{k:'vendido',lbl:'Total Vendido R$',ph:'5250'}],planos:true},
+  {id:'f1',nome:'Renovação',cor:'#3b82f6',sub:'Não renovados + a vencer',
+   campos:[{k:'tentativas',lbl:'Tentativas',ph:'40'},{k:'efetivos',lbl:'Contatos Efetivos',ph:'18'},{k:'ag_mat',lbl:'Ag. Renovação',ph:'5'},{k:'ag_exp',lbl:'Ag. Experiência',ph:'2'},{k:'convertidos',lbl:'Convertidos',ph:'4'},{k:'vendido',lbl:'Total Vendido R$',ph:'3200'}],planos:true},
+  {id:'f2',nome:'Feedback + Indicação',cor:'#a855f7',sub:'Novos via indicação',
+   campos:[{k:'tentativas',lbl:'Tentativas',ph:'22'},{k:'efetivos',lbl:'Contatos Efetivos',ph:'14'},{k:'ag_mat',lbl:'Ag. Matrícula',ph:'6'},{k:'ag_exp',lbl:'Ag. Experiência',ph:'3'},{k:'convertidos',lbl:'Convertidos',ph:'5'},{k:'vendido',lbl:'Total Vendido R$',ph:'2800'}],planos:true}
+];
+const PLANOS=[{k:'anual',lbl:'Anual'},{k:'mensal',lbl:'Mensal'},{k:'especial',lbl:'Especial'},{k:'recorrencia',lbl:'Recorr.'},{k:'outro',lbl:'Outro'}];
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+function ac(){return acId&&db.acs[acId]?db.acs[acId]:null}
+function fInfo(fid){return FUNIS.find(f=>f.id===fid)}
+function initials(nm){return nm.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}
+function isAdmin(){return sessao&&sessao.role==='admin'}
+function setSS(s,t){document.getElementById('sync-dot').className='sync-dot '+s;document.getElementById('sync-txt').textContent=t}
+function showScreen(id){document.querySelectorAll('.auth-screen').forEach(s=>s.classList.remove('active'));const el=document.getElementById(id);if(el)el.classList.add('active')}
+
+// ══════════════════════════════
+// CADASTRO
+// ══════════════════════════════
+async function doCadastro(){
+  const academia=document.getElementById('cad-academia').value.trim();
+  const cidade=document.getElementById('cad-cidade').value.trim();
+  const nome=document.getElementById('cad-nome').value.trim();
+  const email=document.getElementById('cad-email').value.trim().toLowerCase();
+  const senha=document.getElementById('cad-senha').value;
+  const senha2=document.getElementById('cad-senha2').value;
+  const err=document.getElementById('cad-err');
+  const ok=document.getElementById('cad-ok');
+  err.classList.remove('show');ok.classList.remove('show');
+
+  if(!academia){err.textContent='Informe o nome da academia.';err.classList.add('show');return}
+  if(!nome){err.textContent='Informe seu nome.';err.classList.add('show');return}
+  if(!email||!email.includes('@')){err.textContent='Informe um e-mail válido.';err.classList.add('show');return}
+  if(senha.length<6){err.textContent='A senha deve ter no mínimo 6 caracteres.';err.classList.add('show');return}
+  if(senha!==senha2){err.textContent='As senhas não coincidem.';err.classList.add('show');return}
+
+  const btn=document.getElementById('btn-cadastrar');
+  btn.disabled=true;btn.textContent='Criando conta...';
+  try{
+    // verifica se email já existe
+    const exist=await sbGet('gestores',`email=eq.${encodeURIComponent(email)}&select=id`);
+    if(exist&&exist.length){err.textContent='Este e-mail já está cadastrado.';err.classList.add('show');btn.disabled=false;btn.textContent='Criar Conta';return}
+
+    // cria academia
+    const acId2=uid();
+    await sbPost('academias',{id:acId2,nome:academia,cidade});
+
+    // cria gestor
+    const gId=uid();
+    await sbPost('gestores',{id:gId,nome,email,senha_hash:senha,academia_id:acId2,role:'gestor'});
+
+    ok.textContent='Conta criada com sucesso! Faça login agora.';ok.classList.add('show');
+    ['cad-academia','cad-cidade','cad-nome','cad-email','cad-senha','cad-senha2'].forEach(x=>document.getElementById(x).value='');
+    setTimeout(()=>showScreen('screen-login'),2000);
+  }catch(e){
+    err.textContent='Erro ao criar conta. Tente novamente.';err.classList.add('show');
+    console.error(e);
+  }
+  btn.disabled=false;btn.textContent='Criar Conta';
+}
+
+// ══════════════════════════════
+// LOGIN
+// ══════════════════════════════
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim().toLowerCase();
+  const senha=document.getElementById('login-senha').value;
+  const err=document.getElementById('login-err');
+  err.classList.remove('show');
+  if(!email||!senha){err.textContent='Preencha e-mail e senha.';err.classList.add('show');return}
+  const btn=document.getElementById('btn-login');
+  btn.disabled=true;btn.textContent='Verificando...';
+  try{
+    const res=await sbGet('gestores',`email=eq.${encodeURIComponent(email)}&senha_hash=eq.${encodeURIComponent(senha)}&ativo=eq.true&select=id,nome,email,academia_id,role`);
+    if(!res||!res.length){err.textContent='E-mail ou senha incorretos.';err.classList.add('show');btn.disabled=false;btn.textContent='Entrar';return}
+    sessao=res[0];
+    document.querySelectorAll('.auth-screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById('app').classList.add('show');
+    await iniciarApp();
+  }catch(e){err.textContent='Erro de conexão.';err.classList.add('show');console.error(e)}
+  btn.disabled=false;btn.textContent='Entrar';
+}
+
+function doLogout(){
+  sessao=null;acId=null;db={acs:{}};
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('login-email').value='';
+  document.getElementById('login-senha').value='';
+  showScreen('screen-login');
+}
+
+// ══════════════════════════════
+// INICIAR APP
+// ══════════════════════════════
+async function iniciarApp(){
+  const chip=document.getElementById('user-chip');
+  if(isAdmin()){
+    chip.className='admin-chip';chip.textContent='⚡ QG.90 Admin';
+    document.getElementById('tab-admin').classList.add('show');
+    document.getElementById('admin-ac-row').classList.add('show');
+  } else {
+    chip.className='user-chip';chip.textContent=sessao.nome||sessao.email.split('@')[0];
+    document.getElementById('btn-add-cons-top').style.display='block';
+    document.getElementById('btn-lancar-top').style.display='block';
+  }
+  document.getElementById('loading-ov').classList.remove('hide');
+  await loadAll();
+}
+
+// ══════════════════════════════
+// LOAD
+// ══════════════════════════════
+async function loadAll(){
+  setSS('spin','sincronizando...');
+  try{
+    let acsQ='order=created_at.asc';
+    if(!isAdmin()&&sessao.academia_id)acsQ=`id=eq.${sessao.academia_id}`;
+    const[acs,cons,regs]=await Promise.all([
+      sbGet('academias',acsQ),
+      sbGet('consultoras','order=created_at.asc'),
+      sbGet('registros','order=dia.asc,ts.asc')
+    ]);
+    db.acs={};
+    acs.forEach(a=>{db.acs[a.id]={...a,consultoras:{},registros:[]}});
+    cons.forEach(c=>{if(db.acs[c.academia_id])db.acs[c.academia_id].consultoras[c.id]={nome:c.nome,meta:c.meta,funis:c.funis||[],lista:c.lista||{}}});
+    regs.forEach(r=>{if(db.acs[r.academia_id])db.acs[r.academia_id].registros.push({id:r.id,dia:r.dia,data:r.data,consultora_id:r.consultora_id,obs:r.obs,funis:r.funis||{},ts:r.ts})});
+    if(!isAdmin()&&sessao.academia_id){
+      acId=sessao.academia_id;
+    } else if(isAdmin()){
+      renderAcSelect();
+      if(!acId){const k=Object.keys(db.acs);if(k.length){acId=k[0];document.getElementById('sel-ac').value=acId}}
+    }
+    setSS('ok','sincronizado');
+    document.getElementById('loading-ov').classList.add('hide');
+    renderAll();
+  }catch(e){
+    setSS('err','erro conexão');
+    document.getElementById('loading-ov').classList.add('hide');
+    toast('Erro ao sincronizar',true);console.error(e);
+  }
+}
+
+// ══════════════════════════════
+// ACADEMIA (admin)
+// ══════════════════════════════
+function switchAc(id){acId=id||null;renderAll()}
+function renderAcSelect(){
+  const s=document.getElementById('sel-ac');if(!s)return;
+  const pv=s.value;
+  s.innerHTML='<option value="">— Selecione —</option>';
+  Object.entries(db.acs).forEach(([id,a])=>{const o=document.createElement('option');o.value=id;o.textContent=a.nome;s.appendChild(o)});
+  if(pv&&db.acs[pv])s.value=pv;
+}
+
+// ══════════════════════════════
+// FUNIL CHECKS
+// ══════════════════════════════
+let selFunis=[];
+function renderFunilChecks(){
+  const el=document.getElementById('funil-checks-cons');if(!el)return;
+  el.innerHTML=FUNIS.map(f=>`
+    <div class="funil-check-item" id="fci-${f.id}" onclick="toggleFC('${f.id}')">
+      <div class="funil-check-dot" id="fcd-${f.id}"></div>
+      <div class="funil-check-desc">
+        <div class="funil-check-name" style="color:${f.cor}">${f.nome}</div>
+        <div class="funil-check-sub">${f.sub}</div>
+      </div>
+      <div id="fci-lw-${f.id}" style="display:none;flex-shrink:0" onclick="event.stopPropagation()">
+        <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;color:var(--td);margin-bottom:2px">Total Lista</div>
+        <input class="fi" type="number" id="cons-lista-${f.id}" placeholder="125" min="0" style="width:80px;padding:4px 7px;font-size:12px" onclick="event.stopPropagation()">
+      </div>
+    </div>`).join('');
+  selFunis=[];
+}
+function toggleFC(fid){
+  if(selFunis.includes(fid)){selFunis=selFunis.filter(x=>x!==fid)}
+  else{if(selFunis.length>=3){toast('Máximo 3 funis',true);return}selFunis.push(fid)}
+  FUNIS.forEach(f=>{
+    const sel=selFunis.includes(f.id);
+    const item=document.getElementById('fci-'+f.id),dot=document.getElementById('fcd-'+f.id),lw=document.getElementById('fci-lw-'+f.id);
+    if(item)item.classList.toggle('checked',sel);
+    if(dot)dot.style.background=sel?f.cor:'';
+    if(lw)lw.style.display=sel?'block':'none';
+  });
+}
+
+// ══════════════════════════════
+// CONSULTORA
+// ══════════════════════════════
+async function addCons(){
+  if(!acId){toast('Academia não definida',true);return}
+  const nm=document.getElementById('cons-nm').value.trim();
+  const meta=parseInt(document.getElementById('cons-meta').value)||0;
+  if(!nm){toast('Informe o nome',true);return}
+  if(!selFunis.length){toast('Selecione ao menos 1 funil',true);return}
+  const lista={};
+  selFunis.forEach(fid=>{lista[fid]=parseInt(document.getElementById('cons-lista-'+fid)?.value)||0});
+  const btn=document.getElementById('btn-add-cons');btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    await sbPost('consultoras',{id:uid(),academia_id:acId,nome:nm,meta,funis:selFunis,lista});
+    document.getElementById('cons-nm').value='';document.getElementById('cons-meta').value='';
+    toast('Consultora adicionada!');await loadAll();renderConsManage();
+  }catch(e){toast('Erro',true);console.error(e)}
+  btn.disabled=false;btn.textContent='Adicionar Consultora';renderFunilChecks();
+}
+async function removeCons(id){
+  if(!confirm('Remover consultora?'))return;
+  try{await sbDelete('consultoras',{id});toast('Removida');await loadAll();renderConsManage()}
+  catch(e){toast('Erro',true)}
+}
+function renderConsManage(){
+  const el=document.getElementById('cons-manage');if(!el||!acId)return;
+  const a=ac();if(!a)return;
+  const en=Object.entries(a.consultoras);
+  if(!en.length){el.innerHTML='<div style="color:var(--td);font-size:12px">Nenhuma consultora.</div>';return}
+  el.innerHTML=en.map(([id,c])=>`<div class="manage-item"><span class="manage-item-nm">${c.nome}</span><span class="manage-item-sub">meta ${c.meta} · ${(c.funis||[]).map(f=>fInfo(f)?.nome||f).join(', ')}</span><button class="btn-danger" onclick="removeCons('${id}')">Remover</button></div>`).join('');
+}
+
+// ══════════════════════════════
+// LANÇAMENTO
+// ══════════════════════════════
+function populateLancCons(){
+  const sel=document.getElementById('lanc-cons');if(!sel)return;
+  sel.innerHTML='<option value="">Selecione...</option>';
+  const a=ac();if(!a)return;
+  Object.entries(a.consultoras).forEach(([id,c])=>{const o=document.createElement('option');o.value=id;o.textContent=c.nome;sel.appendChild(o)});
+}
+function renderLancFunis(){
+  const a=ac();if(!a)return;
+  const cid=document.getElementById('lanc-cons').value;
+  const el=document.getElementById('lanc-funis-body');
+  if(!cid){el.innerHTML='<div style="color:var(--td);font-size:12px">Selecione uma consultora.</div>';return}
+  const c=a.consultoras[cid];
+  if(!c||!c.funis||!c.funis.length){el.innerHTML='<div style="color:var(--td);font-size:12px">Sem funis configurados.</div>';return}
+  el.innerHTML=c.funis.map(fid=>{
+    const f=fInfo(fid);if(!f)return'';
+    const campos=f.campos.map(cam=>`<div class="fg"><label class="fl">${cam.lbl}</label><input class="fi" type="number" id="lanc-${fid}-${cam.k}" placeholder="${cam.ph}" min="0"></div>`).join('');
+    const pl=f.planos?`<div class="sec-div" style="margin:7px 0 5px"><div class="sec-div-line"></div><div class="sec-div-lbl">Planos Vendidos</div><div class="sec-div-line"></div></div><div class="planos-form">${PLANOS.map(p=>`<div class="fg"><label class="fl">${p.lbl}</label><input class="fi" type="number" id="lanc-${fid}-pl-${p.k}" placeholder="0" min="0"></div>`).join('')}</div>`:'';
+    return`<div class="lanc-funil-sec"><div class="lanc-funil-title"><div class="lanc-funil-dot" style="background:${f.cor}"></div><span style="color:${f.cor}">${f.nome}</span><span style="color:var(--td);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px">${f.sub}</span></div><div class="form-row">${campos}</div>${pl}</div>`;
+  }).join('');
+}
+async function lancarDia(){
+  if(!acId){toast('Academia não definida',true);return}
+  const cid=document.getElementById('lanc-cons').value;
+  const dia=parseInt(document.getElementById('lanc-dia').value);
+  const data=document.getElementById('lanc-data').value;
+  const obs=document.getElementById('lanc-obs').value.trim();
+  if(!cid){toast('Selecione a consultora',true);return}
+  if(!dia||dia<1||dia>21){toast('Dia deve ser 1–21',true);return}
+  if(!data){toast('Informe a data',true);return}
+  const a=ac();const c=a.consultoras[cid];
+  const funisData={};
+  (c.funis||[]).forEach(fid=>{
+    const f=fInfo(fid);if(!f)return;
+    const campos={};f.campos.forEach(cam=>{campos[cam.k]=parseFloat(document.getElementById(`lanc-${fid}-${cam.k}`)?.value)||0});
+    const planos={};if(f.planos)PLANOS.forEach(p=>{planos[p.k]=parseInt(document.getElementById(`lanc-${fid}-pl-${p.k}`)?.value)||0});
+    funisData[fid]={...campos,planos};
+  });
+  const btn=document.getElementById('btn-lancar');btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    await sbPost('registros',{id:uid(),academia_id:acId,consultora_id:cid,dia,data,obs,funis:funisData,ts:Date.now()});
+    closeM('m-lanc');toast('Lançamento salvo!');await loadAll();
+  }catch(e){toast('Erro',true);console.error(e)}
+  btn.disabled=false;btn.textContent='Salvar Lançamento';
+}
+
+// ══════════════════════════════
+// STATS
+// ══════════════════════════════
+function consRegs(a,cid){return(a.registros||[]).filter(r=>r.consultora_id===cid)}
+function sumF(regs,fid,c){return regs.reduce((s,r)=>s+((r.funis&&r.funis[fid]&&r.funis[fid][c])||0),0)}
+function sumP(regs,fid,pk){return regs.reduce((s,r)=>s+((r.funis&&r.funis[fid]&&r.funis[fid].planos&&r.funis[fid].planos[pk])||0),0)}
+function consMat(a,cid){const regs=consRegs(a,cid);return(a.consultoras[cid].funis||[]).reduce((s,fid)=>s+sumF(regs,fid,'convertidos'),0)}
+function acMat(a){return Object.keys(a.consultoras).reduce((s,cid)=>s+consMat(a,cid),0)}
+function acVend(a){return(a.registros||[]).reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.vendido||0),0)},0)}
+
+// ══════════════════════════════
+// RENDER ALL
+// ══════════════════════════════
+function renderAll(){
+  const a=ac();
+  document.getElementById('topbar-ac-nome').textContent=a?a.nome:'Desafio ROI 21 Dias';
+  if(a){renderPainel(a);renderFunis();renderConsGrid(a);renderRelatorio();}
+  renderRanking();
+  if(isAdmin())renderAdminPanel();
+  populateFilters();populateLancCons();
+}
+
+// ══════════════════════════════
+// PAINEL
+// ══════════════════════════════
+function renderPainel(a){
+  document.getElementById('hero-nm').textContent=a.nome;
+  const regs=a.registros||[];
+  const diaMax=regs.length?Math.max(...regs.map(r=>r.dia)):0;
+  document.getElementById('roi-dia').textContent=diaMax;
+  const iniStr=a.inicio?new Date(a.inicio+'T00:00:00').toLocaleDateString('pt-BR'):'';
+  document.getElementById('hero-sub').textContent=(a.cidade||'')+(iniStr?` · Início: ${iniStr}`:'');
+  const tMat=acMat(a);
+  const tEfet=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.efetivos||0),0)},0);
+  const tVend=acVend(a);
+  const tConv=tEfet>0?Math.round(tMat/tEfet*100):0;
+  const tLista=Object.values(a.consultoras).reduce((s,c)=>s+Object.values(c.lista||{}).reduce((s2,v)=>s2+(v||0),0),0);
+  document.getElementById('kpi-grid').innerHTML=`
+    <div class="kpi hi"><div class="kpi-lbl">Matrículas</div><div class="kpi-val or">${tMat}</div><div class="kpi-sub">acumulado</div></div>
+    <div class="kpi hi"><div class="kpi-lbl">Oportunidades</div><div class="kpi-val or">${tLista}</div><div class="kpi-sub">total lista</div></div>
+    <div class="kpi"><div class="kpi-lbl">Efetivos</div><div class="kpi-val">${tEfet}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Conversão</div><div class="kpi-val gr">${tConv}%</div></div>
+    <div class="kpi hi"><div class="kpi-lbl">Total Vendido</div><div class="kpi-val or">R$${tVend.toLocaleString('pt-BR')}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Dia Atual</div><div class="kpi-val am">${diaMax}</div><div class="kpi-sub">de 21</div></div>
+    <div class="kpi"><div class="kpi-lbl">Consultoras</div><div class="kpi-val">${Object.keys(a.consultoras).length}</div></div>
+  `;
+  if(evolChart)evolChart.destroy();
+  const byDia={};for(let d=1;d<=21;d++)byDia[d]=0;
+  regs.forEach(r=>{if(!r.funis)return;const m=Object.values(r.funis).reduce((s,fd)=>s+(fd.convertidos||0),0);byDia[r.dia]=(byDia[r.dia]||0)+m});
+  evolChart=new Chart(document.getElementById('ch-evol'),{type:'bar',data:{labels:Array.from({length:21},(_,i)=>`D${i+1}`),datasets:[{label:'Matrículas',data:Array.from({length:21},(_,i)=>byDia[i+1]),backgroundColor:'rgba(255,107,0,0.55)',borderColor:'#FF6B00',borderWidth:1,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#666',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#666',precision:0},grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}}}});
+}
+
+// ══════════════════════════════
+// FUNIS
+// ══════════════════════════════
+function populateFilters(){
+  const a=ac();
+  ['funil-cons-filter','rel-cons-f'].forEach(sid=>{
+    const s=document.getElementById(sid);if(!s)return;
+    const pv=s.value;
+    s.innerHTML='<option value="">Todas as consultoras</option>';
+    if(a)Object.entries(a.consultoras).forEach(([id,c])=>{const o=document.createElement('option');o.value=id;o.textContent=c.nome;s.appendChild(o)});
+    if(pv&&a&&a.consultoras[pv])s.value=pv;
+  });
+  const rf=document.getElementById('rel-funil-f');
+  if(rf){rf.innerHTML='<option value="">Todos os funis</option>';FUNIS.forEach(f=>{const o=document.createElement('option');o.value=f.id;o.textContent=f.nome;rf.appendChild(o)})}
+}
+function renderFunis(){
+  const a=ac();const el=document.getElementById('funis-body');
+  if(!a){el.innerHTML='<div style="color:var(--td);font-size:13px;padding:20px 0">Selecione uma academia.</div>';return}
+  const filtCons=document.getElementById('funil-cons-filter').value;
+  const entries=Object.entries(a.consultoras).filter(([id])=>!filtCons||id===filtCons);
+  if(!entries.length){el.innerHTML='<div style="color:var(--td);font-size:13px;padding:20px 0">Nenhuma consultora.</div>';return}
+  let html='';
+  entries.forEach(([cid,c])=>{
+    const regs=consRegs(a,cid);const funis=c.funis||[];if(!funis.length)return;
+    html+=`<div style="margin-bottom:20px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div class="avatar">${initials(c.nome)}</div><div><div style="font-weight:600;font-size:14px">${c.nome}</div><div style="font-size:11px;color:var(--td)">Meta: ${c.meta} mat.</div></div></div><div class="funil-grid">`;
+    funis.forEach(fid=>{
+      const f=fInfo(fid);if(!f)return;
+      const lista=c.lista&&c.lista[fid]||0;
+      const tent=sumF(regs,fid,'tentativas'),efet=sumF(regs,fid,'efetivos'),agMat=sumF(regs,fid,'ag_mat'),agExp=sumF(regs,fid,'ag_exp'),conv=sumF(regs,fid,'convertidos'),vend=sumF(regs,fid,'vendido');
+      const tentPct=lista>0?Math.round(tent/lista*100):0,efetPct=tent>0?Math.round(efet/tent*100):0,convPct=efet>0?Math.round(conv/efet*100):0;
+      const pl=PLANOS.map(p=>`<div class="plano-m"><span class="plano-m-lbl">${p.lbl}</span><span class="plano-m-val">${sumP(regs,fid,p.k)}</span></div>`).join('');
+      html+=`<div class="funil-card"><div class="funil-header"><div class="funil-dot" style="background:${f.cor}"></div><div class="funil-nm" style="color:${f.cor}">${f.nome}</div><div style="font-size:10px;color:var(--td);margin-left:auto">${f.sub}</div></div><div class="funil-body">
+        <div class="fi-row"><span class="fi-lbl">📋 Lista</span><span class="fi-val">${lista}</span></div>
+        <div class="fi-row"><span class="fi-lbl">📞 Tentativas</span><span class="fi-val">${tent}<span class="fi-pct">${tentPct}%</span></span></div>
+        <div class="fi-row"><span class="fi-lbl">✅ Efetivos</span><span class="fi-val">${efet}<span class="fi-pct">${efetPct}%</span></span></div>
+        <div class="fi-row"><span class="fi-lbl">📅 Ag.Mat</span><span class="fi-val">${agMat}</span></div>
+        <div class="fi-row"><span class="fi-lbl">🔁 Ag.Exp</span><span class="fi-val">${agExp}</span></div>
+        <div class="fi-row"><span class="fi-lbl">📊 Total Ag.</span><span class="fi-val am">${agMat+agExp}</span></div>
+        <div class="fi-row"><span class="fi-lbl">🏆 Convertidos</span><span class="fi-val or">${conv}<span class="fi-pct">${convPct}%</span></span></div>
+        <div class="fi-row" style="border-bottom:none"><span class="fi-lbl">💰 Vendido</span><span class="fi-val gr">R$${vend.toLocaleString('pt-BR')}</span></div>
+        <div style="margin-top:8px"><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Planos</div><div class="planos-g">${pl}</div></div>
+      </div></div>`;
+    });
+    html+='</div></div>';
+  });
+  el.innerHTML=html||'<div style="color:var(--td);font-size:13px;padding:20px 0">Nenhum dado ainda.</div>';
+}
+
+// ══════════════════════════════
+// CONSULTORAS GRID
+// ══════════════════════════════
+function renderConsGrid(a){
+  const el=document.getElementById('cons-grid');
+  const en=Object.entries(a.consultoras);
+  if(!en.length){el.innerHTML='<div style="color:var(--td);font-size:13px;padding:20px 0">Nenhuma consultora cadastrada.</div>';return}
+  el.innerHTML=en.map(([id,c])=>{
+    const regs=consRegs(a,id);
+    const mat=consMat(a,id);
+    const efet=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.efetivos||0),0)},0);
+    const vend=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.vendido||0),0)},0);
+    const conv=efet>0?Math.round(mat/efet*100):0;
+    const pct=c.meta>0?Math.min(100,Math.round(mat/c.meta*100)):0;
+    const dias=new Set(regs.map(r=>r.dia)).size;
+    const fps=(c.funis||[]).map(fid=>{const f=fInfo(fid);return f?`<span class="fpill" style="background:${f.cor}22;color:${f.cor}">${f.nome.split(' ')[0]}</span>`:''}).join('');
+    return`<div class="cons-card"><div class="cons-head"><div class="avatar">${initials(c.nome)}</div><div><div class="cons-nm">${c.nome}</div><div class="cons-meta">Meta: ${c.meta} mat.</div></div><div class="cons-funis">${fps}</div></div><div class="cons-body"><div class="cons-stats"><div class="cs"><span class="cs-num or">${mat}</span><span class="cs-lbl">Matrículas</span></div><div class="cs"><span class="cs-num">${efet}</span><span class="cs-lbl">Efetivos</span></div><div class="cs"><span class="cs-num gr">${conv}%</span><span class="cs-lbl">Conv.</span></div></div><div style="font-size:10px;color:var(--td);margin-bottom:5px">R$${vend.toLocaleString('pt-BR')} vendidos · ${dias} dias ativos</div><div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%"></div></div><div class="pct-lbl">${pct}% da meta (${mat}/${c.meta})</div></div></div>`;
+  }).join('');
+}
+
+// ══════════════════════════════
+// RELATÓRIO
+// ══════════════════════════════
+function renderRelatorio(){
+  const tbody=document.getElementById('rel-tbody');
+  const a=ac();
+  if(!a){tbody.innerHTML='<tr><td colspan="13" style="text-align:center;color:var(--td);padding:24px">Selecione uma academia.</td></tr>';return}
+  const filtCons=document.getElementById('rel-cons-f').value;
+  const filtFunil=document.getElementById('rel-funil-f').value;
+  let regs=[...(a.registros||[])].sort((x,y)=>x.dia-y.dia||x.ts-y.ts);
+  if(filtCons)regs=regs.filter(r=>r.consultora_id===filtCons);
+  if(!regs.length){tbody.innerHTML='<tr><td colspan="13" style="text-align:center;color:var(--td);padding:24px">Nenhum registro.</td></tr>';return}
+  const rows=[];
+  regs.forEach(r=>{
+    const c=a.consultoras[r.consultora_id];const cname=c?c.nome:'—';
+    const dt=r.data?new Date(r.data+'T00:00:00').toLocaleDateString('pt-BR'):'—';
+    const fids=filtFunil?[filtFunil]:Object.keys(r.funis||{});
+    fids.forEach(fid=>{
+      const fd=(r.funis||{})[fid];if(!fd)return;
+      const f=fInfo(fid);const conv=fd.efetivos>0?Math.round(fd.convertidos/fd.efetivos*100):0;
+      const cls=conv>=30?'bdg-gr':conv>=15?'bdg-am':'bdg-re';
+      const pl=PLANOS.map(p=>`${p.lbl}:${(fd.planos&&fd.planos[p.k])||0}`).join(' ');
+      rows.push(`<tr><td><span class="bdg bdg-or">D${r.dia}</span></td><td style="color:var(--td)">${dt}</td><td>${cname}</td><td><span class="bdg" style="background:${f?f.cor+'22':'var(--s3)'};color:${f?f.cor:'var(--tm)'}">${f?f.nome:'—'}</span></td><td>${c&&c.lista&&c.lista[fid]||0}</td><td>${fd.tentativas||0}</td><td>${fd.efetivos||0}</td><td>${fd.ag_mat||0}</td><td>${fd.ag_exp||0}</td><td style="color:var(--or);font-weight:600">${fd.convertidos||0} <span class="bdg ${cls}">${conv}%</span></td><td style="color:var(--gr)">R$${(fd.vendido||0).toLocaleString('pt-BR')}</td><td style="font-size:10px;color:var(--td)">${pl}</td><td style="font-size:11px;color:var(--td)">${r.obs||'—'}</td></tr>`);
+    });
+  });
+  tbody.innerHTML=rows.join('')||'<tr><td colspan="13" style="text-align:center;color:var(--td);padding:24px">Nenhum registro.</td></tr>';
+}
+
+// ══════════════════════════════
+// RANKING
+// ══════════════════════════════
+function renderRanking(){
+  const a=ac();let all=[];
+  if(isAdmin()){
+    Object.entries(db.acs).forEach(([,ac2])=>{Object.entries(ac2.consultoras).forEach(([cid,c])=>{all.push({nome:c.nome,academia:ac2.nome,mat:consMat(ac2,cid),meta:c.meta})})});
+    document.getElementById('ranking-lbl').textContent='Ranking Geral — Todas as Academias';
+    document.getElementById('ranking-chart-title').textContent='Comparativo geral';
+  } else if(a){
+    Object.entries(a.consultoras).forEach(([cid,c])=>{all.push({nome:c.nome,academia:a.nome,mat:consMat(a,cid),meta:c.meta})});
+    document.getElementById('ranking-lbl').textContent='Ranking — '+a.nome;
+    document.getElementById('ranking-chart-title').textContent='Comparativo de matrículas';
+  }
+  all.sort((x,y)=>y.mat-x.mat);
+  const el=document.getElementById('rank-list');
+  if(!all.length){el.innerHTML='<div style="color:var(--td);font-size:13px">Sem dados.</div>';return}
+  const maxMat=all[0].mat||1;const pc=['gold','silver','bronze'];
+  el.innerHTML=all.map((c,i)=>`<div class="rank-item"><div class="rank-pos ${pc[i]||'rest'}">${i+1}</div><div><div class="rank-nm">${c.nome}</div>${isAdmin()?`<div class="rank-ac">${c.academia}</div>`:''}</div><div class="rank-bw"><div class="rank-bar" style="width:${Math.round(c.mat/maxMat*100)}%"></div></div><div style="font-size:10px;color:var(--td);min-width:44px;text-align:right">${c.mat}/${c.meta}</div><div class="rank-val">${c.mat}</div></div>`).join('');
+  if(rankChart)rankChart.destroy();
+  const wrap=document.getElementById('ch-rank-wrap');
+  wrap.style.height=Math.max(180,all.length*44+60)+'px';
+  rankChart=new Chart(document.getElementById('ch-rank'),{type:'bar',data:{labels:all.map(c=>c.nome.split(' ')[0]),datasets:[{label:'Matrículas',data:all.map(c=>c.mat),backgroundColor:all.map((_,i)=>i===0?'#FF6B00':'rgba(255,107,0,0.38)'),borderRadius:4},{label:'Meta',data:all.map(c=>c.meta),backgroundColor:'rgba(255,255,255,0.07)',borderColor:'rgba(255,255,255,0.18)',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#666'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#666',precision:0},grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}}}});
+}
+
+// ══════════════════════════════
+// ADMIN PANEL
+// ══════════════════════════════
+function renderAdminPanel(){
+  const entries=Object.entries(db.acs);
+  document.getElementById('ac-total-lbl').textContent=`${entries.length} academia${entries.length!==1?'s':''} cadastrada${entries.length!==1?'s':''}`;
+  const tMat=entries.reduce((s,[,a])=>s+acMat(a),0);
+  const tVend=entries.reduce((s,[,a])=>s+acVend(a),0);
+  const tCons=entries.reduce((s,[,a])=>s+Object.keys(a.consultoras).length,0);
+  document.getElementById('kpi-master').innerHTML=`
+    <div class="kpi hi"><div class="kpi-lbl">Total Matrículas</div><div class="kpi-val or">${tMat}</div><div class="kpi-sub">todas as academias</div></div>
+    <div class="kpi hi"><div class="kpi-lbl">Total Vendido</div><div class="kpi-val or">R$${tVend.toLocaleString('pt-BR')}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Academias</div><div class="kpi-val">${entries.length}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Consultoras</div><div class="kpi-val">${tCons}</div></div>
+  `;
+  const el=document.getElementById('ac-grid');
+  if(!entries.length){el.innerHTML='<div style="color:var(--td);font-size:13px">Nenhuma academia cadastrada ainda.</div>';return}
+  el.innerHTML=entries.map(([id,a])=>{
+    const mat=acMat(a);const vend=acVend(a);
+    const regs=a.registros||[];const diaMax=regs.length?Math.max(...regs.map(r=>r.dia)):0;
+    const tCons2=Object.keys(a.consultoras).length;
+    const tMeta=Object.values(a.consultoras).reduce((s,c)=>s+(c.meta||0),0);
+    const pct=tMeta>0?Math.min(100,Math.round(mat/tMeta*100)):0;
+    const ic=a.nome.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    return`<div class="ac-card" onclick="selAcAdmin('${id}')">
+      <div class="ac-head"><div class="ac-ico">${ic}</div><div><div class="ac-nm">${a.nome}</div><div class="ac-cid">${a.cidade||''}</div></div><div style="margin-left:auto;text-align:center"><div style="font-size:10px;color:var(--td);font-family:'Barlow Condensed',sans-serif">Dia</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--or)">${diaMax}</div></div></div>
+      <div class="ac-body"><div class="ac-stats"><div class="ac-stat"><span class="ac-stat-num or">${mat}</span><span class="ac-stat-lbl">Matrículas</span></div><div class="ac-stat"><span class="ac-stat-num">${tCons2}</span><span class="ac-stat-lbl">Consultoras</span></div><div class="ac-stat"><span class="ac-stat-num gr">R$${vend>=1000?Math.round(vend/1000)+'k':vend}</span><span class="ac-stat-lbl">Vendido</span></div></div>
+      <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%"></div></div><div class="pct-lbl">${pct}% meta (${mat}/${tMeta})</div></div>
+    </div>`;
+  }).join('');
+  if(acsChart)acsChart.destroy();
+  const sorted=entries.map(([,a])=>({nome:a.nome.split(' ')[0],mat:acMat(a)})).sort((x,y)=>y.mat-x.mat);
+  const wrap=document.getElementById('ch-acs-wrap');
+  wrap.style.height=Math.max(180,sorted.length*44+60)+'px';
+  acsChart=new Chart(document.getElementById('ch-acs'),{type:'bar',data:{labels:sorted.map(x=>x.nome),datasets:[{label:'Matrículas',data:sorted.map(x=>x.mat),backgroundColor:sorted.map((_,i)=>i===0?'#FF6B00':'rgba(255,107,0,0.4)'),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#666'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#666',precision:0},grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}}}});
+}
+function selAcAdmin(id){acId=id;document.getElementById('sel-ac').value=id;renderAll();switchTab('painel')}
+
+// ══════════════════════════════
+// EXPORT CSV
+// ══════════════════════════════
+function exportCSV(){
+  const a=ac();if(!a){toast('Sem dados',true);return}
+  const hdr=['Dia','Data','Consultora','Funil','Lista','Tentativas','Efetivos','Ag.Mat','Ag.Exp','Convertidos','Vendido','Anual','Mensal','Especial','Recorrencia','Outro','Obs'];
+  const rows=[];
+  [...(a.registros||[])].sort((x,y)=>x.dia-y.dia).forEach(r=>{
+    const c=a.consultoras[r.consultora_id];
+    Object.entries(r.funis||{}).forEach(([fid,fd])=>{
+      const f=fInfo(fid);const pl=fd.planos||{};
+      rows.push([r.dia,r.data,c?c.nome:'—',f?f.nome:'—',c&&c.lista&&c.lista[fid]||0,fd.tentativas||0,fd.efetivos||0,fd.ag_mat||0,fd.ag_exp||0,fd.convertidos||0,fd.vendido||0,pl.anual||0,pl.mensal||0,pl.especial||0,pl.recorrencia||0,pl.outro||0,r.obs||''].join(';'));
+    });
+  });
+  const blob=new Blob(['\uFEFF'+hdr.join(';')+'\n'+rows.join('\n')],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);const l=document.createElement('a');l.href=url;l.download=`QG90_ROI21_${a.nome.replace(/\s/g,'_')}.csv`;l.click();URL.revokeObjectURL(url);
+  toast('CSV exportado!');
+}
+
+// ══════════════════════════════
+// TABS / MODAIS / TOAST
+// ══════════════════════════════
+const TABS=['painel','funis','consultoras','relatorio','ranking','admin'];
+function switchTab(t){
+  TABS.forEach((x,i)=>{
+    document.getElementById('pan-'+x).classList.toggle('active',x===t);
+    document.querySelectorAll('.tab')[i].classList.toggle('active',x===t);
+  });
+}
+function openM(id){
+  if(id==='m-cons'){renderFunilChecks();renderConsManage();}
+  if(id==='m-lanc'){populateLancCons();document.getElementById('lanc-data').value=new Date().toISOString().slice(0,10);document.getElementById('lanc-funis-body').innerHTML='<div style="color:var(--td);font-size:12px">Selecione uma consultora.</div>';}
+  document.getElementById(id).classList.add('open');
+}
+function closeM(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.modal-ov').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+function toast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(err?'err':'ok')+' show';setTimeout(()=>t.classList.remove('show'),3000)}
+
+// auto-refresh 30s
+setInterval(()=>{if(sessao)loadAll()},30000);
+
+// ══════════════════════════════
+// CRIAR ADMIN QG.90
+// (roda uma vez só se não existir)
+// ══════════════════════════════
+async function initAdmin(){
+  try{
+    const ex=await sbGet('gestores','email=eq.admin%40qg90.com&select=id');
+    if(!ex||!ex.length){
+      await sbPost('gestores',{id:'gest_qg90_admin',nome:'QG.90 Admin',email:'admin@qg90.com',senha_hash:'qg90admin2025',academia_id:null,role:'admin'});
+    }
+  }catch(e){console.log('Admin check:',e)}
+}
+initAdmin();
+</script>
+</body>
+</html>
