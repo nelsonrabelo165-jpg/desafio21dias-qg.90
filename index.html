@@ -278,6 +278,7 @@ tbody tr:hover td{background:var(--s2)}
     <div class="tab" onclick="switchTab('relatorio')">Relatório</div>
     <div class="tab" onclick="switchTab('ranking')">Ranking</div>
     <div class="tab tab-admin" id="tab-admin" onclick="switchTab('admin')">⚡ Todas as Academias</div>
+    <div class="tab" onclick="switchTab('ajuda')" style="margin-left:auto;color:var(--or)">❓ Ajuda</div>
   </div>
 
   <div class="main">
@@ -432,8 +433,207 @@ tbody tr:hover td{background:var(--s2)}
     </div>
   </div>
 
-</div>
+    <!-- AJUDA -->
+    <div id="pan-ajuda" class="panel">
+      <div style="max-width:780px;margin:0 auto">
+
+        <!-- HERO AJUDA -->
+        <div style="background:linear-gradient(135deg,#1a0a00,#0a0a1a);border:1px solid var(--bdo);border-radius:12px;padding:28px;margin-bottom:20px;text-align:center">
+          <div style="font-size:36px;margin-bottom:8px">🏋️</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--or);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Guia do Gestor</div>
+          <div style="font-size:14px;color:var(--td)">Desafio ROI 21 Dias — Como usar a plataforma</div>
+        </div>
+
+        <!-- PASSOS RÁPIDOS -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">
+          <div style="background:var(--s1);border:1px solid var(--bdo);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:28px;margin-bottom:8px">1️⃣</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--or);text-transform:uppercase;margin-bottom:4px">Criar Conta</div>
+            <div style="font-size:12px;color:var(--td)">Informe o nome da academia, cidade, seu nome, e-mail e senha</div>
+          </div>
+          <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:28px;margin-bottom:8px">2️⃣</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--or);text-transform:uppercase;margin-bottom:4px">Adicionar Consultor(a)</div>
+            <div style="font-size:12px;color:var(--td)">Clique em "+ Consultor(a)", defina a meta, carga horária e os funis de trabalho</div>
+          </div>
+          <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:28px;margin-bottom:8px">3️⃣</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--or);text-transform:uppercase;margin-bottom:4px">Lançar Diariamente</div>
+            <div style="font-size:12px;color:var(--td)">Todo dia clique em "Lançar Dia" e preencha os indicadores de cada funil</div>
+          </div>
+          <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:28px;margin-bottom:8px">4️⃣</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--or);text-transform:uppercase;margin-bottom:4px">Acompanhar</div>
+            <div style="font-size:12px;color:var(--td)">Veja o painel, funis e ranking para acompanhar a evolução do desafio</div>
+          </div>
+        </div>
+
+        <!-- CADASTRO CONSULTOR -->
+        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:20px;margin-bottom:16px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px">
+            <span style="background:var(--or);color:#000;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:13px">2</span>
+            Como cadastrar um(a) Consultor(a)
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="color:var(--or);font-weight:700;min-width:20px">▸</span>
+              <div><span style="color:var(--tx);font-weight:600">Nome completo</span> <span style="color:var(--td);font-size:13px">— nome que aparecerá nos relatórios e ranking</span></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="color:var(--or);font-weight:700;min-width:20px">▸</span>
+              <div><span style="color:var(--tx);font-weight:600">Tipo de Meta</span> <span style="color:var(--td);font-size:13px">— escolha entre Nº de Planos (ex: 30 matrículas), R$ Valor (ex: R$ 15.000) ou Treinamento (sem meta numérica, apenas acompanhamento)</span></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="color:var(--or);font-weight:700;min-width:20px">▸</span>
+              <div><span style="color:var(--tx);font-weight:600">Carga Horária</span> <span style="color:var(--td);font-size:13px">— horas de trabalho comercial por dia (ex: 6h)</span></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="color:var(--or);font-weight:700;min-width:20px">▸</span>
+              <div><span style="color:var(--tx);font-weight:600">Funis (1 a 3)</span> <span style="color:var(--td);font-size:13px">— selecione quais funis esta consultora vai trabalhar no desafio</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LANÇAMENTO DIÁRIO -->
+        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:20px;margin-bottom:16px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;display:flex;align-items:center;gap:8px">
+            <span style="background:var(--or);color:#000;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:13px">3</span>
+            Como lançar o dia
+          </div>
+          <div style="color:var(--td);font-size:13px;margin-bottom:12px">Clique em <strong style="color:var(--or)">LANÇAR DIA</strong> no topo da tela. Preencha:</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+            <div style="background:var(--s2);border-radius:7px;padding:10px 12px;display:flex;gap:10px">
+              <span style="color:var(--or);font-size:16px">1️⃣</span>
+              <div><div style="font-weight:600;font-size:13px">Selecione o(a) Consultor(a) + Dia + Data</div><div style="color:var(--td);font-size:12px;margin-top:2px">Clique em "▶ Carregar campos do funil" após selecionar</div></div>
+            </div>
+            <div style="background:var(--s2);border-radius:7px;padding:10px 12px;display:flex;gap:10px">
+              <span style="color:var(--bl);font-size:16px">📋</span>
+              <div><div style="font-weight:600;font-size:13px">Total Lista Hoje</div><div style="color:var(--td);font-size:12px;margin-top:2px">Informe o tamanho atual da lista de oportunidades. Atualize sempre que chegarem novos leads</div></div>
+            </div>
+            <div style="background:var(--s2);border-radius:7px;padding:10px 12px;display:flex;gap:10px">
+              <span style="color:var(--bl);font-size:16px">1️⃣</span>
+              <div><div style="font-weight:600;font-size:13px">1ª Tentativa (novos)</div><div style="color:var(--td);font-size:12px;margin-top:2px">Pessoas da lista que foram abordadas pela <strong>primeira vez</strong> hoje — independente de quantas ligações/mensagens foram enviadas para cada uma</div></div>
+            </div>
+            <div style="background:var(--s2);border-radius:7px;padding:10px 12px;display:flex;gap:10px">
+              <span style="color:var(--td);font-size:16px">🔄</span>
+              <div><div style="font-weight:600;font-size:13px">Cadência (retorno)</div><div style="color:var(--td);font-size:12px;margin-top:2px">Retorno para pessoas que já foram tentadas em dias anteriores — follow-up, segunda tentativa, etc.</div></div>
+            </div>
+            <div style="background:var(--s2);border-radius:7px;padding:10px 12px;display:flex;gap:10px">
+              <span style="color:var(--gr);font-size:16px">✅</span>
+              <div><div style="font-weight:600;font-size:13px">Contatos Efetivos</div><div style="color:var(--td);font-size:12px;margin-top:2px">Das tentativas do dia, quantas pessoas efetivamente atenderam e passaram por qualificação</div></div>
+            </div>
+            <div style="background:var(--s2);border-radius:7px;padding:10px 12px;display:flex;gap:10px">
+              <span style="color:var(--am);font-size:16px">📅</span>
+              <div><div style="font-weight:600;font-size:13px">Agendamentos e Convertidos</div><div style="color:var(--td);font-size:12px;margin-top:2px">Agendamentos de matrícula, experiência e total de matrículas fechadas no dia</div></div>
+            </div>
+          </div>
+          <div style="background:var(--or-d);border:1px solid var(--bdo);border-radius:7px;padding:10px 12px;font-size:12px;color:var(--tm)">
+            💡 <strong>Dica:</strong> Lance todos os dias, mesmo quando o resultado for zero. A consistência do lançamento faz parte da disciplina do desafio.
+          </div>
+        </div>
+
+        <!-- OS 3 FUNIS -->
+        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:20px;margin-bottom:16px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Os 3 Funis do Desafio</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="background:var(--s2);border-left:3px solid #FF6B00;border-radius:0 7px 7px 0;padding:12px 14px">
+              <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#FF6B00;font-size:15px;text-transform:uppercase;margin-bottom:4px">🟠 Leads Novos</div>
+              <div style="font-size:13px;color:var(--tm)">Contatos que chegaram na academia nos últimos 30 dias e ainda não se matricularam. A lista inclui o mês anterior e o mês vigente.</div>
+              <div style="font-size:12px;color:var(--td);margin-top:6px">Fluxo: Lista → Tentativas → Efetivos → Agendamentos → Matrículas</div>
+            </div>
+            <div style="background:var(--s2);border-left:3px solid #3b82f6;border-radius:0 7px 7px 0;padding:12px 14px">
+              <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#3b82f6;font-size:15px;text-transform:uppercase;margin-bottom:4px">🔵 Renovação</div>
+              <div style="font-size:13px;color:var(--tm)">Alunos que não renovaram no mês anterior ou cujo plano vence no mês atual. São oportunidades de reativação e retenção.</div>
+              <div style="font-size:12px;color:var(--td);margin-top:6px">Fluxo: Lista → Tentativas → Efetivos → Agendamentos → Renovações</div>
+            </div>
+            <div style="background:var(--s2);border-left:3px solid #a855f7;border-radius:0 7px 7px 0;padding:12px 14px">
+              <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#a855f7;font-size:15px;text-transform:uppercase;margin-bottom:4px">🟣 Feedback + Indicação</div>
+              <div style="font-size:13px;color:var(--tm)">Trabalho ativo com alunos satisfeitos para gerar indicações. A lista cresce com cada novo plano vendido que entra na base de feedback.</div>
+              <div style="font-size:12px;color:var(--td);margin-top:6px">Fluxo: Planos para Feedback → Contatos → Agendam. Feedback → Indicações → Experiências → Matrículas</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FAQ -->
+        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:20px;margin-bottom:16px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Dúvidas Frequentes</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <div style="font-weight:600;font-size:14px;margin-bottom:3px">Posso lançar um dia retroativo?</div>
+              <div style="font-size:13px;color:var(--td)">Sim. No campo "Dia" informe o número do dia do desafio (1 a 21) e no campo "Data" coloque a data correta. O sistema aceita lançamentos retroativos.</div>
+            </div>
+            <div style="height:1px;background:var(--bd)"></div>
+            <div>
+              <div style="font-weight:600;font-size:14px;margin-bottom:3px">Posso ter mais de um(a) consultor(a)?</div>
+              <div style="font-size:13px;color:var(--td)">Sim. Adicione quantos(as) precisar clicando em "+ Consultor(a)". Cada um tem seu próprio acompanhamento de indicadores.</div>
+            </div>
+            <div style="height:1px;background:var(--bd)"></div>
+            <div>
+              <div style="font-weight:600;font-size:14px;margin-bottom:3px">Os dados ficam salvos se eu fechar o navegador?</div>
+              <div style="font-size:13px;color:var(--td)">Sim. Todos os dados são salvos automaticamente em nuvem. Você pode acessar de qualquer dispositivo, a qualquer hora.</div>
+            </div>
+            <div style="height:1px;background:var(--bd)"></div>
+            <div>
+              <div style="font-weight:600;font-size:14px;margin-bottom:3px">O que são "1ª Tentativas" x "Cadência"?</div>
+              <div style="font-size:13px;color:var(--td)">1ª Tentativa = primeira vez que a consultora tenta contato com aquela pessoa da lista. Cadência = retorno para pessoas já tentadas antes. Uma pessoa = uma tentativa, independente de quantas ligações foram feitas.</div>
+            </div>
+            <div style="height:1px;background:var(--bd)"></div>
+            <div>
+              <div style="font-weight:600;font-size:14px;margin-bottom:3px">Preciso preencher todos os funis no lançamento?</div>
+              <div style="font-size:13px;color:var(--td)">Só os funis que o(a) consultor(a) trabalha. Se ela só usa Leads Novos, só esse bloco aparece no lançamento.</div>
+            </div>
+            <div style="height:1px;background:var(--bd)"></div>
+            <div>
+              <div style="font-weight:600;font-size:14px;margin-bottom:3px">Como exportar os dados?</div>
+              <div style="font-size:13px;color:var(--td)">Na aba "Relatório", clique no botão <strong>CSV</strong>. O arquivo abre direto no Excel ou Google Planilhas.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUPORTE -->
+        <div style="background:linear-gradient(135deg,#1a0a00,#0a0a1a);border:1px solid var(--bdo);border-radius:10px;padding:20px;text-align:center;margin-bottom:24px">
+          <div style="font-size:24px;margin-bottom:8px">📲</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--or);text-transform:uppercase;margin-bottom:6px">Precisa de ajuda?</div>
+          <div style="font-size:13px;color:var(--td)">Entre em contato com o QG.90 pelo grupo do WhatsApp do Treinamento Comercial.</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
 <div class="toast" id="toast"></div>
+
+<!-- MODAL BOAS-VINDAS -->
+<div class="modal-ov" id="m-welcome">
+  <div class="modal" style="max-width:520px">
+    <div style="text-align:center;padding:8px 0 20px">
+      <div style="font-size:40px;margin-bottom:10px">🏋️</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--or);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Bem-vindo(a) ao Desafio!</div>
+      <div style="font-size:13px;color:var(--td)">ROI 21 Dias — Plataforma QG.90</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+      <div style="background:var(--s2);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+        <div style="background:var(--or);color:#000;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;flex-shrink:0">1</div>
+        <div><div style="font-weight:600;font-size:14px">Adicione seus(suas) Consultores(as)</div><div style="font-size:12px;color:var(--td);margin-top:1px">Clique em "+ Consultor(a)" — defina meta, carga horária e funis</div></div>
+      </div>
+      <div style="background:var(--s2);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+        <div style="background:var(--or);color:#000;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;flex-shrink:0">2</div>
+        <div><div style="font-weight:600;font-size:14px">Lance os indicadores todo dia</div><div style="font-size:12px;color:var(--td);margin-top:1px">Clique em "LANÇAR DIA" — preencha tentativas, efetivos, agendamentos e matrículas</div></div>
+      </div>
+      <div style="background:var(--s2);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+        <div style="background:var(--or);color:#000;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;flex-shrink:0">3</div>
+        <div><div style="font-weight:600;font-size:14px">Acompanhe o painel e o ranking</div><div style="font-size:12px;color:var(--td);margin-top:1px">O QG.90 também acompanha tudo em tempo real</div></div>
+      </div>
+      <div style="background:var(--or-d);border:1px solid var(--bdo);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+        <div style="font-size:20px;flex-shrink:0">❓</div>
+        <div><div style="font-weight:600;font-size:14px">Ficou com dúvida?</div><div style="font-size:12px;color:var(--td);margin-top:1px">Acesse a aba <strong style="color:var(--or)">Ajuda</strong> no menu a qualquer momento</div></div>
+      </div>
+    </div>
+    <button class="btn-or" style="width:100%;padding:11px;font-size:15px" onclick="closeWelcome()">Entendi — Vamos começar! 🚀</button>
+  </div>
+</div>
 
 <script>
 // ══ SUPABASE ══
@@ -529,6 +729,7 @@ async function iniciarApp(){
   else{chip.className='user-chip';chip.textContent=sessao.nome||sessao.email.split('@')[0];document.getElementById('btn-add-cons-top').style.display='block';document.getElementById('btn-lancar-top').style.display='block';}
   document.getElementById('loading-ov').classList.remove('hide');
   await loadAll();
+  checkWelcome();
 }
 
 // ══ LOAD ══
@@ -1017,8 +1218,19 @@ function exportCSV(){
 }
 
 // TABS / MODAIS / TOAST
-const TABS=['painel','funis','consultoras','relatorio','ranking','admin'];
+const TABS=['painel','funis','consultoras','relatorio','ranking','admin','ajuda'];
 function switchTab(t){TABS.forEach((x,i)=>{document.getElementById('pan-'+x).classList.toggle('active',x===t);document.querySelectorAll('.tab')[i].classList.toggle('active',x===t)})}
+
+// ══ BOAS-VINDAS ══
+function closeWelcome(){
+  document.getElementById('m-welcome').classList.remove('open');
+  localStorage.setItem('qg90_welcomed_'+sessao.id,'1');
+}
+function checkWelcome(){
+  if(!sessao||isAdmin())return;
+  const visto=localStorage.getItem('qg90_welcomed_'+sessao.id);
+  if(!visto)document.getElementById('m-welcome').classList.add('open');
+}
 function openM(id){
   if(id==='m-cons'){renderFunilChecks();renderConsManage();selMeta('planos');}
   if(id==='m-lanc'){populateLancCons();document.getElementById('lanc-data').value=new Date().toISOString().slice(0,10);document.getElementById('lanc-funis-body').innerHTML='<div style="color:var(--td);font-size:12px">Selecione um(a) consultor(a).</div>';}
