@@ -682,9 +682,9 @@ function renderLancFunis(){
         <div class="fg"><label class="fl">${lblAgExp}</label><input class="fi" type="number" id="lanc-${fid}-ag_exp" placeholder="Ex: 2" min="0"></div>
       </div>
       <div class="form-row">
-        <div class="fg"><label class="fl">${lblConv}</label><input class="fi" type="number" id="lanc-${fid}-convertidos" placeholder="Ex: 3" min="0"></div>
-        <div class="fg"><label class="fl">${lblVendido}</label><input class="fi" type="number" id="lanc-${fid}-vendido" placeholder="${isF2?'Ex: 5':'Ex: 2250'}" min="0"></div>
-        <div class="fg"><label class="fl">Total Vendido R$</label><input class="fi" type="number" id="lanc-${fid}-vendido_rs" placeholder="Ex: 2250" min="0" ${isF2?'':'style="display:none"'}></div>
+        <div class="fg"><label class="fl">${isF2?lblConv:'Total Convertidos Lista'}</label><input class="fi" type="number" id="lanc-${fid}-${isF2?'convertidos':'total_conv_lista'}" placeholder="Ex: ${isF2?'3':'15'}" min="0"></div>
+        <div class="fg"><label class="fl">${isF2?lblVendido:'Convertidos Hoje'}</label><input class="fi" type="number" id="lanc-${fid}-${isF2?'vendido':'convertidos'}" placeholder="Ex: ${isF2?'5':'3'}" min="0"></div>
+        <div class="fg"><label class="fl">Total Vendido Hoje R$</label><input class="fi" type="number" id="lanc-${fid}-${isF2?'vendido_rs':'vendido'}" placeholder="Ex: 2250" min="0"></div>
       </div>
       ${pl}
     </div>`;
@@ -707,13 +707,15 @@ async function lancarDia(){
     const g=id=>parseFloat(document.getElementById(`lanc-${fid}-${id}`)?.value)||0;
     const tent_novas=g('tent_novas'),tent_cadencia=g('tent_cadencia');
     const planos={};if(f.planos)PLANOS.forEach(p=>{planos[p.k]=parseInt(document.getElementById(`lanc-${fid}-pl-${p.k}`)?.value)||0});
-    const vendido=fid==='f2'?g('vendido_rs'):g('vendido');
-    const conv_indicacoes=fid==='f2'?g('vendido'):0;
+    const isF2=fid==='f2';
+    const vendido=isF2?g('vendido_rs'):g('vendido');
+    const conv_indicacoes=isF2?g('vendido'):0;
+    const total_conv_lista=isF2?0:g('total_conv_lista');
     funisData[fid]={
       lista_total:g('lista_total'),novos_leads:g('novos_leads'),
       tent_novas,tent_cadencia,total_dia:tent_novas+tent_cadencia,
       efetivos:g('efetivos'),ag_mat:g('ag_mat'),ag_exp:g('ag_exp'),
-      convertidos:g('convertidos'),vendido,conv_indicacoes,planos
+      convertidos:g('convertidos'),vendido,conv_indicacoes,total_conv_lista,planos
     };
   });
   const btn=document.getElementById('btn-lancar');btn.disabled=true;btn.textContent='Salvando...';
@@ -816,6 +818,7 @@ function renderFunis(){
       const conv=sumF(regs,fid,'convertidos');
       const vend=sumF(regs,fid,'vendido');
       const convIndicacoes=sumF(regs,fid,'conv_indicacoes');
+      const totalConvLista=isF2?0:(() => {const u=[...regs].reverse().find(r=>r.funis&&r.funis[fid]&&r.funis[fid].total_conv_lista>0);return u?u.funis[fid].total_conv_lista:0;})();
       const novasAcum=sumF(regs,fid,'novos_leads');
       const novasPct=listaAtual>0?Math.round(tNovas/listaAtual*100):0;
       const efetPct=tTotal>0?Math.round(efet/tTotal*100):0;
@@ -842,9 +845,10 @@ function renderFunis(){
           <div class="fi-row"><span class="fi-lbl">${lblAgExp}</span><span class="fi-val">${agExp}</span></div>
           <div class="fi-row"><span class="fi-lbl">${lblAgTotal}</span><span class="fi-val am">${agMat+agExp}</span></div>
           <div class="fi-row"><span class="fi-lbl">${lblConv}</span><span class="fi-val or">${conv}<span class="fi-pct">${convPct}% efetivos</span></span></div>
+          ${!isF2?`<div class="fi-row"><span class="fi-lbl">📈 Total Convertidos Lista</span><span class="fi-val or">${totalConvLista}</span></div>`:''}
           ${isF2?`<div class="fi-row"><span class="fi-lbl">${lblVend}</span><span class="fi-val or">${convIndicacoes}</span></div>
           <div class="fi-row" style="border-bottom:none"><span class="fi-lbl">💰 Total Vendido</span><span class="fi-val gr">R$${vend.toLocaleString('pt-BR')}</span></div>`
-          :`<div class="fi-row" style="border-bottom:none"><span class="fi-lbl">${lblVend}</span><span class="fi-val gr">R$${vend.toLocaleString('pt-BR')}</span></div>`}
+          :`<div class="fi-row" style="border-bottom:none"><span class="fi-lbl">💰 Total Vendido</span><span class="fi-val gr">R$${vend.toLocaleString('pt-BR')}</span></div>`}
           <div style="margin-top:8px"><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Planos vendidos</div><div class="planos-g">${pl}</div></div>
         </div>
       </div>`;
