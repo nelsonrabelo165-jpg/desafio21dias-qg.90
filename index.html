@@ -416,9 +416,12 @@ tbody tr:hover td{background:var(--s2)}
     <div class="modal modal-lg">
       <div class="modal-hd"><h3>Lançar Dia do Desafio</h3><button class="btn-x" onclick="closeM('m-lanc')">×</button></div>
       <div class="form-row">
-        <div class="fg"><label class="fl">Consultor(a)</label><select class="fi" id="lanc-cons" onchange="renderLancFunis()"></select></div>
+        <div class="fg"><label class="fl">Consultor(a)</label><select class="fi" id="lanc-cons"></select></div>
         <div class="fg"><label class="fl">Dia (1–21)</label><input class="fi" type="number" id="lanc-dia" min="1" max="21" placeholder="Ex: 1"></div>
         <div class="fg"><label class="fl">Data</label><input class="fi" type="date" id="lanc-data"></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <button class="btn-gh" style="width:100%;padding:9px;border-color:var(--bdo);color:var(--or)" onclick="renderLancFunis()">▶ Carregar campos do funil para esta consultora</button>
       </div>
       <div class="fg" style="margin-bottom:10px"><label class="fl">Observação do dia</label><input class="fi" id="lanc-obs" placeholder="Ex: Campanha ativa, evento na academia..."></div>
       <div class="sec-div"><div class="sec-div-line"></div><div class="sec-div-lbl">Indicadores por Funil</div><div class="sec-div-line"></div></div>
@@ -642,7 +645,18 @@ function renderLancFunis(){
   el.innerHTML=c.funis.map(fid=>{
     const f=fInfo(fid);if(!f)return'';
     const laAtual=listaAtual[fid];
-    const infoLista=laAtual>0?`Lista atual: <strong>${laAtual}</strong> leads`:'Lista ainda não informada';
+    const isF2=fid==='f2';
+    // Labels específicos por funil
+    const lblLista=isF2?'Planos para Feedback':'Total Lista Hoje';
+    const lblNovos=isF2?'Adicionar Planos na Lista':'Novos Leads Hoje';
+    const lblAgMat=isF2?'Agendam. Feedback':'Ag. Matrícula';
+    const lblAgExp=isF2?'Indicações Conseguidas':'Ag. Experiência';
+    const lblConv=isF2?'Experiências Iniciadas':'Convertidos';
+    const lblVendido=isF2?'Indicações Convertidas (mat.)':'Total Vendido R$';
+    const phLista=isF2?'Ex: 45':'Ex: 125';
+    const infoLista=isF2
+      ?(laAtual>0?`Base atual: <strong>${laAtual}</strong> planos para feedback`:'Base ainda não informada — informe abaixo o total de planos para feedback hoje')
+      :(laAtual>0?`Lista atual: <strong>${laAtual}</strong> leads`:'Lista ainda não informada — informe abaixo o total atualizado hoje');
     const pl=f.planos?`
       <div class="sec-div" style="margin:7px 0 5px"><div class="sec-div-line"></div><div class="sec-div-lbl">Planos Vendidos</div><div class="sec-div-line"></div></div>
       <div class="planos-form">${PLANOS.map(p=>`<div class="fg"><label class="fl">${p.lbl}</label><input class="fi" type="number" id="lanc-${fid}-pl-${p.k}" placeholder="0" min="0"></div>`).join('')}</div>`:'';
@@ -652,10 +666,10 @@ function renderLancFunis(){
         <span style="color:${f.cor}">${f.nome}</span>
         <span style="color:var(--td);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px">${f.sub}</span>
       </div>
-      <div class="info-box">📋 ${infoLista} — informe abaixo o total atualizado da lista hoje</div>
+      <div class="info-box">📋 ${infoLista}</div>
       <div class="form-row">
-        <div class="fg"><label class="fl">Total Lista Hoje</label><input class="fi" type="number" id="lanc-${fid}-lista_total" placeholder="${laAtual||125}" min="0"></div>
-        <div class="fg"><label class="fl">Novos Leads Hoje</label><input class="fi" type="number" id="lanc-${fid}-novos_leads" placeholder="0" min="0"></div>
+        <div class="fg"><label class="fl">${lblLista}</label><input class="fi" type="number" id="lanc-${fid}-lista_total" placeholder="${laAtual||phLista}" min="0"></div>
+        <div class="fg"><label class="fl">${lblNovos}</label><input class="fi" type="number" id="lanc-${fid}-novos_leads" placeholder="0" min="0"></div>
       </div>
       <div class="sec-div" style="margin:7px 0 5px"><div class="sec-div-line"></div><div class="sec-div-lbl">Tentativas do Dia</div><div class="sec-div-line"></div></div>
       <div class="form-row">
@@ -664,12 +678,13 @@ function renderLancFunis(){
       </div>
       <div class="form-row">
         <div class="fg"><label class="fl">Contatos Efetivos</label><input class="fi" type="number" id="lanc-${fid}-efetivos" placeholder="Ex: 12" min="0"></div>
-        <div class="fg"><label class="fl">Ag. Matrícula</label><input class="fi" type="number" id="lanc-${fid}-ag_mat" placeholder="Ex: 4" min="0"></div>
-        <div class="fg"><label class="fl">Ag. Experiência</label><input class="fi" type="number" id="lanc-${fid}-ag_exp" placeholder="Ex: 2" min="0"></div>
+        <div class="fg"><label class="fl">${lblAgMat}</label><input class="fi" type="number" id="lanc-${fid}-ag_mat" placeholder="Ex: 4" min="0"></div>
+        <div class="fg"><label class="fl">${lblAgExp}</label><input class="fi" type="number" id="lanc-${fid}-ag_exp" placeholder="Ex: 2" min="0"></div>
       </div>
       <div class="form-row">
-        <div class="fg"><label class="fl">Convertidos</label><input class="fi" type="number" id="lanc-${fid}-convertidos" placeholder="Ex: 3" min="0"></div>
-        <div class="fg"><label class="fl">Total Vendido R$</label><input class="fi" type="number" id="lanc-${fid}-vendido" placeholder="Ex: 2250" min="0"></div>
+        <div class="fg"><label class="fl">${lblConv}</label><input class="fi" type="number" id="lanc-${fid}-convertidos" placeholder="Ex: 3" min="0"></div>
+        <div class="fg"><label class="fl">${lblVendido}</label><input class="fi" type="number" id="lanc-${fid}-vendido" placeholder="${isF2?'Ex: 5':'Ex: 2250'}" min="0"></div>
+        <div class="fg"><label class="fl">Total Vendido R$</label><input class="fi" type="number" id="lanc-${fid}-vendido_rs" placeholder="Ex: 2250" min="0" ${isF2?'':'style="display:none"'}></div>
       </div>
       ${pl}
     </div>`;
@@ -692,11 +707,13 @@ async function lancarDia(){
     const g=id=>parseFloat(document.getElementById(`lanc-${fid}-${id}`)?.value)||0;
     const tent_novas=g('tent_novas'),tent_cadencia=g('tent_cadencia');
     const planos={};if(f.planos)PLANOS.forEach(p=>{planos[p.k]=parseInt(document.getElementById(`lanc-${fid}-pl-${p.k}`)?.value)||0});
+    const vendido=fid==='f2'?g('vendido_rs'):g('vendido');
+    const conv_indicacoes=fid==='f2'?g('vendido'):0;
     funisData[fid]={
       lista_total:g('lista_total'),novos_leads:g('novos_leads'),
       tent_novas,tent_cadencia,total_dia:tent_novas+tent_cadencia,
       efetivos:g('efetivos'),ag_mat:g('ag_mat'),ag_exp:g('ag_exp'),
-      convertidos:g('convertidos'),vendido:g('vendido'),planos
+      convertidos:g('convertidos'),vendido,conv_indicacoes,planos
     };
   });
   const btn=document.getElementById('btn-lancar');btn.disabled=true;btn.textContent='Salvando...';
@@ -788,6 +805,7 @@ function renderFunis(){
       <div class="funil-grid">`;
     funis.forEach(fid=>{
       const f=fInfo(fid);if(!f)return;
+      const isF2=fid==='f2';
       const listaAtual=listaAtualFunil(regs,fid);
       const tNovas=sumF(regs,fid,'tent_novas');
       const tCad=sumF(regs,fid,'tent_cadencia');
@@ -797,25 +815,36 @@ function renderFunis(){
       const agExp=sumF(regs,fid,'ag_exp');
       const conv=sumF(regs,fid,'convertidos');
       const vend=sumF(regs,fid,'vendido');
+      const convIndicacoes=sumF(regs,fid,'conv_indicacoes');
       const novasAcum=sumF(regs,fid,'novos_leads');
       const novasPct=listaAtual>0?Math.round(tNovas/listaAtual*100):0;
       const efetPct=tTotal>0?Math.round(efet/tTotal*100):0;
       const convPct=efet>0?Math.round(conv/efet*100):0;
       const pl=PLANOS.map(p=>`<div class="plano-m"><span class="plano-m-lbl">${p.lbl}</span><span class="plano-m-val">${sumP(regs,fid,p.k)}</span></div>`).join('');
+      // labels específicos f2
+      const lblLista=isF2?'🗂️ Planos para Feedback':'📋 Total Lista Atual';
+      const lblNovos=isF2?'➕ Planos Adicionados':'➕ Novos Leads (acum.)';
+      const lblAgMat=isF2?'📝 Agendam. Feedback':'📅 Ag. Matrícula';
+      const lblAgExp=isF2?'🤝 Indicações Conseguidas':'🔁 Ag. Experiência';
+      const lblAgTotal=isF2?'📊 Total Feedb.+Indicações':'📊 Total Agendamentos';
+      const lblConv=isF2?'🎯 Experiências Iniciadas':'🏆 Convertidos';
+      const lblVend=isF2?'🏆 Indicações Convertidas (mat.)':'💰 Total Vendido';
       html+=`<div class="funil-card">
         <div class="funil-header"><div class="funil-dot" style="background:${f.cor}"></div><div class="funil-nm" style="color:${f.cor}">${f.nome}</div><div style="font-size:10px;color:var(--td);margin-left:auto">${f.sub}</div></div>
         <div class="funil-body">
-          <div class="fi-row"><span class="fi-lbl">📋 Total Lista Atual</span><span class="fi-val">${listaAtual}</span></div>
-          <div class="fi-row"><span class="fi-lbl">➕ Novos Leads (acum.)</span><span class="fi-val bl">${novasAcum}</span></div>
+          <div class="fi-row"><span class="fi-lbl">${lblLista}</span><span class="fi-val">${listaAtual}</span></div>
+          <div class="fi-row"><span class="fi-lbl">${lblNovos}</span><span class="fi-val bl">${novasAcum}</span></div>
           <div class="fi-row"><span class="fi-lbl">1️⃣ 1ªs Tentativas</span><span class="fi-val bl">${tNovas}<span class="fi-pct">${novasPct}% da lista</span></span></div>
           <div class="fi-row"><span class="fi-lbl">🔄 Cadências (retorno)</span><span class="fi-val">${tCad}</span></div>
           <div class="fi-row"><span class="fi-lbl">📞 Total Tentativas</span><span class="fi-val">${tTotal}</span></div>
           <div class="fi-row"><span class="fi-lbl">✅ Efetivos</span><span class="fi-val">${efet}<span class="fi-pct">${efetPct}% tent.</span></span></div>
-          <div class="fi-row"><span class="fi-lbl">📅 Ag. Matrícula</span><span class="fi-val">${agMat}</span></div>
-          <div class="fi-row"><span class="fi-lbl">🔁 Ag. Experiência</span><span class="fi-val">${agExp}</span></div>
-          <div class="fi-row"><span class="fi-lbl">📊 Total Agendamentos</span><span class="fi-val am">${agMat+agExp}</span></div>
-          <div class="fi-row"><span class="fi-lbl">🏆 Convertidos</span><span class="fi-val or">${conv}<span class="fi-pct">${convPct}% efetivos</span></span></div>
-          <div class="fi-row" style="border-bottom:none"><span class="fi-lbl">💰 Total Vendido</span><span class="fi-val gr">R$${vend.toLocaleString('pt-BR')}</span></div>
+          <div class="fi-row"><span class="fi-lbl">${lblAgMat}</span><span class="fi-val">${agMat}</span></div>
+          <div class="fi-row"><span class="fi-lbl">${lblAgExp}</span><span class="fi-val">${agExp}</span></div>
+          <div class="fi-row"><span class="fi-lbl">${lblAgTotal}</span><span class="fi-val am">${agMat+agExp}</span></div>
+          <div class="fi-row"><span class="fi-lbl">${lblConv}</span><span class="fi-val or">${conv}<span class="fi-pct">${convPct}% efetivos</span></span></div>
+          ${isF2?`<div class="fi-row"><span class="fi-lbl">${lblVend}</span><span class="fi-val or">${convIndicacoes}</span></div>
+          <div class="fi-row" style="border-bottom:none"><span class="fi-lbl">💰 Total Vendido</span><span class="fi-val gr">R$${vend.toLocaleString('pt-BR')}</span></div>`
+          :`<div class="fi-row" style="border-bottom:none"><span class="fi-lbl">${lblVend}</span><span class="fi-val gr">R$${vend.toLocaleString('pt-BR')}</span></div>`}
           <div style="margin-top:8px"><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Planos vendidos</div><div class="planos-g">${pl}</div></div>
         </div>
       </div>`;
