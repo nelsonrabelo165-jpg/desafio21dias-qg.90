@@ -294,6 +294,14 @@ tbody tr:hover td{background:var(--s2)}
         <div class="dia-box"><div class="dia-num" id="roi-dia">0</div><div class="dia-lbl">de 21 dias</div></div>
       </div>
       <div class="kpi-grid" id="kpi-grid"></div>
+
+      <!-- SITUAÇÃO POR FUNIL -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tm)">Situação por Funil</div>
+        <select class="fi-sel" id="painel-cons-filter" onchange="renderPainelFunis()" style="min-width:160px;font-size:12px"><option value="">Consolidado — Todos(as)</option></select>
+      </div>
+      <div id="painel-funis-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:16px"></div>
+
       <div class="chart-card">
         <h3>Matrículas por dia do desafio</h3>
         <div style="position:relative;height:180px"><canvas id="ch-evol" role="img" aria-label="Evolução">Sem dados.</canvas></div>
@@ -980,19 +988,117 @@ function renderPainel(a){
   const byDia={};for(let d=1;d<=21;d++)byDia[d]=0;
   regs.forEach(r=>{if(!r.funis)return;const m=Object.values(r.funis).reduce((s,fd)=>s+(fd.convertidos||0),0);byDia[r.dia]=(byDia[r.dia]||0)+m});
   evolChart=new Chart(document.getElementById('ch-evol'),{type:'bar',data:{labels:Array.from({length:21},(_,i)=>`D${i+1}`),datasets:[{label:'Matrículas',data:Array.from({length:21},(_,i)=>byDia[i+1]),backgroundColor:'rgba(255,107,0,0.55)',borderColor:'#FF6B00',borderWidth:1,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#666',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#666',precision:0},grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}}}});
+  renderPainelFunis();
 }
 
 // ══ FUNIS ══
 function populateFilters(){
   const a=ac();
-  ['funil-cons-filter','rel-cons-f'].forEach(sid=>{
+  ['funil-cons-filter','rel-cons-f','painel-cons-filter'].forEach(sid=>{
     const s=document.getElementById(sid);if(!s)return;const pv=s.value;
-    s.innerHTML='<option value="">Todos(as) consultores(as)</option>';
+    s.innerHTML=sid==='painel-cons-filter'?'<option value="">Consolidado — Todos(as)</option>':'<option value="">Todos(as) consultores(as)</option>';
     if(a)Object.entries(a.consultoras).forEach(([id,c])=>{const o=document.createElement('option');o.value=id;o.textContent=c.nome;s.appendChild(o)});
     if(pv&&a&&a.consultoras[pv])s.value=pv;
   });
   const rf=document.getElementById('rel-funil-f');
   if(rf){rf.innerHTML='<option value="">Todos funis</option>';FUNIS.forEach(f=>{const o=document.createElement('option');o.value=f.id;o.textContent=f.nome;rf.appendChild(o)})}
+}
+
+function renderPainelFunis(){
+  const a=ac();
+  const el=document.getElementById('painel-funis-grid');
+  if(!a){el.innerHTML='';return}
+  const filtCons=document.getElementById('painel-cons-filter').value;
+
+  // Consolida dados por funil
+  const funisTotais={};
+  FUNIS.forEach(f=>{funisTotais[f.id]={lista:0,tent_novas:0,tent_cad:0,efetivos:0,ag_mat:0,ag_exp:0,convertidos:0,vendido:0,conv_ind:0,exp_ini:0,ind_cons:0,ativo:false}});
+
+  Object.entries(a.consultoras).forEach(([cid,c])=>{
+    if(filtCons&&cid!==filtCons)return;
+    const regs=consRegs(a,cid);
+    (c.funis||[]).forEach(fid=>{
+      const ft=funisTotais[fid];if(!ft)return;
+      ft.ativo=true;
+      ft.lista=Math.max(ft.lista,listaAtualFunil(regs,fid));
+      ft.tent_novas+=sumF(regs,fid,'tent_novas');
+      ft.tent_cad+=sumF(regs,fid,'tent_cadencia');
+      ft.efetivos+=sumF(regs,fid,'efetivos');
+      ft.ag_mat+=sumF(regs,fid,'ag_mat');
+      ft.ag_exp+=sumF(regs,fid,'ag_exp');
+      ft.convertidos+=sumF(regs,fid,'convertidos');
+      ft.vendido+=sumF(regs,fid,'vendido');
+      ft.conv_ind+=sumF(regs,fid,'conv_indicacoes');
+      // para f2: convertidos = experiências iniciadas, ag_exp = indicações conseguidas
+    });
+  });
+
+  const cards=FUNIS.filter(f=>funisTotais[f.id].ativo).map(f=>{
+    const d=funisTotais[f.id];
+    const convPct=d.efetivos>0?Math.round(d.convertidos/d.efetivos*100):0;
+    const renPct=d.lista>0?Math.round(d.convertidos/d.lista*100):0;
+    const isF2=f.id==='f2';
+    const isF1=f.id==='f1';
+
+    // Fluxo em cascata
+    let steps=[];
+    if(isF2){
+      steps=[
+        {lbl:'Planos p/ Feedback',val:d.lista,cor:'var(--tm)',sub:''},
+        {lbl:'Contatos Efetivos',val:d.efetivos,cor:'var(--tm)',sub:d.lista>0?`${Math.round(d.efetivos/(d.tent_novas+d.tent_cad||1)*100)}% tent.`:''},
+        {lbl:'Agendam. Feedback',val:d.ag_mat,cor:'var(--am)',sub:''},
+        {lbl:'Indicações Conseguidas',val:d.ag_exp,cor:'var(--am)',sub:''},
+        {lbl:'Experiências Iniciadas',val:d.convertidos,cor:f.cor,sub:''},
+        {lbl:'Indicações Convertidas',val:d.conv_ind,cor:f.cor,sub:d.convertidos>0?`${Math.round(d.conv_ind/(d.convertidos||1)*100)}% exp.`:''},
+      ];
+    } else {
+      steps=[
+        {lbl:'Lista Ativa',val:d.lista,cor:'var(--tm)',sub:'oportunidades'},
+        {lbl:'Tentativas',val:d.tent_novas+d.tent_cad,cor:'var(--tm)',sub:`${d.tent_novas} novas · ${d.tent_cad} retornos`},
+        {lbl:'Contatos Efetivos',val:d.efetivos,cor:'var(--am)',sub:d.lista>0?`${Math.round(d.efetivos/(d.tent_novas+d.tent_cad||1)*100)}% tent.`:''},
+        {lbl:'Agendamentos',val:d.ag_mat+d.ag_exp,cor:'var(--am)',sub:`mat: ${d.ag_mat} · exp: ${d.ag_exp}`},
+        {lbl:'Convertidos',val:d.convertidos,cor:f.cor,sub:`${convPct}% efetivos`},
+        {lbl:isF1?'% da Lista Renovada':'% Conversão Lista',val:isF1?`${renPct}%`:`${convPct}%`,cor:f.cor,sub:isF1?`${d.convertidos}/${d.lista}`:'efetivos → mat.'},
+      ];
+    }
+
+    const stepsHtml=steps.map((s,i)=>`
+      <div style="flex:1;text-align:center;position:relative">
+        <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;letter-spacing:.8px;text-transform:uppercase;color:var(--td);margin-bottom:4px">${s.lbl}</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${s.cor};line-height:1">${s.val}</div>
+        ${s.sub?`<div style="font-size:10px;color:var(--td);margin-top:2px">${s.sub}</div>`:''}
+        ${i<steps.length-1?`<div style="position:absolute;right:-8px;top:50%;transform:translateY(-50%);color:var(--td);font-size:14px">›</div>`:''}
+      </div>`).join('');
+
+    const pctBarVal=d.lista>0?Math.min(100,Math.round(d.convertidos/d.lista*100)):0;
+
+    return`<div style="background:var(--s1);border:1px solid var(--bd);border-left:3px solid ${f.cor};border-radius:10px;overflow:hidden">
+      <div style="padding:12px 14px 8px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${f.cor}"></div>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${f.cor}">${f.nome}</span>
+        </div>
+        <div style="font-size:11px;color:var(--td)">${f.sub}</div>
+      </div>
+      <div style="padding:14px;display:flex;align-items:flex-start;gap:4px;overflow-x:auto">
+        ${stepsHtml}
+      </div>
+      ${d.lista>0?`<div style="padding:0 14px 12px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--td);margin-bottom:4px">
+          <span>Aproveitamento da lista</span><span style="color:${f.cor};font-weight:700">${pctBarVal}%</span>
+        </div>
+        <div style="height:4px;background:var(--s3);border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${pctBarVal}%;background:${f.cor};border-radius:4px;transition:width .4s"></div>
+        </div>
+      </div>`:''}
+      <div style="padding:8px 14px 12px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:11px;color:var(--td)">💰 Total Vendido</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--gr)">R$${d.vendido.toLocaleString('pt-BR')}</div>
+      </div>
+    </div>`;
+  });
+
+  el.innerHTML=cards.length?cards.join(''):'<div style="color:var(--td);font-size:13px">Nenhum funil ativo ainda. Adicione consultores(as) e lance os primeiros dias.</div>';
 }
 
 function renderFunis(){
