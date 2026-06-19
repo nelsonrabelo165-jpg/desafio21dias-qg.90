@@ -603,6 +603,14 @@ tbody tr:hover td{background:var(--s2)}
   </div><!-- /main -->
 </div><!-- /app -->
 
+<!-- MODAL ACESSO ACADEMIA -->
+<div class="modal-ov" id="m-acesso">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hd"><h3>🔑 Acesso da Academia</h3><button class="btn-x" onclick="closeM('m-acesso')">×</button></div>
+    <div id="acesso-body"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- MODAL BOAS-VINDAS -->
@@ -937,11 +945,11 @@ function acMat(a){return Object.keys(a.consultoras).reduce((s,cid)=>s+consMat(a,
 function acVend(a){return(a.registros||[]).reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.vendido||0),0)},0)}
 
 // ══ RENDER ALL ══
-function renderAll(){
+async function renderAll(){
   const a=ac();
   document.getElementById('topbar-ac-nome').textContent=a?a.nome:'Desafio ROI 21 Dias';
   if(a){renderPainel(a);renderFunis();renderConsGrid(a);renderRelatorio();}
-  renderRanking();if(isAdmin())renderAdminPanel();
+  renderRanking();if(isAdmin())await renderAdminPanel();
   populateFilters();populateLancCons();
 }
 
@@ -1164,7 +1172,9 @@ function renderRanking(){
 }
 
 // ══ ADMIN PANEL ══
-function renderAdminPanel(){
+let gestoresDB={}; // cache de gestores carregado pelo admin
+
+async function renderAdminPanel(){
   const entries=Object.entries(db.acs);
   document.getElementById('ac-total-lbl').textContent=`${entries.length} academia${entries.length!==1?'s':''} cadastrada${entries.length!==1?'s':''}`;
   const tMat=entries.reduce((s,[,a])=>s+acMat(a),0);
@@ -1173,10 +1183,16 @@ function renderAdminPanel(){
   document.getElementById('kpi-master').innerHTML=`
     <div class="kpi hi"><div class="kpi-lbl">Total Matrículas</div><div class="kpi-val or">${tMat}</div><div class="kpi-sub">todas as academias</div></div>
     <div class="kpi hi"><div class="kpi-lbl">Total Vendido</div><div class="kpi-val or">R$${tVend.toLocaleString('pt-BR')}</div></div>
-    
     <div class="kpi"><div class="kpi-lbl">Academias</div><div class="kpi-val">${entries.length}</div></div>
     <div class="kpi"><div class="kpi-lbl">Consultores(as)</div><div class="kpi-val">${tCons}</div></div>
   `;
+  // carrega gestores
+  try{
+    const gs=await sbGet('gestores','role=eq.gestor&select=id,nome,email,senha_hash,academia_id,ativo');
+    gestoresDB={};
+    gs.forEach(g=>{if(g.academia_id)gestoresDB[g.academia_id]=g});
+  }catch(e){console.error(e)}
+
   const el=document.getElementById('ac-grid');
   if(!entries.length){el.innerHTML='<div style="color:var(--td);font-size:13px">Nenhuma academia cadastrada ainda.</div>';return}
   el.innerHTML=entries.map(([id,a])=>{
@@ -1186,10 +1202,19 @@ function renderAdminPanel(){
     const tMeta=Object.values(a.consultoras).filter(c=>c.meta_tipo!=='treino').reduce((s,c)=>s+(c.meta||0),0);
     const pct=tMeta>0?Math.min(100,Math.round(mat/tMeta*100)):0;
     const ic=a.nome.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const g=gestoresDB[id];
+    const emailStr=g?g.email:'sem cadastro';
     return`<div class="ac-card" onclick="selAcAdmin('${id}')">
       <div class="ac-head"><div class="ac-ico">${ic}</div><div><div class="ac-nm">${a.nome}</div><div class="ac-cid">${a.cidade||''}</div></div><div style="margin-left:auto;text-align:center"><div style="font-size:10px;color:var(--td);font-family:'Barlow Condensed',sans-serif">Dia</div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--or)">${diaMax}</div></div></div>
-      <div class="ac-body"><div class="ac-stats"><div class="ac-stat"><span class="ac-stat-num or">${mat}</span><span class="ac-stat-lbl">Matrículas</span></div><div class="ac-stat"><span class="ac-stat-num">${tCons2}</span><span class="ac-stat-lbl">Consultores</span></div><div class="ac-stat"><span class="ac-stat-num gr">R$${vend>=1000?Math.round(vend/1000)+'k':vend}</span><span class="ac-stat-lbl">Vendido</span></div></div>
-      <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%"></div></div><div class="pct-lbl">${pct}% meta (${mat}/${tMeta})</div></div>
+      <div class="ac-body">
+        <div class="ac-stats"><div class="ac-stat"><span class="ac-stat-num or">${mat}</span><span class="ac-stat-lbl">Matrículas</span></div><div class="ac-stat"><span class="ac-stat-num">${tCons2}</span><span class="ac-stat-lbl">Consultores</span></div><div class="ac-stat"><span class="ac-stat-num gr">R$${vend>=1000?Math.round(vend/1000)+'k':vend}</span><span class="ac-stat-lbl">Vendido</span></div></div>
+        <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%"></div></div>
+        <div class="pct-lbl">${pct}% meta (${mat}/${tMeta})</div>
+        <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="font-size:11px;color:var(--td);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📧 ${emailStr}</div>
+          <button class="btn-gh btn-sm" style="flex-shrink:0;font-size:11px;padding:3px 10px" onclick="event.stopPropagation();openAcesso('${id}')">🔑 Acesso</button>
+        </div>
+      </div>
     </div>`;
   }).join('');
   if(acsChart)acsChart.destroy();
@@ -1197,6 +1222,56 @@ function renderAdminPanel(){
   const wrap=document.getElementById('ch-acs-wrap');wrap.style.height=Math.max(180,sorted.length*44+60)+'px';
   acsChart=new Chart(document.getElementById('ch-acs'),{type:'bar',data:{labels:sorted.map(x=>x.nome),datasets:[{label:'Matrículas',data:sorted.map(x=>x.mat),backgroundColor:sorted.map((_,i)=>i===0?'#FF6B00':'rgba(255,107,0,0.4)'),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#666'},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#666',precision:0},grid:{color:'rgba(255,255,255,0.04)'},beginAtZero:true}}}});
 }
+
+function openAcesso(acId2){
+  const a=db.acs[acId2];
+  const g=gestoresDB[acId2];
+  const el=document.getElementById('acesso-body');
+  if(!g){
+    el.innerHTML=`<div style="color:var(--td);font-size:13px">Nenhum gestor cadastrado para esta academia.</div>`;
+  } else {
+    el.innerHTML=`
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;color:var(--td);margin-bottom:4px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Academia</div>
+        <div style="font-weight:600;font-size:15px">${a.nome}</div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:12px;color:var(--td);margin-bottom:4px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Gestor(a)</div>
+        <div style="font-size:14px">${g.nome}</div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:12px;color:var(--td);margin-bottom:4px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">E-mail de acesso</div>
+        <div style="font-size:14px;font-weight:600;color:var(--or)">${g.email}</div>
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;color:var(--td);margin-bottom:4px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Senha atual</div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px 14px;font-size:15px;font-family:monospace;color:var(--gr);letter-spacing:1px">${g.senha_hash}</div>
+      </div>
+      <div class="divider"></div>
+      <div style="font-size:12px;color:var(--td);margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Resetar senha</div>
+      <div style="display:flex;gap:8px">
+        <input class="fi" id="nova-senha-input" placeholder="Nova senha" style="flex:1">
+        <button class="btn-or" onclick="resetSenha('${g.id}')">Salvar</button>
+      </div>
+    `;
+  }
+  document.getElementById('m-acesso').classList.add('open');
+}
+
+async function resetSenha(gId){
+  const nova=document.getElementById('nova-senha-input').value.trim();
+  if(!nova||nova.length<4){toast('Informe uma senha com ao menos 4 caracteres',true);return}
+  try{
+    const params=`id=eq.${gId}`;
+    await fetch(`${SB_URL}/rest/v1/gestores?${params}`,{method:'PATCH',headers:H,body:JSON.stringify({senha_hash:nova})});
+    toast('Senha atualizada!');
+    // atualiza cache
+    const g=Object.values(gestoresDB).find(g=>g.id===gId);
+    if(g)g.senha_hash=nova;
+    closeM('m-acesso');
+  }catch(e){toast('Erro ao salvar',true);console.error(e)}
+}
+
 function selAcAdmin(id){acId=id;document.getElementById('sel-ac').value=id;renderAll();switchTab('painel')}
 
 // EXPORT CSV
