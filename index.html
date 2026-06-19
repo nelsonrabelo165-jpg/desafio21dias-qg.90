@@ -1315,7 +1315,12 @@ function closeM(id){document.getElementById(id).classList.remove('open')}
 document.querySelectorAll('.modal-ov').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
 function toast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(err?'err':'ok')+' show';setTimeout(()=>t.classList.remove('show'),3000)}
 
-setInterval(()=>{if(sessao)loadAll()},30000);
+// auto-refresh 30s — só recarrega se modal de lançamento não estiver aberto
+setInterval(()=>{
+  if(sessao && !document.getElementById('m-lanc').classList.contains('open')){
+    loadAll();
+  }
+},30000);
 
 async function initAdmin(){
   try{
