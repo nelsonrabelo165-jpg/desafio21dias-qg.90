@@ -1620,6 +1620,20 @@ window.saveDB=function(){
 };
 
 // ══════════════════════════════════════
+// AUTO-LOGIN VIA URL PARAMS (vindo do admin)
+// ══════════════════════════════════════
+(async function checkAutoLogin(){
+  const p=new URLSearchParams(window.location.search);
+  const ac=p.get('ac'),pw=p.get('pw'),pf=p.get('pf');
+  if(!ac||!pw||!pf)return;
+  // Preenche campos e faz login automático
+  document.getElementById('l-academia').value=ac;
+  document.getElementById('l-perfil').value=pf;
+  document.getElementById('l-senha').value=pw;
+  await fazerLogin();
+})();
+
+// ══════════════════════════════════════
 // TOAST
 // ══════════════════════════════════════
 function showToast(msg,tipo='ok'){

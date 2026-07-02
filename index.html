@@ -1479,7 +1479,10 @@ async function loadGavAcademias(){
         <td><span style="background:var(--am-d);color:var(--am);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px">${a.senha_comercial}</span></td>
         <td><span style="background:var(--gr-d);color:var(--gr);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px">${a.senha_tecnico}</span></td>
         <td><span class="bdg ${a.ativa?'bdg-gr':'bdg-re'}">${a.ativa?'Ativa':'Inativa'}</span></td>
-        <td><button class="btn-gh btn-sm" onclick="openEditGav('${a.id}')">✏️ Editar</button></td>
+        <td style="display:flex;gap:6px;align-items:center">
+          <button class="btn-gh btn-sm" onclick="openEditGav('${a.id}')">✏️ Editar</button>
+          <button class="btn-or btn-sm" onclick="abrirPainelGav('${a.id}')" ${!a.ativa?'disabled style="opacity:.4;cursor:not-allowed"':''}>↗ Abrir Painel</button>
+        </td>
       </tr>`).join('');
   }catch(e){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--re);padding:24px">Erro ao carregar.</td></tr>';console.error(e)}
 }
@@ -1524,6 +1527,12 @@ async function toggleGavAtiva(){
     await fetch(`${SB_URL}/rest/v1/gestao_academias?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({ativa:!a.ativa})});
     toast(`Academia ${a.ativa?'desativada':'ativada'}!`);closeM('m-edit-gav');await loadGavAcademias();
   }catch(e){toast('Erro',true);console.error(e)}
+}
+
+function abrirPainelGav(id){
+  const a=gavAcademias.find(x=>x.id===id);if(!a)return;
+  const url=`/QG90-gestao.html?ac=${encodeURIComponent(a.nome)}&pw=${encodeURIComponent(a.senha_gestor)}&pf=gestor`;
+  window.open(url,'_blank');
 }
 
 // EXPORT CSV
