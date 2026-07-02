@@ -362,18 +362,71 @@ tbody tr:hover td{background:var(--s2)}
 
     <!-- ADMIN -->
     <div id="pan-admin" class="panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <div class="lbl" style="margin:0">Visão Geral — Todas as Academias</div>
-        <div id="ac-total-lbl" style="font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--td)"></div>
+      <!-- TOGGLE SISTEMA -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--td)">Sistema:</div>
+        <div style="display:flex;gap:0;background:var(--s2);border-radius:8px;padding:3px;border:1px solid var(--bd)">
+          <button id="toggle-roi" onclick="switchAdminSys('roi')" style="padding:6px 16px;border-radius:6px;border:none;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;background:var(--or);color:#000;transition:all .15s">🏆 ROI 21 Dias</button>
+          <button id="toggle-gav" onclick="switchAdminSys('gav')" style="padding:6px 16px;border-radius:6px;border:none;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;background:transparent;color:var(--td);transition:all .15s">📊 Gestão à Vista</button>
+        </div>
+        <div id="ac-total-lbl" style="margin-left:auto;font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--td)"></div>
       </div>
-      <div class="kpi-grid" id="kpi-master"></div>
-      <div class="ac-grid" id="ac-grid"></div>
-      <div class="chart-card">
-        <h3>Matrículas por academia</h3>
-        <div id="ch-acs-wrap" style="position:relative"><canvas id="ch-acs" role="img" aria-label="Por academia">Sem dados.</canvas></div>
+
+      <!-- ROI 21 DIAS -->
+      <div id="admin-roi">
+        <div class="kpi-grid" id="kpi-master"></div>
+        <div class="ac-grid" id="ac-grid"></div>
+        <div class="chart-card">
+          <h3>Matrículas por academia</h3>
+          <div id="ch-acs-wrap" style="position:relative"><canvas id="ch-acs" role="img" aria-label="Por academia">Sem dados.</canvas></div>
+        </div>
+      </div>
+
+      <!-- GESTÃO À VISTA -->
+      <div id="admin-gav" style="display:none">
+        <div class="kpi-grid" id="kpi-gav"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Academia</th><th>Cidade</th><th>E-mail</th>
+              <th>Senha Gestor</th><th>Senha Comercial</th><th>Senha Técnico</th>
+              <th>Status</th><th>Ações</th>
+            </tr></thead>
+            <tbody id="gav-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
+  </div>
+
+  <!-- MODAL EDITAR ACADEMIA GAV -->
+  <div class="modal-ov" id="m-edit-gav">
+    <div class="modal" style="max-width:460px">
+      <div class="modal-hd"><h3>✏️ Editar Academia</h3><button class="btn-x" onclick="closeM('m-edit-gav')">×</button></div>
+      <input type="hidden" id="edit-gav-id">
+      <div class="form-row">
+        <div class="fg fi-full"><label class="fl">Nome da Academia</label><input class="fi" id="edit-gav-nome" placeholder="Nome"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">Cidade</label><input class="fi" id="edit-gav-cidade" placeholder="Cidade"></div>
+        <div class="fg"><label class="fl">E-mail</label><input class="fi" id="edit-gav-email" placeholder="email@academia.com"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="lbl">Senhas de acesso</div>
+      <div class="form-row">
+        <div class="fg fi-full"><label class="fl">👑 Senha Gestor(a)</label><input class="fi" id="edit-gav-sgest" placeholder="senha gestor"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">💼 Senha Comercial</label><input class="fi" id="edit-gav-scom" placeholder="senha comercial"></div>
+        <div class="fg"><label class="fl">🏋️ Senha Técnico</label><input class="fi" id="edit-gav-stec" placeholder="senha técnico"></div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <button class="btn-danger" id="edit-gav-toggle-ativa" onclick="toggleGavAtiva()">Desativar Academia</button>
+        <button class="btn-or" id="btn-save-gav" onclick="saveGavEdit()">Salvar</button>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL CONSULTOR(A) -->
@@ -971,7 +1024,10 @@ function renderPainel(a){
   document.getElementById('hero-sub').textContent=(a.cidade||'')+(iniStr?` · Início: ${iniStr}`:'');
   const tMat=acMat(a);
   const tEfet=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.efetivos||0),0)},0);
-  const tTentNovas=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.tent_novas||0),0)},0);
+  const tTentNovasBruto=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.tent_novas||0),0)},0);
+  // 1ªs Tentativas não ultrapassam o total de oportunidades da academia
+  const tListaTotal=Object.values(a.consultoras).reduce((s,c)=>s+Object.values(c.lista||{}).reduce((s2,v)=>s2+(v||0),0),0);
+  const tTentNovas=tListaTotal>0?Math.min(tTentNovasBruto,tListaTotal):tTentNovasBruto;
   const tCadencia=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.tent_cadencia||0),0)},0);
   const tVend=acVend(a);
   const tConv=tEfet>0?Math.round(tMat/tEfet*100):0;
@@ -1022,8 +1078,7 @@ function renderPainelFunis(){
       ft.ativo=true;
       ft.lista=Math.max(ft.lista,listaAtualFunil(regs,fid));
       ft.tent_novas+=sumF(regs,fid,'tent_novas');
-      ft.tent_cad+=sumF(regs,fid,'tent_cadencia');
-      ft.efetivos+=sumF(regs,fid,'efetivos');
+      ft.tent_cad+=sumF(regs,fid,'tent_cadencia');      ft.efetivos+=sumF(regs,fid,'efetivos');
       ft.ag_mat+=sumF(regs,fid,'ag_mat');
       ft.ag_exp+=sumF(regs,fid,'ag_exp');
       ft.convertidos+=sumF(regs,fid,'convertidos');
@@ -1035,6 +1090,9 @@ function renderPainelFunis(){
 
   const cards=FUNIS.filter(f=>funisTotais[f.id].ativo).map(f=>{
     const d=funisTotais[f.id];
+    // 1ªs Tentativas não podem ultrapassar o Total Lista
+    const tentNovasCap=d.lista>0?Math.min(d.tent_novas,d.lista):d.tent_novas;
+    const totalTent=tentNovasCap+d.tent_cad;
     const convPct=d.efetivos>0?Math.round(d.convertidos/d.efetivos*100):0;
     const renPct=d.lista>0?Math.round(d.convertidos/d.lista*100):0;
     const isF2=f.id==='f2';
@@ -1045,7 +1103,7 @@ function renderPainelFunis(){
     if(isF2){
       steps=[
         {lbl:'Planos p/ Feedback',val:d.lista,cor:'var(--tm)',sub:''},
-        {lbl:'Contatos Efetivos',val:d.efetivos,cor:'var(--tm)',sub:d.lista>0?`${Math.round(d.efetivos/(d.tent_novas+d.tent_cad||1)*100)}% tent.`:''},
+        {lbl:'Contatos Efetivos',val:d.efetivos,cor:'var(--tm)',sub:totalTent>0?`${Math.round(d.efetivos/totalTent*100)}% tent.`:''},
         {lbl:'Agendam. Feedback',val:d.ag_mat,cor:'var(--am)',sub:''},
         {lbl:'Indicações Conseguidas',val:d.ag_exp,cor:'var(--am)',sub:''},
         {lbl:'Experiências Iniciadas',val:d.convertidos,cor:f.cor,sub:''},
@@ -1054,8 +1112,8 @@ function renderPainelFunis(){
     } else {
       steps=[
         {lbl:'Lista Ativa',val:d.lista,cor:'var(--tm)',sub:'oportunidades'},
-        {lbl:'Tentativas',val:d.tent_novas+d.tent_cad,cor:'var(--tm)',sub:`${d.tent_novas} novas · ${d.tent_cad} retornos`},
-        {lbl:'Contatos Efetivos',val:d.efetivos,cor:'var(--am)',sub:d.lista>0?`${Math.round(d.efetivos/(d.tent_novas+d.tent_cad||1)*100)}% tent.`:''},
+        {lbl:'Tentativas',val:totalTent,cor:'var(--tm)',sub:`${tentNovasCap} únicas · ${d.tent_cad} retornos`},
+        {lbl:'Contatos Efetivos',val:d.efetivos,cor:'var(--am)',sub:totalTent>0?`${Math.round(d.efetivos/totalTent*100)}% tent.`:''},
         {lbl:'Agendamentos',val:d.ag_mat+d.ag_exp,cor:'var(--am)',sub:`mat: ${d.ag_mat} · exp: ${d.ag_exp}`},
         {lbl:'Convertidos',val:d.convertidos,cor:f.cor,sub:`${convPct}% efetivos`},
         {lbl:isF1?'% da Lista Renovada':'% Conversão Lista',val:isF1?`${renPct}%`:`${convPct}%`,cor:f.cor,sub:isF1?`${d.convertidos}/${d.lista}`:'efetivos → mat.'},
@@ -1124,7 +1182,8 @@ function renderFunis(){
       const f=fInfo(fid);if(!f)return;
       const isF2=fid==='f2';
       const listaAtual=listaAtualFunil(regs,fid);
-      const tNovas=sumF(regs,fid,'tent_novas');
+      const tNovasBruto=sumF(regs,fid,'tent_novas');
+      const tNovas=listaAtual>0?Math.min(tNovasBruto,listaAtual):tNovasBruto;
       const tCad=sumF(regs,fid,'tent_cadencia');
       const tTotal=tNovas+tCad;
       const efet=sumF(regs,fid,'efetivos');
@@ -1379,6 +1438,93 @@ async function resetSenha(gId){
 }
 
 function selAcAdmin(id){acId=id;document.getElementById('sel-ac').value=id;renderAll();switchTab('painel')}
+
+// ADMIN SISTEMA TOGGLE
+let adminSys='roi';
+function switchAdminSys(sys){
+  adminSys=sys;
+  document.getElementById('admin-roi').style.display=sys==='roi'?'block':'none';
+  document.getElementById('admin-gav').style.display=sys==='gav'?'block':'none';
+  document.getElementById('toggle-roi').style.background=sys==='roi'?'var(--or)':'transparent';
+  document.getElementById('toggle-roi').style.color=sys==='roi'?'#000':'var(--td)';
+  document.getElementById('toggle-gav').style.background=sys==='gav'?'var(--or)':'transparent';
+  document.getElementById('toggle-gav').style.color=sys==='gav'?'#000':'var(--td)';
+  if(sys==='gav')loadGavAcademias();
+}
+
+// GESTÃO À VISTA ADMIN
+let gavAcademias=[];
+async function loadGavAcademias(){
+  const tbody=document.getElementById('gav-tbody');
+  const kpi=document.getElementById('kpi-gav');
+  tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--td);padding:24px">Carregando...</td></tr>';
+  try{
+    const rows=await sbGet('gestao_academias','order=criado_em.asc');
+    gavAcademias=rows||[];
+    const total=gavAcademias.length;
+    const ativas=gavAcademias.filter(a=>a.ativa).length;
+    kpi.innerHTML=`
+      <div class="kpi hi"><div class="kpi-lbl">Academias Cadastradas</div><div class="kpi-val or">${total}</div><div class="kpi-sub">Gestão à Vista</div></div>
+      <div class="kpi"><div class="kpi-lbl">Ativas</div><div class="kpi-val gr">${ativas}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Inativas</div><div class="kpi-val">${total-ativas}</div></div>
+    `;
+    document.getElementById('ac-total-lbl').textContent=`${total} academia${total!==1?'s':''} — Gestão à Vista`;
+    if(!gavAcademias.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--td);padding:24px">Nenhuma academia cadastrada ainda.</td></tr>';return}
+    tbody.innerHTML=gavAcademias.map(a=>`
+      <tr>
+        <td style="color:var(--tx);font-weight:600">${a.nome}</td>
+        <td style="color:var(--td)">${a.cidade||'—'}</td>
+        <td style="color:var(--td);font-size:11px">${a.email||'—'}</td>
+        <td><span style="background:var(--or-d);color:var(--or);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px">${a.senha_gestor}</span></td>
+        <td><span style="background:var(--am-d);color:var(--am);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px">${a.senha_comercial}</span></td>
+        <td><span style="background:var(--gr-d);color:var(--gr);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px">${a.senha_tecnico}</span></td>
+        <td><span class="bdg ${a.ativa?'bdg-gr':'bdg-re'}">${a.ativa?'Ativa':'Inativa'}</span></td>
+        <td><button class="btn-gh btn-sm" onclick="openEditGav('${a.id}')">✏️ Editar</button></td>
+      </tr>`).join('');
+  }catch(e){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--re);padding:24px">Erro ao carregar.</td></tr>';console.error(e)}
+}
+
+function openEditGav(id){
+  const a=gavAcademias.find(x=>x.id===id);if(!a)return;
+  document.getElementById('edit-gav-id').value=a.id;
+  document.getElementById('edit-gav-nome').value=a.nome||'';
+  document.getElementById('edit-gav-cidade').value=a.cidade||'';
+  document.getElementById('edit-gav-email').value=a.email||'';
+  document.getElementById('edit-gav-sgest').value=a.senha_gestor||'';
+  document.getElementById('edit-gav-scom').value=a.senha_comercial||'';
+  document.getElementById('edit-gav-stec').value=a.senha_tecnico||'';
+  const btn=document.getElementById('edit-gav-toggle-ativa');
+  btn.textContent=a.ativa?'Desativar Academia':'Ativar Academia';
+  btn.style.color=a.ativa?'var(--re)':'var(--gr)';
+  openM('m-edit-gav');
+}
+
+async function saveGavEdit(){
+  const id=document.getElementById('edit-gav-id').value;
+  const nome=document.getElementById('edit-gav-nome').value.trim();
+  const cidade=document.getElementById('edit-gav-cidade').value.trim();
+  const email=document.getElementById('edit-gav-email').value.trim();
+  const sgest=document.getElementById('edit-gav-sgest').value.trim();
+  const scom=document.getElementById('edit-gav-scom').value.trim();
+  const stec=document.getElementById('edit-gav-stec').value.trim();
+  if(!nome||!sgest||!scom||!stec){toast('Preencha todos os campos obrigatórios',true);return}
+  const btn=document.getElementById('btn-save-gav');btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    await fetch(`${SB_URL}/rest/v1/gestao_academias?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({nome,cidade,email,senha_gestor:sgest,senha_comercial:scom,senha_tecnico:stec})});
+    toast('Academia atualizada!');closeM('m-edit-gav');await loadGavAcademias();
+  }catch(e){toast('Erro ao salvar',true);console.error(e)}
+  btn.disabled=false;btn.textContent='Salvar';
+}
+
+async function toggleGavAtiva(){
+  const id=document.getElementById('edit-gav-id').value;
+  const a=gavAcademias.find(x=>x.id===id);if(!a)return;
+  if(!confirm(`${a.ativa?'Desativar':'Ativar'} a academia ${a.nome}?`))return;
+  try{
+    await fetch(`${SB_URL}/rest/v1/gestao_academias?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({ativa:!a.ativa})});
+    toast(`Academia ${a.ativa?'desativada':'ativada'}!`);closeM('m-edit-gav');await loadGavAcademias();
+  }catch(e){toast('Erro',true);console.error(e)}
+}
 
 // EXPORT CSV
 function exportCSV(){
