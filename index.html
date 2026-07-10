@@ -527,33 +527,66 @@ tbody tr:hover td{background:var(--s2)}
 
     <!-- FERRAMENTAS & SCRIPTS -->
     <div id="pan-ferramentas" class="panel">
-      <div style="max-width:900px;margin:0 auto">
+      <div style="max-width:960px;margin:0 auto">
 
         <!-- HERO -->
-        <div style="background:linear-gradient(135deg,#001a00,#0a0a1a);border:1px solid rgba(34,197,94,0.25);border-radius:12px;padding:22px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px">
-          <div style="font-size:32px">🛠</div>
+        <div style="background:linear-gradient(135deg,#001a00,#0a0a1a);border:1px solid rgba(34,197,94,0.25);border-radius:12px;padding:20px 24px;margin-bottom:16px;display:flex;align-items:center;gap:16px">
+          <div style="font-size:28px">🛠</div>
           <div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Ferramentas & Scripts</div>
-            <div style="font-size:12px;color:var(--td)">Scripts personalizados para <strong id="ft-academia-nome" style="color:var(--gr)">sua academia</strong> — clique para copiar</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Ferramentas & Scripts</div>
+            <div style="font-size:12px;color:var(--td)">Scripts personalizados para <strong id="ft-academia-nome" style="color:var(--gr)">sua academia</strong> — clique em qualquer script para copiar</div>
           </div>
         </div>
 
-        <!-- FILTRO TABS -->
-        <div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap">
-          <button id="ft-tab-bv" class="btn-or" onclick="ftTab('bv')" style="font-size:12px;padding:6px 14px">👋 Boas-Vindas</button>
-          <button id="ft-tab-cad" class="btn-gh" onclick="ftTab('cad')" style="font-size:12px;padding:6px 14px">📅 Cadência 10x15</button>
+        <!-- NAV SEÇÕES -->
+        <div style="display:flex;gap:5px;margin-bottom:18px;flex-wrap:wrap" id="ft-nav">
+          <button id="ft-tab-bv"      onclick="ftTab('bv')"      class="btn-or"  style="font-size:11px;padding:6px 12px">👋 Boas-Vindas</button>
+          <button id="ft-tab-cad"     onclick="ftTab('cad')"     class="btn-gh"  style="font-size:11px;padding:6px 12px">📅 Cadências</button>
+          <button id="ft-tab-obj"     onclick="ftTab('obj')"     class="btn-gh"  style="font-size:11px;padding:6px 12px">🧠 Objeções</button>
+          <button id="ft-tab-play"    onclick="ftTab('play')"    class="btn-gh"  style="font-size:11px;padding:6px 12px">🎯 Playbooks</button>
+          <button id="ft-tab-anc"     onclick="ftTab('anc')"     class="btn-gh"  style="font-size:11px;padding:6px 12px">💰 Ancoragem</button>
         </div>
 
-        <!-- BOAS VINDAS -->
+        <!-- S1: BOAS-VINDAS -->
         <div id="ft-bv">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--td);margin-bottom:12px">Mensagens de Boas-Vindas M1 — Selecione o perfil do lead</div>
+          <div class="lbl" style="margin-bottom:10px">Mensagens de Boas-Vindas M1 — Selecione o perfil do lead</div>
           <div id="ft-bv-body"></div>
         </div>
 
-        <!-- CADÊNCIA -->
+        <!-- S2: CADÊNCIAS -->
         <div id="ft-cad" style="display:none">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--td);margin-bottom:12px">Cadência 10x15 — Sequência de contatos do D1 ao D15</div>
-          <div id="ft-cad-body"></div>
+          <div style="display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap" id="ft-cad-nav">
+            <button id="ft-cad-tab-10x15" onclick="ftCadTab('10x15')" class="btn-or" style="font-size:11px;padding:5px 12px">📅 Cadência 10x15 — Leads Novos</button>
+            <button id="ft-cad-tab-7d"    onclick="ftCadTab('7d')"    class="btn-gh" style="font-size:11px;padding:5px 12px">🤝 Cadência 7 Dias — Feedback+Indicação</button>
+          </div>
+          <div id="ft-cad-10x15"><div class="lbl" style="margin-bottom:10px">Cadência 10x15 — 10 tentativas em 15 dias para Leads Novos</div><div id="ft-cad-body"></div></div>
+          <div id="ft-cad-7d" style="display:none"><div class="lbl" style="margin-bottom:10px">Cadência 7 Dias — Funil de Feedback + Indicação</div><div id="ft-cad7-body"></div></div>
+        </div>
+
+        <!-- S3: OBJEÇÕES -->
+        <div id="ft-obj" style="display:none">
+          <div class="lbl" style="margin-bottom:10px">Biblioteca de Objeções — Método AQÚI — Acolher → Qualificar → Única Coisa → Incentivar</div>
+          <div id="ft-obj-body"></div>
+        </div>
+
+        <!-- S4: PLAYBOOKS -->
+        <div id="ft-play" style="display:none">
+          <div style="display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap">
+            <button id="ft-play-tab-leads" onclick="ftPlayTab('leads')" class="btn-or" style="font-size:11px;padding:5px 12px">🟠 Leads Novos</button>
+            <button id="ft-play-tab-ind"   onclick="ftPlayTab('ind')"   class="btn-gh" style="font-size:11px;padding:5px 12px">🟣 Feedback+Indicação</button>
+            <button id="ft-play-tab-ren"   onclick="ftPlayTab('ren')"   class="btn-gh" style="font-size:11px;padding:5px 12px">🔵 Renovação</button>
+            <button id="ft-play-tab-suc"   onclick="ftPlayTab('suc')"   class="btn-gh" style="font-size:11px;padding:5px 12px">🟢 Sucesso do Cliente</button>
+          </div>
+          <div id="ft-play-leads"></div>
+          <div id="ft-play-ind"   style="display:none"></div>
+          <div id="ft-play-ren"   style="display:none"></div>
+          <div id="ft-play-suc"   style="display:none"></div>
+        </div>
+
+        <!-- S5: ANCORAGEM -->
+        <div id="ft-anc" style="display:none">
+          <div class="lbl" style="margin-bottom:10px">Ancoragem de Preço e Pré-Negociação — Como conduzir a decisão</div>
+          <div id="ft-anc-body"></div>
         </div>
 
       </div>
@@ -1744,206 +1777,503 @@ function switchTab(t){TABS.forEach((x,i)=>{document.getElementById('pan-'+x).cla
 
 // ══ FERRAMENTAS & SCRIPTS ══
 let ftAtivo='bv';
+const FT_TABS=['bv','cad','obj','play','anc'];
+
 function ftTab(t){
   ftAtivo=t;
-  ['bv','cad'].forEach(x=>{
-    document.getElementById('ft-'+x).style.display=x===t?'block':'none';
+  FT_TABS.forEach(x=>{
+    const el=document.getElementById('ft-'+x);
+    if(el)el.style.display=x===t?'block':'none';
     const btn=document.getElementById('ft-tab-'+x);
-    if(btn){btn.className=x===t?'btn-or':'btn-gh';btn.style.fontSize='12px';btn.style.padding='6px 14px';}
+    if(btn){btn.className=x===t?'btn-or':'btn-gh';btn.style.fontSize='11px';btn.style.padding='6px 12px';}
+  });
+  if(t==='cad')ftCadTab('10x15');
+  if(t==='play')ftPlayTab('leads');
+}
+
+function ftCadTab(t){
+  ['10x15','7d'].forEach(x=>{
+    const el=document.getElementById('ft-cad-'+x);if(el)el.style.display=x===t?'block':'none';
+    const btn=document.getElementById('ft-cad-tab-'+x);
+    if(btn){btn.className=x===t?'btn-or':'btn-gh';btn.style.fontSize='11px';btn.style.padding='5px 12px';}
   });
 }
 
-function ftNomeAcademia(){
-  const a=ac();return a?a.nome:'Academia Modelo';
+function ftPlayTab(t){
+  ['leads','ind','ren','suc'].forEach(x=>{
+    const el=document.getElementById('ft-play-'+x);if(el)el.style.display=x===t?'block':'none';
+    const btn=document.getElementById('ft-play-tab-'+x);
+    if(btn){btn.className=x===t?'btn-or':'btn-gh';btn.style.fontSize='11px';btn.style.padding='5px 12px';}
+  });
 }
-function ftNomeGestor(){
-  return sessao?sessao.nome||'Consultor(a)':'Consultor(a)';
-}
+
+function ftNomeAcademia(){const a=ac();return a?a.nome:'Academia Modelo';}
+function ftNomeGestor(){return sessao?sessao.nome||'Consultor(a)':'Consultor(a)';}
 function ftPersonalizar(txt){
+  if(!txt)return txt;
   return txt
-    .replace(/Academia Modelo/g, ftNomeAcademia())
-    .replace(/\[Nome\]/g,'[Nome]')
-    .replace(/\[Seu Nome\]/g, ftNomeGestor());
+    .replace(/Academia Modelo/g,ftNomeAcademia())
+    .replace(/\[Nome da Academia\]/g,ftNomeAcademia())
+    .replace(/\[Seu Nome\]/g,ftNomeGestor())
+    .replace(/\[nome\]/g,'[Nome]');
 }
 
 function copiarScript(id){
   const el=document.getElementById(id);if(!el)return;
   const txt=el.textContent||el.innerText;
-  navigator.clipboard.writeText(txt).then(()=>{
-    toast('Script copiado!');
-  }).catch(()=>{
-    const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
-    toast('Script copiado!');
+  navigator.clipboard.writeText(txt).then(()=>toast('Script copiado!')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Script copiado!');
   });
 }
 
 function renderFerramentas(){
-  // Atualiza nome no header
   const nm=document.getElementById('ft-academia-nome');
   if(nm)nm.textContent=ftNomeAcademia();
-
   renderBoasVindas();
   renderCadencia();
+  renderCad7Dias();
+  renderObjecoes();
+  renderPlaybooks();
+  renderAncoragem();
 }
 
-const BOAS_VINDAS=[
-  {
-    perfil:'15–20 anos',icon:'🧑',contexto:'Insegurança / Início',
-    tag:'Acolher, gerar segurança e reduzir medo de julgamento. Conduzir para ligação.',
-    cor:'#3b82f6',
-    wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à *Academia Modelo*. Vi suas respostas e entendi que você quer começar a treinar, mas também tem uma certa insegurança nesse início… e pode ficar tranquilo(a), isso é mais comum do que parece. Aqui a gente trabalha totalmente focado no seu ritmo, sem comparação com outras pessoas. Eu sou o [Seu Nome], vou te ajudar nisso.',
-    audio:'Fala, [Nome]! Aqui é o [Seu Nome] da *Academia Modelo*. Primeiro, parabéns por ter tomado essa decisão de começar — de verdade. Vi suas respostas e entendi seu momento, principalmente essa insegurança no início… e fica tranquilo(a), aqui você não vai passar por isso. A gente trabalha com acompanhamento próximo e respeitando seu ritmo. Dá pra montar um início bem tranquilo pra você. Você consegue falar comigo 2 minutinhos agora? Só pra te direcionar certinho.',
-    orientacao:'Enviar texto + áudio. Registrar no sistema: "M1 enviada". Agendar ligação conforme cadência 10x15. Lead sem resposta = próxima ação já definida.'
-  },
-  {
-    perfil:'21–30 anos',icon:'⏰',contexto:'Falta de tempo',
-    tag:'Mostrar que entende a rotina corrida e quebrar a crença de falta de tempo.',
-    cor:'#f59e0b',
-    wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à *Academia Modelo*. Vi suas respostas e entendi que sua rotina é mais corrida… e isso é exatamente o que a gente resolve aqui. Hoje o maior erro é achar que precisa de muito tempo pra ter resultado. Eu sou o [Seu Nome], vou te ajudar nisso.',
-    audio:'Fala, [Nome]! Aqui é o [Seu Nome] da *Academia Modelo*. Parabéns por ter dado esse primeiro passo. Vi suas respostas e entendi sua rotina puxada… mas hoje o problema não é tempo, é direcionamento. Aqui a gente trabalha com treinos inteligentes, que encaixam na rotina. Dá pra ajustar isso bem pra você. Você consegue falar comigo 2 minutinhos agora?',
-    orientacao:'Enviar texto + áudio. Registrar M1 no sistema. Agendar ligação. Todo lead precisa sair com próximo passo definido.'
-  },
-  {
-    perfil:'31–45 anos',icon:'😤',contexto:'Frustração / Já tentou antes',
-    tag:'Validar frustração e mostrar que o problema não foi esforço, e sim direcionamento.',
-    cor:'#ef4444',
-    wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à *Academia Modelo*. Vi suas respostas e entendi que você já tentou treinar antes… e talvez não teve o resultado que esperava. Isso é mais comum do que parece. Eu sou o [Seu Nome], vou te ajudar nisso.',
-    audio:'Fala, [Nome]! Aqui é o [Seu Nome] da *Academia Modelo*. Parabéns por não ter desistido. Vi que você já treinou antes… e normalmente o problema não é esforço, é direcionamento. Aqui a gente trabalha com acompanhamento estruturado desde o início. Dá pra montar algo bem mais assertivo pra você. Você consegue falar comigo 2 minutinhos?',
-    orientacao:'Enviar texto + áudio. Registrar no sistema. Agendar ligação. Lead sem follow-up = lead perdido.'
-  },
-  {
-    perfil:'46+ anos',icon:'❤️',contexto:'Saúde / Segurança',
-    tag:'Gerar confiança, segurança e respeito ao ritmo. Sem pressão.',
-    cor:'#22c55e',
-    wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à *Academia Modelo*. Vi suas respostas e entendi que seu foco é mais saúde e segurança… e é exatamente assim que a gente trabalha aqui. Nada de treino genérico. Eu sou o [Seu Nome], vou te ajudar nisso.',
-    audio:'Fala, [Nome]! Aqui é o [Seu Nome] da *Academia Modelo*. Parabéns por essa decisão de cuidar da sua saúde. Vi suas respostas e entendi sua preocupação com fazer isso do jeito certo. Aqui tudo é adaptado e acompanhado de perto. Dá pra montar um início bem seguro pra você. Você consegue falar comigo 2 minutinhos agora?',
-    orientacao:'Enviar texto + áudio. Registrar no sistema. Agendar ligação. Sempre garantir próximo passo definido.'
-  },
-  {
-    perfil:'5% — Direto',icon:'🎯',contexto:'Quer começar já',
-    tag:'Ser objetivo, assumir controle e conduzir sem enrolação.',
-    cor:'#FF6B00',
-    wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à *Academia Modelo*. Vi suas respostas e entendi que você já quer começar. Aqui a gente trabalha com acompanhamento desde o início, então preciso entender rápido seu momento pra te direcionar certo. Eu sou o [Seu Nome], vou te ajudar nisso.',
-    audio:'Fala, [Nome]! Aqui é o [Seu Nome] da *Academia Modelo*. Vi que você já quer começar, então vamos direto ao ponto. Aqui a gente trabalha com direcionamento personalizado, então preciso entender rápido seu momento pra te indicar o melhor caminho. Você consegue falar comigo 2 minutinhos agora?',
-    orientacao:'Não enviar preço. Registrar no sistema. Agendar ligação. Lead quente também segue processo.'
-  },
-  {
-    perfil:'5% — Preço',icon:'💰',contexto:'Perguntou o preço',
-    tag:'Nunca enviar preço. Reposicionar com autoridade e contexto.',
-    cor:'#a855f7',
-    wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à *Academia Modelo*. Vi sua pergunta sobre valores — faz sentido. Aqui a gente não trabalha com plano padrão, tudo depende do seu objetivo e momento. Eu sou o [Seu Nome], vou te ajudar nisso.',
-    audio:'Fala, [Nome]! Aqui é o [Seu Nome] da *Academia Modelo*. Vi que você perguntou sobre valores. Aqui a gente não trabalha com plano padrão, porque cada pessoa é diferente. Antes de te falar qualquer valor, preciso entender seu perfil pra te direcionar certo. Você consegue falar comigo 2 minutinhos agora?',
-    orientacao:'NUNCA enviar tabela de preço. Registrar no sistema. Agendar ligação. Conduzir sempre para conversa.'
-  },
-  {
-    perfil:'5% — Já treina',icon:'💪',contexto:'Já pratica exercício',
-    tag:'Mostrar nível técnico e diferencial. Evitar parecer academia comum.',
-    cor:'#6366f1',
-    wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à *Academia Modelo*. Vi que você já treina, então você não está começando do zero. Aqui a gente trabalha com um nível mais avançado de acompanhamento. Eu sou o [Seu Nome], vou te ajudar nisso.',
-    audio:'Fala, [Nome]! Aqui é o [Seu Nome] da *Academia Modelo*. Vi que você já treina, então vou ser direto… aqui não é academia comum. A gente trabalha com evolução e acompanhamento técnico mais próximo. Dá pra subir bastante o nível do seu treino. Você consegue falar comigo 2 minutinhos?',
-    orientacao:'Registrar no sistema. Agendar ligação. Usar postura de autoridade técnica.'
-  },
-  {
-    perfil:'5% — Urgência',icon:'⚡',contexto:'Quer começar rápido',
-    tag:'Acelerar sem travar. Conduzir para início imediato.',
-    cor:'#FF6B00',
-    wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à *Academia Modelo*. Vi que você já quer começar o quanto antes — perfeito. Aqui a gente consegue organizar um início bem rápido pra você. Eu sou o [Seu Nome], vou te ajudar nisso.',
-    audio:'Fala, [Nome]! Aqui é o [Seu Nome] da *Academia Modelo*. Vi que você quer começar rápido, então vamos direto ao ponto. Dá pra organizar seu início ainda essa semana. Só preciso entender rápido seu momento pra te encaixar certo. Você consegue falar comigo 2 minutinhos agora?',
-    orientacao:'Velocidade máxima. Registrar no sistema. Agendar ligação imediata. Lead quente não pode esfriar.'
-  }
-];
-
-const CADENCIA=[
-  {dia:'Dia 1',canal:'Mensagem + Áudio (M1)',obj:'Acolher, gerar conexão e levar para ligação',wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à *Academia Modelo*. Vi suas respostas e entendi seu objetivo. Eu sou o [Seu Nome] e vou te ajudar nisso.',audio:'Fala, [Nome]! Aqui é o [Seu Nome] da *Academia Modelo*. Parabéns por ter dado esse primeiro passo. Vi seu objetivo e dá pra te direcionar bem. Me fala, você consegue falar comigo 2 minutinhos agora?',video:'—',op:'Registrar M1 enviada + agendar ligação D1'},
-  {dia:'Dia 2',canal:'Ligação + WhatsApp',obj:'Tentar contato direto e reforçar importância',wpp:'Fala, [Nome]! Tentei falar com você agora pouco pra te direcionar melhor. Se fizer sentido, me chama aqui ou me fala um horário que te ligo.',audio:'Fala, [Nome]! Passei aqui rápido porque tentei te ligar. É só pra te explicar seu melhor caminho e te mostrar como você pode começar certo. Me chama aqui ou me fala um horário.',video:'—',op:'Registrar tentativa + reagendar D3'},
-  {dia:'Dia 3',canal:'Mensagem + Áudio',obj:'Reforçar valor e mostrar que é acompanhamento',wpp:'[Nome], vi seu objetivo e fiquei pensando aqui… da forma que você quer começar, faz muita diferença ter um direcionamento certo logo no início.',audio:'Fala, [Nome]! Aqui é o [Seu Nome]. Pelo que você me falou, se você começar do jeito certo agora, você já evita muita frustração lá na frente. Posso te explicar isso rápido. Você consegue falar 2 minutinhos?',video:'—',op:'Registrar + reagendar D5'},
-  {dia:'Dia 5',canal:'Vídeo + Mensagem',obj:'Gerar prova social',wpp:'[Nome], deixa eu te mostrar algo rápido 👇 esse é um exemplo de alguém que começou parecido com você.',audio:'—',video:'Depoimento real de aluno (antes/depois ou relato de início inseguro)',op:'Registrar envio + reagendar D7'},
-  {dia:'Dia 7',canal:'Ligação + Mensagem',obj:'Retomar contato ativo',wpp:'Fala, [Nome]! Tentei te ligar agora pra te explicar melhor seu início. Me fala um horário que consigo falar contigo rapidinho.',audio:'Fala, [Nome]! Tentei falar contigo agora. É rápido mesmo, só pra te direcionar e te mostrar como você pode começar da forma certa.',video:'—',op:'Registrar + reagendar D9'},
-  {dia:'Dia 9',canal:'Mensagem + Áudio',obj:'Gerar urgência leve',wpp:'[Nome], posso ser direto contigo? Vi seu objetivo e você tá muito perto de começar, só falta esse próximo passo.',audio:'Fala, [Nome]! Às vezes o mais difícil é sair da intenção e ir pra ação. E você já tá muito próximo disso. Me deixa te ajudar nisso — consigo te explicar em 2 minutos.',video:'—',op:'Registrar + reagendar D11'},
-  {dia:'Dia 11',canal:'Vídeo + Mensagem',obj:'Reforçar autoridade',wpp:'[Nome], vou te mandar um vídeo rápido pra você entender como a gente trabalha aqui.',audio:'—',video:'Vídeo institucional curto (estrutura + metodologia + acompanhamento)',op:'Registrar + reagendar D13'},
-  {dia:'Dia 13',canal:'Mensagem + Áudio',obj:'Última tentativa forte',wpp:'[Nome], sendo bem direto contigo… eu vi seu objetivo e sei que consigo te ajudar nisso. Só preciso de 2 minutos contigo.',audio:'Fala, [Nome]! Última vez que te chamo por aqui… porque realmente acho que faz sentido pra você. Se não for o momento agora, tranquilo. Mas se fizer, me chama que eu te direciono.',video:'—',op:'Registrar + reagendar D15'},
-  {dia:'Dia 15',canal:'Mensagem final',obj:'Encerrar ciclo mantendo porta aberta',wpp:'[Nome], vou encerrar seu atendimento por aqui pra organizar melhor os próximos contatos. Mas quando quiser retomar, me chama aqui que eu te ajudo. 💪',audio:'—',video:'—',op:'Registrar encerramento. Mover para follow-up e agendar próximo contato em 30 dias.'}
-];
-
-function scriptCard(id, label, texto, cor){
+function scriptCard(id,label,texto,cor,tipo){
+  if(!texto||texto==='—')return'';
   const t=ftPersonalizar(texto);
-  return`<div style="background:var(--s2);border-radius:8px;padding:12px;margin-bottom:8px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-      <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:${cor||'var(--td)'}">${label}</div>
-      <button onclick="copiarScript('sc-${id}')" style="background:${cor||'var(--or)'};color:#000;border:none;border-radius:4px;padding:3px 10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer">📋 Copiar</button>
+  return`<div style="background:var(--s2);border-radius:8px;padding:11px 13px;margin-bottom:7px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:${cor||'var(--td)'};">${label}</div>
+      <button onclick="copiarScript('sc-${id}')" style="background:${cor||'var(--or)'};color:#000;border:none;border-radius:4px;padding:3px 10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;cursor:pointer;flex-shrink:0">Copiar</button>
     </div>
-    <div id="sc-${id}" style="font-size:12px;color:var(--tm);line-height:1.6;white-space:pre-wrap">${t}</div>
+    <div id="sc-${id}" style="font-size:12px;color:var(--tm);line-height:1.7;white-space:pre-wrap">${t}</div>
   </div>`;
 }
+
+function orientacaoBox(txt){
+  if(!txt||txt==='—')return'';
+  return`<div style="background:var(--or-d);border:1px solid var(--bdo);border-radius:7px;padding:9px 12px;font-size:11px;color:var(--tm);margin-bottom:8px"><span style="color:var(--or);font-weight:700">⚙️ Orientação: </span>${txt}</div>`;
+}
+
+function toggleCard(id){
+  const body=document.getElementById('card-body-'+id);
+  const arrow=document.getElementById('card-arrow-'+id);
+  if(!body)return;
+  const open=body.style.display==='block';
+  body.style.display=open?'none':'block';
+  if(arrow)arrow.style.transform=open?'':'rotate(90deg)';
+}
+
+// ══ BOAS-VINDAS ══
+const BOAS_VINDAS=[
+  {perfil:'15–20 anos',icon:'🧑',ctx:'Insegurança / Início',tag:'Acolher, gerar segurança, reduzir medo de julgamento',cor:'#3b82f6',
+   wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à Academia Modelo. Vi suas respostas e entendi que você quer começar a treinar, mas também tem uma certa insegurança nesse início — e pode ficar tranquilo(a), isso é mais comum do que parece. Aqui a gente trabalha totalmente focado no seu ritmo, sem comparação com outras pessoas. Eu sou o [Seu Nome], vou te ajudar nisso.',
+   audio:'Fala, [Nome]! Aqui é o [Seu Nome] da Academia Modelo. Parabéns por ter tomado essa decisão de começar — de verdade. Vi suas respostas e entendi seu momento, principalmente essa insegurança no início — e fica tranquilo(a), aqui você não vai passar por isso. A gente trabalha com acompanhamento próximo e respeitando seu ritmo. Dá pra montar um início bem tranquilo pra você. Você consegue falar comigo 2 minutinhos agora?',
+   op:'Enviar texto + áudio. Registrar: "M1 enviada". Agendar ligação conforme cadência 10x15.'},
+  {perfil:'21–30 anos',icon:'⏰',ctx:'Falta de tempo',tag:'Quebrar a crença de falta de tempo, posicionar treino inteligente',cor:'#f59e0b',
+   wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à Academia Modelo. Vi suas respostas e entendi que sua rotina é mais corrida — e isso é exatamente o que a gente resolve aqui. Hoje o maior erro é achar que precisa de muito tempo pra ter resultado. Eu sou o [Seu Nome], vou te ajudar nisso.',
+   audio:'Fala, [Nome]! Aqui é o [Seu Nome] da Academia Modelo. Parabéns por ter dado esse primeiro passo. Vi suas respostas e entendi sua rotina puxada — mas hoje o problema não é tempo, é direcionamento. Aqui a gente trabalha com treinos inteligentes que encaixam na rotina. Dá pra ajustar isso bem pra você. Você consegue falar comigo 2 minutinhos agora?',
+   op:'Enviar texto + áudio. Registrar M1 no sistema. Agendar ligação. Todo lead precisa sair com próximo passo definido.'},
+  {perfil:'31–45 anos',icon:'😤',ctx:'Frustração / Já tentou antes',tag:'Validar frustração e mostrar que o problema foi direcionamento, não esforço',cor:'#ef4444',
+   wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à Academia Modelo. Vi suas respostas e entendi que você já tentou treinar antes — e talvez não teve o resultado que esperava. Isso é mais comum do que parece. Eu sou o [Seu Nome], vou te ajudar nisso.',
+   audio:'Fala, [Nome]! Aqui é o [Seu Nome] da Academia Modelo. Parabéns por não ter desistido. Vi que você já treinou antes — e normalmente o problema não é esforço, é direcionamento. Aqui a gente trabalha com acompanhamento estruturado desde o início. Dá pra montar algo bem mais assertivo pra você. Você consegue falar comigo 2 minutinhos?',
+   op:'Enviar texto + áudio. Registrar no sistema. Agendar ligação. Lead sem follow-up = lead perdido.'},
+  {perfil:'46+ anos',icon:'❤️',ctx:'Saúde / Segurança',tag:'Gerar confiança e respeito ao ritmo. Sem pressão',cor:'#22c55e',
+   wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à Academia Modelo. Vi suas respostas e entendi que seu foco é mais saúde e segurança — e é exatamente assim que a gente trabalha aqui. Nada de treino genérico. Eu sou o [Seu Nome], vou te ajudar nisso.',
+   audio:'Fala, [Nome]! Aqui é o [Seu Nome] da Academia Modelo. Parabéns por essa decisão de cuidar da sua saúde. Vi suas respostas e entendi sua preocupação com fazer isso do jeito certo. Aqui tudo é adaptado e acompanhado de perto. Dá pra montar um início bem seguro pra você. Você consegue falar comigo 2 minutinhos agora?',
+   op:'Enviar texto + áudio. Registrar no sistema. Agendar ligação. Sempre garantir próximo passo definido.'},
+  {perfil:'5% — Direto',icon:'🎯',ctx:'Quer começar já',tag:'Ser objetivo, assumir controle e conduzir sem enrolação',cor:'#FF6B00',
+   wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à Academia Modelo. Vi suas respostas e entendi que você já quer começar. Aqui a gente trabalha com acompanhamento desde o início — preciso entender rápido seu momento pra te direcionar certo. Eu sou o [Seu Nome], vou te ajudar nisso.',
+   audio:'Fala, [Nome]! Aqui é o [Seu Nome] da Academia Modelo. Vi que você já quer começar, então vamos direto ao ponto. Aqui a gente trabalha com direcionamento personalizado — preciso entender rápido seu momento pra te indicar o melhor caminho. Você consegue falar comigo 2 minutinhos agora?',
+   op:'NAO enviar preco. Registrar no sistema. Agendar ligacao. Lead quente tambem segue processo.'},
+  {perfil:'5% — Preço',icon:'💰',ctx:'Perguntou o preço',tag:'NUNCA enviar preço. Reposicionar com autoridade e contexto',cor:'#a855f7',
+   wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à Academia Modelo. Vi sua pergunta sobre valores — faz sentido. Aqui a gente nao trabalha com plano padrao, tudo depende do seu objetivo e momento. Eu sou o [Seu Nome], vou te ajudar nisso.',
+   audio:'Fala, [Nome]! Aqui é o [Seu Nome] da Academia Modelo. Vi que voce perguntou sobre valores. Aqui a gente nao trabalha com plano padrao porque cada pessoa e diferente. Antes de te falar qualquer valor, preciso entender seu perfil pra te direcionar certo. Voce consegue falar comigo 2 minutinhos agora?',
+   op:'NUNCA enviar tabela de preco. Registrar no sistema. Agendar ligacao. Conduzir sempre para conversa.'},
+  {perfil:'5% — Já treina',icon:'💪',ctx:'Já pratica exercício',tag:'Mostrar nível técnico e diferencial. Não parecer academia comum',cor:'#6366f1',
+   wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à Academia Modelo. Vi que voce ja treina, entao voce nao esta comecando do zero. Aqui a gente trabalha com um nivel mais avancado de acompanhamento. Eu sou o [Seu Nome], vou te ajudar nisso.',
+   audio:'Fala, [Nome]! Aqui é o [Seu Nome] da Academia Modelo. Vi que voce ja treina, entao vou ser direto — aqui nao e academia comum. A gente trabalha com evolucao e acompanhamento tecnico mais proximo. Da pra subir bastante o nivel do seu treino. Voce consegue falar comigo 2 minutinhos?',
+   op:'Registrar no sistema. Agendar ligacao. Usar postura de autoridade tecnica.'},
+  {perfil:'5% — Urgência',icon:'⚡',ctx:'Quer começar rápido',tag:'Acelerar sem travar. Conduzir para início imediato',cor:'#FF6B00',
+   wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à Academia Modelo. Vi que voce ja quer comecar o quanto antes — perfeito. Aqui a gente consegue organizar um inicio bem rapido pra voce. Eu sou o [Seu Nome], vou te ajudar nisso.',
+   audio:'Fala, [Nome]! Aqui é o [Seu Nome] da Academia Modelo. Vi que voce quer comecar rapido, entao vamos direto ao ponto. Da pra organizar seu inicio ainda essa semana. So preciso entender rapido seu momento pra te encaixar certo. Voce consegue falar comigo 2 minutinhos agora?',
+   op:'Velocidade maxima. Registrar no sistema. Agendar ligacao imediata. Lead quente nao pode esfriar.'}
+];
 
 function renderBoasVindas(){
   const el=document.getElementById('ft-bv-body');if(!el)return;
   el.innerHTML=BOAS_VINDAS.map((bv,i)=>`
-    <div style="background:var(--s1);border:1px solid var(--bd);border-left:3px solid ${bv.cor};border-radius:10px;margin-bottom:14px;overflow:hidden">
-      <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;justify-content:space-between" onclick="toggleBV(${i})">
+    <div style="background:var(--s1);border:1px solid var(--bd);border-left:3px solid ${bv.cor};border-radius:10px;margin-bottom:12px;overflow:hidden">
+      <div style="padding:11px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;justify-content:space-between" onclick="toggleCard('bv${i}')">
         <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:22px">${bv.icon}</span>
+          <span style="font-size:20px">${bv.icon}</span>
           <div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:${bv.cor};text-transform:uppercase;letter-spacing:.5px">${bv.perfil} — ${bv.contexto}</div>
-            <div style="font-size:11px;color:var(--td);margin-top:2px">${bv.tag}</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:${bv.cor};text-transform:uppercase;letter-spacing:.5px">${bv.perfil} — ${bv.ctx}</div>
+            <div style="font-size:11px;color:var(--td);margin-top:1px">${bv.tag}</div>
           </div>
         </div>
-        <span id="bv-arrow-${i}" style="color:var(--td);font-size:18px;transition:transform .2s">▸</span>
+        <span id="card-arrow-bv${i}" style="color:var(--td);font-size:16px;transition:transform .2s;flex-shrink:0">▸</span>
       </div>
-      <div id="bv-body-${i}" style="display:none;padding:0 16px 14px;border-top:1px solid var(--bd)">
+      <div id="card-body-bv${i}" style="display:none;padding:0 15px 13px;border-top:1px solid var(--bd)">
         <div style="height:10px"></div>
-        ${scriptCard('bv-wpp-'+i,'💬 Mensagem WhatsApp',bv.wpp,bv.cor)}
-        ${scriptCard('bv-audio-'+i,'🎙 Script de Áudio',bv.audio,bv.cor)}
-        <div style="background:var(--or-d);border:1px solid var(--bdo);border-radius:7px;padding:10px 12px;font-size:11px;color:var(--tm)">
-          <span style="color:var(--or);font-weight:700">⚙️ Orientações: </span>${bv.orientacao}
-        </div>
+        ${scriptCard('bv-w'+i,'💬 WhatsApp',bv.wpp,bv.cor)}
+        ${scriptCard('bv-a'+i,'🎙 Script Áudio',bv.audio,bv.cor,'audio')}
+        ${orientacaoBox(bv.op)}
       </div>
     </div>`).join('');
 }
 
-function toggleBV(i){
-  const body=document.getElementById('bv-body-'+i);
-  const arrow=document.getElementById('bv-arrow-'+i);
-  const open=body.style.display==='block';
-  body.style.display=open?'none':'block';
-  arrow.style.transform=open?'':'rotate(90deg)';
-}
+const CADENCIA=[
+  {dia:'Dia 1',canal:'Mensagem + Áudio (M1)',obj:'Acolher, gerar conexão e levar para ligação',
+   wpp:'Que bom te ver por aqui, [Nome]! Seja bem-vindo(a) à Academia Modelo. Vi suas respostas e entendi seu objetivo. Eu sou o [Seu Nome] e vou te ajudar nisso.',
+   audio:'Fala, [Nome]! Aqui é o [Seu Nome] da Academia Modelo. Parabéns por ter dado esse primeiro passo. Vi seu objetivo e da pra te direcionar bem. Me fala, voce consegue falar comigo 2 minutinhos agora?',
+   op:'Registrar M1 enviada + agendar ligacao D1'},
+  {dia:'Dia 2',canal:'Ligação + WhatsApp',obj:'Tentar contato direto e reforçar importância',
+   wpp:'Fala, [Nome]! Tentei falar com voce agora pouco pra te direcionar melhor. Se fizer sentido, me chama aqui ou me fala um horario que te ligo.',
+   audio:'Fala, [Nome]! Passei aqui rapido porque tentei te ligar. É so pra te explicar seu melhor caminho e te mostrar como voce pode comecar certo. Me chama aqui ou me fala um horario.',
+   op:'Registrar tentativa + reagendar D3'},
+  {dia:'Dia 3',canal:'Mensagem + Áudio',obj:'Reforçar valor e mostrar que é acompanhamento',
+   wpp:'[Nome], vi seu objetivo e fiquei pensando aqui… da forma que voce quer comecar, faz muita diferenca ter um direcionamento certo logo no inicio.',
+   audio:'Fala, [Nome]! Aqui é o [Seu Nome]. Pelo que voce me falou, se voce comecar do jeito certo agora, voce ja evita muita frustracao la na frente. Posso te explicar isso rapido. Voce consegue falar 2 minutinhos?',
+   op:'Registrar + reagendar D5'},
+  {dia:'Dia 5',canal:'Vídeo + Mensagem',obj:'Gerar prova social',
+   wpp:'[Nome], deixa eu te mostrar algo rapido 👇 esse é um exemplo de alguem que comecou parecido com voce.',
+   audio:'—',video:'Depoimento real de aluno (antes/depois ou relato de inicio)',
+   op:'Registrar envio + reagendar D7'},
+  {dia:'Dia 7',canal:'Ligação + Mensagem',obj:'Retomar contato ativo',
+   wpp:'Fala, [Nome]! Tentei te ligar agora pra te explicar melhor seu inicio. Me fala um horario que consigo falar contigo rapidinho.',
+   audio:'Fala, [Nome]! Tentei falar contigo agora. É rapido mesmo, so pra te direcionar e te mostrar como voce pode comecar da forma certa.',
+   op:'Registrar + reagendar D9'},
+  {dia:'Dia 9',canal:'Mensagem + Áudio',obj:'Gerar urgência leve',
+   wpp:'[Nome], posso ser direto contigo? Vi seu objetivo e voce ta muito perto de comecar, so falta esse proximo passo.',
+   audio:'Fala, [Nome]! As vezes o mais dificil e sair da intencao e ir pra acao. E voce ja ta muito proximo disso. Me deixa te ajudar nisso — consigo te explicar em 2 minutos.',
+   op:'Registrar + reagendar D11'},
+  {dia:'Dia 11',canal:'Vídeo + Mensagem',obj:'Reforçar autoridade',
+   wpp:'[Nome], vou te mandar um video rapido pra voce entender como a gente trabalha aqui.',
+   audio:'—',video:'Video institucional curto (estrutura + metodologia + acompanhamento)',
+   op:'Registrar + reagendar D13'},
+  {dia:'Dia 13',canal:'Mensagem + Áudio',obj:'Última tentativa forte',
+   wpp:'[Nome], sendo bem direto contigo… eu vi seu objetivo e sei que consigo te ajudar nisso. So preciso de 2 minutos contigo.',
+   audio:'Fala, [Nome]! Ultima vez que te chamo por aqui… porque realmente acho que faz sentido pra voce. Se nao for o momento agora, tranquilo. Mas se fizer, me chama que eu te direciono.',
+   op:'Registrar + reagendar D15'},
+  {dia:'Dia 15',canal:'Mensagem final',obj:'Encerrar ciclo mantendo porta aberta',
+   wpp:'[Nome], vou encerrar seu atendimento por aqui pra organizar melhor os proximos contatos. Mas quando quiser retomar, me chama aqui que eu te ajudo. 💪',
+   audio:'—',
+   op:'Registrar encerramento. Mover para follow-up e agendar proximo contato em 30 dias.'}
+];
 
 function renderCadencia(){
   const el=document.getElementById('ft-cad-body');if(!el)return;
   el.innerHTML=CADENCIA.map((c,i)=>`
-    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;margin-bottom:12px;overflow:hidden">
-      <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;justify-content:space-between" onclick="toggleCad(${i})">
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;margin-bottom:10px;overflow:hidden">
+      <div style="padding:11px 15px;cursor:pointer;display:flex;align-items:center;gap:12px;justify-content:space-between" onclick="toggleCard('cad${i}')">
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="background:var(--or-d);border:1px solid var(--bdo);border-radius:8px;padding:6px 12px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:var(--or);min-width:60px;text-align:center">${c.dia}</div>
+          <div style="background:var(--or-d);border:1px solid var(--bdo);border-radius:7px;padding:5px 11px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:var(--or);min-width:54px;text-align:center">${c.dia}</div>
           <div>
             <div style="font-weight:600;font-size:13px">${c.canal}</div>
             <div style="font-size:11px;color:var(--td);margin-top:1px">${c.obj}</div>
           </div>
         </div>
-        <span id="cad-arrow-${i}" style="color:var(--td);font-size:18px;transition:transform .2s">▸</span>
+        <span id="card-arrow-cad${i}" style="color:var(--td);font-size:16px;transition:transform .2s;flex-shrink:0">▸</span>
       </div>
-      <div id="cad-body-${i}" style="display:none;padding:0 16px 14px;border-top:1px solid var(--bd)">
+      <div id="card-body-cad${i}" style="display:none;padding:0 15px 13px;border-top:1px solid var(--bd)">
         <div style="height:10px"></div>
-        ${c.wpp!=='—'?scriptCard('cad-wpp-'+i,'💬 Mensagem WhatsApp',c.wpp,'var(--or)'):''}
-        ${c.audio!=='—'?scriptCard('cad-audio-'+i,'🎙 Script de Áudio',c.audio,'var(--bl)'):''}
-        ${c.video!=='—'?`<div style="background:var(--s2);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12px;color:var(--tm)"><span style="color:var(--pu);font-weight:700">🎥 Vídeo: </span>${c.video}</div>`:''}
-        <div style="background:var(--gr-d);border:1px solid rgba(34,197,94,0.25);border-radius:7px;padding:10px 12px;font-size:11px;color:var(--tm)">
-          <span style="color:var(--gr);font-weight:700">⚙️ Sistema: </span>${c.op}
-        </div>
+        ${c.wpp&&c.wpp!=='—'?scriptCard('cad-w'+i,'💬 WhatsApp',c.wpp,'var(--or)'):''}
+        ${c.audio&&c.audio!=='—'?scriptCard('cad-a'+i,'🎙 Script Áudio',c.audio,'var(--bl)','audio'):''}
+        ${c.video?`<div style="background:var(--s2);border-radius:7px;padding:9px 12px;margin-bottom:7px;font-size:12px;color:var(--tm)"><span style="color:var(--pu);font-weight:700">🎥 Vídeo: </span>${c.video}</div>`:''}
+        ${orientacaoBox(c.op)}
       </div>
     </div>`).join('');
 }
 
-function toggleCad(i){
-  const body=document.getElementById('cad-body-'+i);
-  const arrow=document.getElementById('cad-arrow-'+i);
-  const open=body.style.display==='block';
-  body.style.display=open?'none':'block';
-  arrow.style.transform=open?'':'rotate(90deg)';
+const CAD7=[
+  {dia:'Dia 1',titulo:'Abrir Conversa com Curiosidade',obj:'Gerar resposta sem parecer venda',canal:'Mensagem + Imagem',
+   exec:'Enviar imagem de curiosidade + texto para criar duas notificacoes imediatas',
+   wpp:'Fala, [nome]. Tudo bem? Separei seu contato porque queremos ouvir sua experiencia e te contar uma novidade em primeira mao. Posso te explicar rapidinho?',
+   audio:'—',regra:'Se parecer venda voce perde. Se gerar curiosidade voce ganha resposta.',
+   op:'Registrar envio + agendar D2'},
+  {dia:'Dia 2',titulo:'Quem Liga, Sai na Frente',obj:'Humanizar o contato',canal:'Ligação + Áudio',
+   exec:'Ligar para quem nao respondeu. Se nao atender, enviar audio imediato.',
+   ligacao:'Oi, [nome]. Te liguei porque estamos ouvindo alguns alunos novos e queria te contar uma novidade rapida. Qual horario fica melhor pra voce passar aqui?',
+   audio:'Fala, [nome]. Tentei te ligar agora. Estamos falando com alguns alunos novos pra entender a experiencia deles aqui… e queria te contar uma novidade. Depois me responde.',
+   wpp:'—',regra:'Mensagem ignora. Ligacao posiciona.',op:'Registrar + reagendar D3'},
+  {dia:'Dia 3',titulo:'Mostre que Ele Nao É Só Mais Um',obj:'Diminuir resistência e gerar confiança',canal:'Mensagem + Imagem',
+   exec:'Enviar imagem reforçando que o aluno novo nao passa despercebido.',
+   wpp:'[nome], uma coisa que estamos fortalecendo aqui e acompanhar de perto quem entrou recentemente. Pra entender o que ja esta funcionando e o que podemos melhorar ainda mais. Por isso queria te chamar pra uma conversa rapida.',
+   audio:'—',regra:'Quem sente cuidado responde.',op:'Registrar + reagendar D4'},
+  {dia:'Dia 4',titulo:'Acelerar Decisao com Contato Direto',obj:'Aumentar taxa de resposta',canal:'Ligação Direta + Áudio',
+   exec:'Ligar novamente. Se nao atender, enviar audio reforçando exclusividade.',
+   ligacao:'[nome], vou ser direto contigo: estamos chamando alunos novos para ouvir sua experiencia e mostrar algo novo, sem custo. Qual horario fica melhor pra voce?',
+   audio:'Fala, [nome]. Tentei te ligar agora… queria te explicar uma coisa rapida e te incluir numa conversa aqui com a gente. Me chama que te explico.',
+   wpp:'—',regra:'Quem provoca resposta ganha tempo.',op:'Registrar + reagendar D5'},
+  {dia:'Dia 5',titulo:'Ativar o Desejo Sem Explicar Tudo',obj:'Gerar curiosidade emocional',canal:'Mensagem + Imagem',
+   exec:'Enviar imagem de exclusividade + texto curto.',
+   wpp:'[nome], alem de ouvir sua experiencia, tem outro motivo pelo qual queria te chamar. Separamos algo especial pra alguns alunos novos… e voce foi uma das pessoas que pensei na hora.',
+   audio:'—',regra:'Curiosidade gera resposta. Explicacao mata o interesse.',op:'Registrar + reagendar D6'},
+  {dia:'Dia 6',titulo:'Recuperar Sem Pressionar',obj:'Reativar quem ignorou',canal:'Ligação + Áudio',
+   exec:'Ligar novamente. Se nao atender, enviar audio leve e compreensivo.',
+   audio:'[nome], pode ser que nao tenha sido o melhor momento pra ver minhas mensagens… mas ainda queria falar contigo porque essa conversa e rapida e pode fazer sentido pra voce. Me chama que te explico direto.',
+   wpp:'—',ligacao:'—',regra:'Pressao afasta. Leveza aproxima.',op:'Registrar + reagendar D7'},
+  {dia:'Dia 7',titulo:'Fechar o Ciclo com Urgencia',obj:'Gerar decisão final',canal:'Mensagem + Imagem',
+   exec:'Enviar imagem de escassez + texto de encerramento.',
+   wpp:'[nome], estou fechando hoje os ultimos horarios dessa rodada de conversas com alunos novos. Como eu realmente queria te incluir, resolvi te chamar uma ultima vez. Se fizer sentido, ainda consigo te encaixar.',
+   audio:'—',regra:'Sem urgencia nao existe decisao.',op:'Registrar encerramento. Mover para follow-up de 30 dias.'}
+];
+
+function renderCad7Dias(){
+  const el=document.getElementById('ft-cad7-body');if(!el)return;
+  el.innerHTML=`<div style="background:var(--or-d);border:1px solid var(--bdo);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--tm)">
+    <strong style="color:var(--or)">🎯 Objetivo:</strong> Transformar alunos recentes em fontes ativas de indicação. Contato entre o 3º e 7º dia após a matrícula.
+  </div>
+  ${CAD7.map((c,i)=>`
+  <div style="background:var(--s1);border:1px solid var(--bd);border-left:3px solid var(--pu);border-radius:10px;margin-bottom:10px;overflow:hidden">
+    <div style="padding:11px 15px;cursor:pointer;display:flex;align-items:center;gap:12px;justify-content:space-between" onclick="toggleCard('c7${i}')">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.35);border-radius:7px;padding:5px 11px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:var(--pu);min-width:54px;text-align:center">${c.dia}</div>
+        <div>
+          <div style="font-weight:600;font-size:13px">${c.titulo}</div>
+          <div style="font-size:11px;color:var(--td);margin-top:1px">${c.canal} · ${c.obj}</div>
+        </div>
+      </div>
+      <span id="card-arrow-c7${i}" style="color:var(--td);font-size:16px;transition:transform .2s;flex-shrink:0">▸</span>
+    </div>
+    <div id="card-body-c7${i}" style="display:none;padding:0 15px 13px;border-top:1px solid var(--bd)">
+      <div style="height:10px"></div>
+      <div style="background:var(--s2);border-radius:7px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:var(--tm)"><span style="color:var(--pu);font-weight:700">⚡ Execução: </span>${c.exec}</div>
+      ${c.wpp&&c.wpp!=='—'?scriptCard('c7-w'+i,'💬 WhatsApp',c.wpp,'var(--pu)'):''}
+      ${c.ligacao&&c.ligacao!=='—'?scriptCard('c7-l'+i,'📞 Ligação',c.ligacao,'var(--bl)','ligacao'):''}
+      ${c.audio&&c.audio!=='—'?scriptCard('c7-a'+i,'🎙 Áudio',c.audio,'var(--pu)','audio'):''}
+      <div style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.25);border-radius:7px;padding:8px 12px;margin-bottom:7px;font-size:12px;color:var(--pu);font-weight:600">${c.regra}</div>
+      ${orientacaoBox(c.op)}
+    </div>
+  </div>`).join('')}`;
 }
 
-// ══ BOAS-VINDAS ══
+const OBJECOES=[
+  {titulo:'Quem vai me orientar nos treinos?',icon:'🏋️',cor:'#3b82f6',
+   acolhimento:'Oi [Nome], entendo que você quer saber mais sobre quem irá te orientar nos treinos.',
+   qualificacao:'Na Academia Modelo, diferentemente das academias convencionais que têm apenas instrutores, contamos com um time de treinadores especialistas em nossos programas exclusivos e personalizados. Nosso objetivo é garantir que você receba o suporte necessário para alcançar suas metas.',
+   unica:'Faço questão que você conheça um pouco mais sobre os profissionais e os programas personalizados que temos aqui na Academia Modelo.',
+   incentivo:'Vou compartilhar com você alguns depoimentos de alunos e informações importantes sobre nossos diferenciais. Tenho um espaço aqui na agenda hoje — conseguimos falar rapidamente pelo telefone ou consegue vir pessoalmente para definirmos seus objetivos?',
+   args:['Em nossa academia, todos os horários têm treinadores especialistas à disposição, garantindo acompanhamento de qualidade.','Oferecemos programas exclusivos e personalizados, adaptados às necessidades de cada aluno.','Nossa academia é reconhecida por sua excelência. Conheça nossas histórias de sucesso.']},
+  {titulo:'Será que a academia é boa?',icon:'⭐',cor:'#f59e0b',
+   acolhimento:'Entendo perfeitamente sua dúvida sobre a qualidade da nossa academia.',
+   qualificacao:'Muitos alunos tinham a mesma dúvida antes de se matricular. Por isso, faço questão de compartilhar casos de sucesso e avaliações muito positivas de pessoas que estavam numa situação parecida com a sua.',
+   unica:'Confiamos demais em nossa metodologia, e por isso é tão importante que você possa viver essa experiência e sentir como nosso ambiente é capaz de transformar essa insegurança em resultados de verdade.',
+   incentivo:'Vamos agendar essa experiência, sem nenhum custo! Você é nosso(a) convidado(a) de honra. Consegue vir ainda hoje ou prefere agendar para amanhã?',
+   args:['Nossa academia é equipada com aparelhos profissionais seguros e oferece variedade de aulas.','Temos avaliações positivas e histórias de sucesso que comprovam nossa metodologia.','Posso verificar a possibilidade de você experimentar nossa academia gratuitamente para conhecer de perto.']},
+  {titulo:'Será que funciona pra mim?',icon:'🎯',cor:'#22c55e',
+   acolhimento:'Essa é uma pergunta muito importante. Você já deu o primeiro passo — parabéns por entrar em ação! Vamos ver como podemos garantir que funcione para você.',
+   qualificacao:'Para personalizar um projeto para você, é importante entender alguns pontos. O principal objetivo dessa nossa conversa é descobrirmos juntos o melhor programa para você nesse momento. Me conta um pouco sobre sua experiência com atividades físicas e como está sua rotina atualmente.',
+   unica:'Vamos avançar nesse projeto agora! Tenho um espaço na agenda hoje para te receber pessoalmente na academia ou falarmos ao telefone para eu te explicar o POR QUE somos tão diferentes — e tenho um presente para você hoje!',
+   incentivo:'Conte comigo — entendi seus objetivos e seu projeto é muito bacana. Vamos ao próximo passo.',
+   args:['Personalizamos nossos programas para atender às necessidades específicas de cada aluno.','Nossos treinadores realizam avaliação física detalhada para assegurar resultados concretos e seguros.','Temos muitos casos de sucesso mostrando que nossos programas são flexíveis e eficazes.']},
+  {titulo:'E se eu não conseguir acompanhar?',icon:'💪',cor:'#FF6B00',
+   acolhimento:'Essa é uma preocupação válida, especialmente com novos programas de treino.',
+   qualificacao:'Nossos treinos são desenvolvidos pensando na facilidade de acompanhamento, independentemente do seu nível de condicionamento.',
+   unica:'Posso te garantir uma coisa — a mais importante: nossa maior preocupação e cuidado é garantir que seu início seja eficiente e seguro.',
+   incentivo:'Vamos agendar um período de experiência e você verá como é simples. Pode esperar e se animar com os primeiros resultados — será incrível! Para quando gostaria de agendar?',
+   args:['Nossos programas são adaptáveis a todos os níveis de condicionamento, do iniciante ao avançado.','Oferecemos suporte contínuo e instruções claras para que você consiga acompanhar e progredir.','Nossa equipe de treinadores está sempre disponível para ajudar com qualquer dúvida.']},
+  {titulo:'E se eu não gostar?',icon:'🤔',cor:'#a855f7',
+   acolhimento:'Eu entendo que você queira garantir que está fazendo uma boa escolha.',
+   qualificacao:'Oferecemos uma política de satisfação garantida, onde você pode testar nossos serviços por um período e, se não gostar, devolvemos seu dinheiro.',
+   unica:'Sua preocupação é sobre a possibilidade de não gostar da academia após a matrícula, certo?',
+   incentivo:'Com nossa garantia de satisfação, você pode experimentar sem risco. Vamos dar esse passo juntos?',
+   args:['Temos política de satisfação garantida, permitindo que você teste nossos serviços sem riscos.','Oferecemos período de teste para que você avalie se nossa academia atende às suas expectativas.','Estamos tão confiantes na qualidade que oferecemos garantia de devolução do dinheiro.']},
+  {titulo:'Estou sem tempo',icon:'⏰',cor:'#f59e0b',
+   acolhimento:'Eu compreendo que o tempo é um recurso valioso para você.',
+   qualificacao:'Oferecemos soluções que podem ser integradas facilmente na sua rotina diária. Posso te mostrar como podemos adaptar o programa ao seu tempo disponível?',
+   unica:'O tempo é o principal fator que te impede de seguir em frente, certo?',
+   incentivo:'Podemos ajustar sua programação conforme sua disponibilidade. Vamos agendar uma rápida consultoria para ver como isso pode funcionar?',
+   args:['Nossos programas são flexíveis e podem ser ajustados conforme sua disponibilidade de tempo.','Oferecemos treinos rápidos e eficientes que podem ser realizados em menos de 30 minutos.','Temos opções de horários variados para se adaptar à sua rotina.']},
+  {titulo:'Estou sem dinheiro',icon:'💰',cor:'#ef4444',
+   acolhimento:'Eu entendo que o investimento é um ponto importante nessa decisão — concordo com você que, se tratando da sua saúde, você precisa ser criterioso.',
+   qualificacao:'Muitos de nossos clientes que demonstraram essa preocupação no início reconheceram que para um projeto com essa qualidade, estrutura e método, nosso plano é uma oportunidade — porque vale muito mais.',
+   unica:'Me deixe te ajudar nisso então… O valor do investimento é o único impedimento no momento, e SE não fosse essa questão de fazer contas, você já tomaria a decisão agora, correto? O que pesa mais: o valor em si ou a condição de pagamento?',
+   incentivo:'Fique tranquilo(a), estamos juntos nisso e vamos encontrar uma solução que funcione para você.',
+   args:['Entendemos que planejar bem os investimentos é fundamental, e por isso oferecemos condições especiais.','Nossos programas são um investimento que traz retorno garantido em saúde e qualidade de vida.','Temos opções exclusivas com condições especiais para tornar nossa academia mais acessível.']}
+];
+
+function renderObjecoes(){
+  const el=document.getElementById('ft-obj-body');if(!el)return;
+  el.innerHTML=OBJECOES.map((o,i)=>{
+    const argsHtml=o.args.map((a,j)=>`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd)"><span style="color:var(--or);font-weight:700;min-width:16px">${j+1}.</span><span style="font-size:12px;color:var(--tm)">${ftPersonalizar(a)}</span></div>`).join('');
+    return`<div style="background:var(--s1);border:1px solid var(--bd);border-left:3px solid ${o.cor};border-radius:10px;margin-bottom:12px;overflow:hidden">
+      <div style="padding:11px 15px;cursor:pointer;display:flex;align-items:center;gap:10px;justify-content:space-between" onclick="toggleCard('obj${i}')">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">${o.icon}</span>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:${o.cor};text-transform:uppercase;letter-spacing:.5px">${o.titulo}</div>
+        </div>
+        <span id="card-arrow-obj${i}" style="color:var(--td);font-size:16px;transition:transform .2s;flex-shrink:0">▸</span>
+      </div>
+      <div id="card-body-obj${i}" style="display:none;padding:0 15px 13px;border-top:1px solid var(--bd)">
+        <div style="height:10px"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:10px">
+          ${[['🤝 Acolhimento',o.acolhimento,'acolh'],['🔍 Qualificação',o.qualificacao,'qual'],['🎯 Única Coisa',o.unica,'unica'],['🚀 Incentivo',o.incentivo,'inc']].map(([lbl,txt,sfx])=>`
+          <div style="background:var(--s2);border-radius:8px;padding:10px 12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:${o.cor}">${lbl}</div>
+              <button onclick="copiarScript('obj-${i}-${sfx}')" style="background:${o.cor};color:#000;border:none;border-radius:3px;padding:2px 8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;cursor:pointer">Copiar</button>
+            </div>
+            <div id="obj-${i}-${sfx}" style="font-size:11px;color:var(--tm);line-height:1.6">${ftPersonalizar(txt)}</div>
+          </div>`).join('')}
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:10px 12px">
+          <div style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--td);margin-bottom:8px">💡 Argumentos</div>
+          ${argsHtml}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function playSection(titulo,sub,items,cor){
+  return`<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:10px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:${cor};text-transform:uppercase;letter-spacing:.5px;margin-bottom:${sub?'3px':'8px'}">${titulo}</div>
+    ${sub?`<div style="font-size:11px;color:var(--td);margin-bottom:8px">${sub}</div>`:''}
+    <div style="display:flex;flex-direction:column;gap:5px">
+      ${items.map(it=>`<div style="display:flex;gap:8px;padding:6px 9px;background:var(--s2);border-radius:6px;align-items:flex-start">
+        <span style="color:${cor};font-weight:700;min-width:18px;flex-shrink:0;margin-top:1px">${it.icon||'▸'}</span>
+        <div><div style="font-size:12px;font-weight:600">${it.t}</div>${it.s?`<div style="font-size:11px;color:var(--td);margin-top:2px">${it.s}</div>`:''}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderPlaybooks(){
+  const leads=document.getElementById('ft-play-leads');
+  if(leads)leads.innerHTML=`
+    <div style="background:var(--or-d);border:1px solid var(--bdo);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:var(--or);text-transform:uppercase;margin-bottom:3px">🟠 Playbook — Leads Novos</div>
+      <div style="font-size:12px;color:var(--tm)">Leads dos últimos 30 dias ainda não convertidos. Academia cresce por cadência, não por campanha.</div>
+    </div>
+    ${playSection('Matemática do Funil','Resultado é conta, não sorte',[
+      {icon:'💰',t:'Meta ÷ Ticket médio = Vendas necessárias',s:'Ex: R$20k ÷ R$600 = 33 vendas'},
+      {icon:'📞',t:'Com 20% de conversão = 150 conversas necessárias'},
+      {icon:'⚡',t:'Quem manda pouco, vende pouco. Volume é chave.'}
+    ],'var(--or)')}
+    ${playSection('3 Alavancas da Previsibilidade','',[
+      {icon:'📋',t:'Lista Ativa',s:'Leads antigos, ex-alunos e base para upgrade — você já tem dinheiro parado'},
+      {icon:'📱',t:'Multitoque',s:'WhatsApp + áudio + ligação estratégica'},
+      {icon:'☕',t:'Café + AQÚI',s:'Ouvir e conduzir o lead para a decisão presencial com autoridade'}
+    ],'var(--or)')}
+    ${playSection('Plano de Ataque 21 Dias','',[
+      {icon:'🔧',t:'Dias 1–3: Preparação',s:'Organizar listas, scripts e ferramentas'},
+      {icon:'🔥',t:'Dias 4–10: Ataque',s:'Início massivo de contatos e abertura de conversas'},
+      {icon:'🤝',t:'Dias 11–17: Conversão',s:'Foco em agendamentos e fechamentos presenciais'},
+      {icon:'📊',t:'Dias 18–21: Otimização',s:'Ajuste de rota, repescagem e fechamento da meta'}
+    ],'var(--or)')}
+    ${playSection('Regras de Ouro','',[
+      {icon:'✅',t:'Não venda no WhatsApp — gere curiosidade, abra a conversa, puxe para o encontro'},
+      {icon:'✅',t:'1 mensagem não basta — imagem + texto + áudio + ligação'},
+      {icon:'❌',t:'Nunca envie preço por mensagem'},
+      {icon:'❌',t:'Nunca espere o lead dar o próximo passo — a ação é sua'}
+    ],'var(--or)')}`;
+
+  const ind=document.getElementById('ft-play-ind');
+  if(ind)ind.innerHTML=`
+    <div style="background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.3);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:var(--pu);text-transform:uppercase;margin-bottom:3px">🟣 Playbook — Feedback + Indicação</div>
+      <div style="font-size:12px;color:var(--tm)">Todo aluno novo deve gerar novos contatos. Regra de ouro do funil.</div>
+    </div>
+    ${playSection('Momento Certo','3º ao 7º dia após a matrícula',[
+      {icon:'🔥',t:'Motivação: pico de empolgação com a nova rotina'},
+      {icon:'🏋️',t:'Experiência: primeiros contatos com o ambiente e a equipe'},
+      {icon:'📈',t:'Mudanças: pequenas melhorias na disposição já percebidas'}
+    ],'var(--pu)')}
+    ${playSection('Checklist Obrigatório — Antes de pedir indicação','',[
+      {icon:'✅',t:'Fez Mapa de Sintomas'},{icon:'✅',t:'Fez consultoria com treinador'},
+      {icon:'✅',t:'Tem metas definidas'},{icon:'✅',t:'Fez avaliação física'},
+      {icon:'✅',t:'Iniciou Desafio 21 Dias'},
+      {icon:'⚠️',t:'Se NÃO: corrigir antes de avançar'}
+    ],'var(--pu)')}
+    ${playSection('Etapas do Processo','',[
+      {icon:'1️⃣',t:'Etapa 1 — Contato: ligação ou mensagem entre 3º e 7º dia'},
+      {icon:'2️⃣',t:'Etapa 2 — Encontro presencial (café): ouvir, conectar, preparar indicação'},
+      {icon:'3️⃣',t:'Etapa 3 — Transição: "E é exatamente por isso que a gente faz o que faz aqui." (PAUSA)'},
+      {icon:'4️⃣',t:'Etapa 4 — Execução: pede o celular, abre os contatos, define 3 a 5 pessoas'},
+      {icon:'🔢',t:'Definição do número: padrão QG = 3 a 5 pessoas — sem negociação'},
+      {icon:'⏰',t:'Regra crítica: fazer na hora — "Enquanto a gente está aqui, você já pode me passar esses contatos."'}
+    ],'var(--pu)')}
+    ${playSection('Quebra de Objeção do Aluno','',[
+      {icon:'🛡️',t:'"Fica tranquilo… você não tem compromisso nenhum de que essas pessoas vão entrar…"'},
+      {icon:'🎁',t:'"É um presente em seu nome."'}
+    ],'var(--pu)')}
+    ${playSection('Meta do Funil','',[
+      {icon:'🎯',t:'10–20% dos leads do mês via indicação'},
+      {icon:'📊',t:'Medir: feedbacks realizados → contatos coletados → leads gerados → conversões'},
+      {icon:'⛔',t:'Erros fatais: não conduzir conversa / não definir número / pedir indicação fraca'}
+    ],'var(--pu)')}`;
+
+  const ren=document.getElementById('ft-play-ren');
+  if(ren)ren.innerHTML=`
+    <div style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:var(--bl);text-transform:uppercase;margin-bottom:3px">🔵 Playbook — Renovação</div>
+      <div style="font-size:12px;color:var(--tm)">Planos que vencem no mês vigente + não renovados do mês anterior. Funil que não pode parar nunca.</div>
+    </div>
+    ${playSection('Organização das Listas','',[
+      {icon:'📋',t:'Lista 1: Planos que vencem no mês vigente',s:'No 1º dia do mês, filtrar todos com vencimento no mês atual'},
+      {icon:'📋',t:'Lista 2: Não renovados do mês anterior',s:'A lista de renovação que não renovou vira este funil'},
+      {icon:'📋',t:'Lista 3 (avançado): Renovação antecipada',s:'Oferecer bônus para renovar antes do vencimento'}
+    ],'var(--bl)')}
+    ${playSection('Campanha de Renovação Antecipada','',[
+      {icon:'🎁',t:'Bônus simples para quem renovar antes do vencimento'},
+      {icon:'🤝',t:'Ex: 1 mês a mais / voucher parceiro / mês para presentear alguém'},
+      {icon:'📅',t:'Ativar nas semanas que antecedem o vencimento massivo'}
+    ],'var(--bl)')}`;
+
+  const suc=document.getElementById('ft-play-suc');
+  if(suc)suc.innerHTML=`
+    <div style="background:var(--gr-d);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:var(--gr);text-transform:uppercase;margin-bottom:3px">🟢 Playbook — Sucesso do Cliente</div>
+      <div style="font-size:12px;color:var(--tm)">Funil de retenção — não é para vender, é para reconectar. Critério: ausência acima de 10 dias.</div>
+    </div>
+    ${playSection('Rotina Diária do Consultor','',[
+      {icon:'📅',t:'Ver alunos com 3–7 dias de ausência'},
+      {icon:'📞',t:'Agendar feedback / cafezinho'},
+      {icon:'🤝',t:'Executar encontros'},
+      {icon:'💾',t:'Registrar no sistema'}
+    ],'var(--gr)')}
+    ${playSection('Como Conduzir o Café com Feedback','',[
+      {icon:'👂',t:'Ouvir a experiência real'},
+      {icon:'🔗',t:'Conectar com o objetivo original'},
+      {icon:'🤝',t:'Conduzir para a decisão de retorno'},
+      {icon:'👥',t:'Pedir indicação estratégica se feedback positivo'},
+      {icon:'💡',t:'Aluno satisfeito é a sua melhor mídia — mas só se alguém conduzir esse momento'}
+    ],'var(--gr)')}`;
+}
+
+function renderAncoragem(){
+  const el=document.getElementById('ft-anc-body');if(!el)return;
+  el.innerHTML=`
+    <div style="background:var(--gr-d);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;color:var(--gr);text-transform:uppercase;margin-bottom:3px">💰 Ancoragem e Pré-Negociação</div>
+      <div style="font-size:12px;color:var(--tm)">A negociação começa antes da negociação. Cada mensagem, áudio e ligação é pré-negociação.</div>
+    </div>
+    ${playSection('O que é Pré-Negociação','',[
+      {icon:'💬',t:'A mensagem de texto que você mandou'},
+      {icon:'🎙️',t:'O áudio que você mandou'},
+      {icon:'📞',t:'A ligação + o áudio imediato quando não atendeu'},
+      {icon:'⭐',t:'Tudo isso constrói VALOR antes de mostrar o preço'}
+    ],'var(--gr)')}
+    ${scriptCard('anc-ab','📞 Abertura com Ancoragem de Valor',
+      'Olá, [Nome]! Aqui é o [Seu Nome] da Academia Modelo. A gente acabou de conversar por WhatsApp e você combinou de falar comigo — então mais uma vez seja bem-vindo(a)! Eu quero te explicar por que a nossa academia é tão diferente das outras… porque eu sei que você vai adorar. Tenho 2 minutinhos com você agora?',
+      'var(--gr)')}
+    ${playSection('Como Ancorar Valor','',[
+      {icon:'🏆',t:'"Vou te explicar por que a nossa academia é tão diferente das outras"',s:'Diga isso antes de qualquer negociação — cria expectativa'},
+      {icon:'🤝',t:'Peça ao lead que se imagine já treinando: "O que vai mudar?"',s:'Conecta ao resultado antes de ver o preço'},
+      {icon:'💡',t:'"A maioria das pessoas não tem resultado por falta de clareza do que quer alcançar"',s:'Posiciona você como autoridade'},
+      {icon:'📈',t:'"Investimento em você é o ativo mais importante da sua vida"',s:'Reposiciona o custo como investimento'}
+    ],'var(--gr)')}
+    ${playSection('Regras da Negociação','',[
+      {icon:'✅',t:'Só fale de preço depois de qualificar e gerar valor'},
+      {icon:'✅',t:'Se o cliente perguntar o preço antes — reposicione: "Antes de te falar qualquer valor, preciso entender seu perfil"'},
+      {icon:'✅',t:'Na objeção de preço: identifique se é o valor em si ou a condição de pagamento'},
+      {icon:'✅',t:'Foque em 1 produto, 1 foco — quem tenta vender tudo não vende nada'},
+      {icon:'❌',t:'Nunca envie tabela de preços por mensagem'},
+      {icon:'❌',t:'Nunca negocie sem antes ter gerado conexão e valor'}
+    ],'var(--gr)')}`;
+}
+
 function closeWelcome(){
   document.getElementById('m-welcome').classList.remove('open');
   localStorage.setItem('qg90_welcomed_'+sessao.id,'1');
