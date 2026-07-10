@@ -291,6 +291,10 @@ tbody tr:hover td{background:var(--s2)}
           <div class="lbl">Academia</div>
           <h1 id="hero-nm">—</h1>
           <div class="hero-sub" id="hero-sub"></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+            <select id="sel-desafio" class="fi-sel" onchange="switchDesafio(this.value)" style="font-size:12px;min-width:160px"><option value="">Desafio Atual</option></select>
+            <button id="btn-finalizar-desafio" class="btn-danger" onclick="confirmarFinalizarDesafio()" style="display:none;font-size:12px;padding:5px 12px">🏁 Finalizar Desafio</button>
+          </div>
         </div>
         <div class="dia-box"><div class="dia-num" id="roi-dia">0</div><div class="dia-lbl">de 21 dias</div></div>
       </div>
@@ -347,7 +351,7 @@ tbody tr:hover td{background:var(--s2)}
             <th>Lista Atual</th><th>Novos Leads</th>
             <th>1ª Tent.</th><th>Cadência</th><th>Total Dia</th>
             <th>Efetivos</th><th>Ag.Mat</th><th>Ag.Exp</th>
-            <th>Conv.</th><th>R$ Vendido</th><th>Obs.</th>
+            <th>Conv.</th><th>R$ Vendido</th><th>Obs.</th><th></th>
           </tr></thead>
           <tbody id="rel-tbody"></tbody>
         </table>
@@ -404,7 +408,49 @@ tbody tr:hover td{background:var(--s2)}
 
   </div>
 
-  <!-- MODAL EDITAR ACADEMIA GAV -->
+  <!-- MODAL EDITAR LANÇAMENTO -->
+  <div class="modal-ov" id="m-edit-lanc">
+    <div class="modal modal-lg">
+      <div class="modal-hd"><h3>✏️ Editar Lançamento</h3><button class="btn-x" onclick="closeM('m-edit-lanc')">×</button></div>
+      <input type="hidden" id="edit-lanc-id">
+      <div class="form-row">
+        <div class="fg"><label class="fl">Consultor(a)</label><select class="fi" id="edit-lanc-cons" onchange="renderEditFunis()"></select></div>
+        <div class="fg"><label class="fl">Dia (1–21)</label><input class="fi" type="number" id="edit-lanc-dia" min="1" max="21"></div>
+        <div class="fg"><label class="fl">Data</label><input class="fi" type="date" id="edit-lanc-data"></div>
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:10px">
+        <div class="form-row">
+          <div class="fg"><label class="fl">Ciclos exclusivos CRM</label><select class="fi" id="edit-lanc-ciclos"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
+          <div class="fg"><label class="fl">Modo do dia</label><select class="fi" id="edit-lanc-modo"><option value="exclusivo">✅ Exclusivo CRM</option><option value="recepcao">⚠️ CRM + Recepção</option></select></div>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label class="fl">Observação</label><input class="fi" id="edit-lanc-obs"></div>
+      <div class="sec-div"><div class="sec-div-line"></div><div class="sec-div-lbl">Indicadores por Funil</div><div class="sec-div-line"></div></div>
+      <div id="edit-lanc-funis-body"></div>
+      <div style="text-align:right;margin-top:14px">
+        <button class="btn-or" id="btn-salvar-edit" onclick="salvarEdicaoLancamento()">Salvar Alterações</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL FINALIZAR DESAFIO -->
+  <div class="modal-ov" id="m-finalizar">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-hd"><h3>🏁 Finalizar Desafio</h3><button class="btn-x" onclick="closeM('m-finalizar')">×</button></div>
+      <div style="background:var(--re-d);border:1px solid var(--re);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--re)">
+        ⚠️ Ao finalizar, os registros diários serão arquivados e as listas dos funis serão zeradas. Os consultores(as) serão mantidos. Essa ação não pode ser desfeita.
+      </div>
+      <div id="finalizar-resumo" style="background:var(--s2);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--tm)"></div>
+      <div class="fg" style="margin-bottom:14px">
+        <label class="fl">Nome deste desafio (opcional)</label>
+        <input class="fi" id="finalizar-nome" placeholder="Ex: Desafio Maio 2026">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn-gh" onclick="closeM('m-finalizar')">Cancelar</button>
+        <button class="btn-danger" style="background:var(--re);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;cursor:pointer" onclick="finalizarDesafio()">Confirmar e Finalizar</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-ov" id="m-edit-gav">
     <div class="modal" style="max-width:460px">
       <div class="modal-hd"><h3>✏️ Editar Academia</h3><button class="btn-x" onclick="closeM('m-edit-gav')">×</button></div>
@@ -913,6 +959,7 @@ async function loadAll(){
     if(!isAdmin()&&sessao.academia_id){acId=sessao.academia_id;}
     else if(isAdmin()){renderAcSelect();if(!acId){const k=Object.keys(db.acs);if(k.length){acId=k[0];document.getElementById('sel-ac').value=acId}}}
     setSS('ok','sincronizado');document.getElementById('loading-ov').classList.add('hide');renderAll();
+  if(!isAdmin())carregarHistoricoDesafios();
   }catch(e){setSS('err','erro conexão');document.getElementById('loading-ov').classList.add('hide');toast('Erro ao sincronizar',true);console.error(e)}
 }
 
@@ -1494,18 +1541,19 @@ function renderConsGrid(a){
 function renderRelatorio(){
   const tbody=document.getElementById('rel-tbody');
   const a=ac();
-  if(!a){tbody.innerHTML='<tr><td colspan="15" style="text-align:center;color:var(--td);padding:24px">Selecione uma academia.</td></tr>';return}
+  if(!a){tbody.innerHTML='<tr><td colspan="16" style="text-align:center;color:var(--td);padding:24px">Selecione uma academia.</td></tr>';return}
   const filtCons=document.getElementById('rel-cons-f').value;
   const filtFunil=document.getElementById('rel-funil-f').value;
   let regs=[...(a.registros||[])].sort((x,y)=>x.dia-y.dia||x.ts-y.ts);
   if(filtCons)regs=regs.filter(r=>r.consultora_id===filtCons);
-  if(!regs.length){tbody.innerHTML='<tr><td colspan="15" style="text-align:center;color:var(--td);padding:24px">Nenhum registro.</td></tr>';return}
+  if(!regs.length){tbody.innerHTML='<tr><td colspan="16" style="text-align:center;color:var(--td);padding:24px">Nenhum registro.</td></tr>';return}
   const rows=[];
   regs.forEach(r=>{
     const c=a.consultoras[r.consultora_id];const cname=c?c.nome:'—';
     const dt=r.data?new Date(r.data+'T00:00:00').toLocaleDateString('pt-BR'):'—';
     const fids=filtFunil?[filtFunil]:Object.keys(r.funis||{});
-    fids.forEach(fid=>{
+    const firstFid=fids[0];
+    fids.forEach((fid,fi)=>{
       const fd=(r.funis||{})[fid];if(!fd)return;
       const f=fInfo(fid);
       const conv=fd.efetivos>0?Math.round(fd.convertidos/fd.efetivos*100):0;
@@ -1527,10 +1575,13 @@ function renderRelatorio(){
         <td style="color:var(--or);font-weight:600">${fd.convertidos||0} <span class="bdg ${cls}">${conv}%</span></td>
         <td style="color:var(--gr)">R$${(fd.vendido||0).toLocaleString('pt-BR')}</td>
         <td style="font-size:11px;color:var(--td)">${r.obs||'—'}</td>
+        <td>${fi===0?`<button class="btn-gh btn-sm" style="font-size:11px" onclick="editarLancamento('${r.id}')">✏️</button>`:''}
+        ${fi===0&&!isAdmin()?`<button class="btn-danger" style="font-size:11px;padding:2px 6px" onclick="deletarLancamento('${r.id}')">🗑</button>`:''}
+        </td>
       </tr>`);
     });
   });
-  tbody.innerHTML=rows.join('')||'<tr><td colspan="15" style="text-align:center;color:var(--td);padding:24px">Nenhum registro.</td></tr>';
+  tbody.innerHTML=rows.join('')||'<tr><td colspan="16" style="text-align:center;color:var(--td);padding:24px">Nenhum registro.</td></tr>';
 }
 
 // ══ RANKING ══
@@ -1753,7 +1804,229 @@ function abrirPainelGav(id){
   window.open(url,'_blank');
 }
 
-// EXPORT CSV
+// ══ EDITAR LANÇAMENTO ══
+function editarLancamento(id){
+  const a=ac();if(!a)return;
+  const reg=a.registros.find(r=>r.id===id);if(!reg)return;
+  document.getElementById('edit-lanc-id').value=id;
+  document.getElementById('edit-lanc-dia').value=reg.dia||'';
+  document.getElementById('edit-lanc-data').value=reg.data||'';
+  document.getElementById('edit-lanc-obs').value=reg.obs||'';
+  document.getElementById('edit-lanc-ciclos').value=reg.ciclos||0;
+  document.getElementById('edit-lanc-modo').value=reg.modo||'exclusivo';
+  // popula select de consultoras
+  const sel=document.getElementById('edit-lanc-cons');
+  sel.innerHTML='';
+  Object.entries(a.consultoras).forEach(([cid,c])=>{
+    const o=document.createElement('option');o.value=cid;o.textContent=c.nome;
+    if(cid===reg.consultora_id)o.selected=true;
+    sel.appendChild(o);
+  });
+  // renderiza funis com dados preenchidos
+  renderEditFunis(reg);
+  openM('m-edit-lanc');
+}
+
+function renderEditFunis(reg){
+  const a=ac();if(!a)return;
+  const cid=document.getElementById('edit-lanc-cons').value;
+  const c=a.consultoras[cid];
+  const el=document.getElementById('edit-lanc-funis-body');
+  if(!c||!c.funis||!c.funis.length){el.innerHTML='<div style="color:var(--td);font-size:12px">Sem funis configurados.</div>';return}
+  // se reg não foi passado, tenta pegar do registro atual
+  if(!reg){
+    const id=document.getElementById('edit-lanc-id').value;
+    const aa=ac();reg=aa?(aa.registros.find(r=>r.id===id)||{}):{};}
+  el.innerHTML=c.funis.map(fid=>{
+    const f=fInfo(fid);if(!f)return'';
+    const fd=(reg.funis||{})[fid]||{};
+    const isF2=fid==='f2';
+    const lblLista=isF2?'Planos para Feedback':'Total Lista Hoje';
+    const lblNovos=isF2?'Adicionar Planos na Lista':'Novos Leads Hoje';
+    const lblAgMat=isF2?'Agendam. Feedback':'Ag. Matrícula';
+    const lblAgExp=isF2?'Indicações Conseguidas':'Ag. Experiência';
+    const lblConv=isF2?'Experiências Iniciadas':'Convertidos Hoje';
+    const lblVendido=isF2?'Indicações Convertidas':'Total Conv. Lista';
+    const pl=PLANOS.map(p=>`<div class="fg"><label class="fl">${p.lbl}</label><input class="fi" type="number" id="edit-${fid}-pl-${p.k}" value="${(fd.planos&&fd.planos[p.k])||0}" min="0"></div>`).join('');
+    return`<div class="lanc-funil-sec">
+      <div class="lanc-funil-title"><div class="lanc-funil-dot" style="background:${f.cor}"></div><span style="color:${f.cor}">${f.nome}</span></div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">${lblLista}</label><input class="fi" type="number" id="edit-${fid}-lista_total" value="${fd.lista_total||0}" min="0"></div>
+        <div class="fg"><label class="fl">${lblNovos}</label><input class="fi" type="number" id="edit-${fid}-novos_leads" value="${fd.novos_leads||0}" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">1ª Tentativa</label><input class="fi" type="number" id="edit-${fid}-tent_novas" value="${fd.tent_novas||0}" min="0"></div>
+        <div class="fg"><label class="fl">Cadência</label><input class="fi" type="number" id="edit-${fid}-tent_cadencia" value="${fd.tent_cadencia||0}" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">Efetivos</label><input class="fi" type="number" id="edit-${fid}-efetivos" value="${fd.efetivos||0}" min="0"></div>
+        <div class="fg"><label class="fl">${lblAgMat}</label><input class="fi" type="number" id="edit-${fid}-ag_mat" value="${fd.ag_mat||0}" min="0"></div>
+        <div class="fg"><label class="fl">${lblAgExp}</label><input class="fi" type="number" id="edit-${fid}-ag_exp" value="${fd.ag_exp||0}" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">${isF2?lblConv:lblVendido}</label><input class="fi" type="number" id="edit-${fid}-${isF2?'convertidos':'total_conv_lista'}" value="${isF2?(fd.convertidos||0):(fd.total_conv_lista||0)}" min="0"></div>
+        <div class="fg"><label class="fl">${isF2?'Indic. Convertidas':'Convertidos Hoje'}</label><input class="fi" type="number" id="edit-${fid}-${isF2?'vendido':'convertidos'}" value="${isF2?(fd.vendido||0):(fd.convertidos||0)}" min="0"></div>
+        <div class="fg"><label class="fl">Total Vendido R$</label><input class="fi" type="number" id="edit-${fid}-${isF2?'vendido_rs':'vendido'}" value="${isF2?(fd.vendido_rs||0):(fd.vendido||0)}" min="0"></div>
+      </div>
+      <div class="planos-form">${pl}</div>
+    </div>`;
+  }).join('');
+}
+
+async function salvarEdicaoLancamento(){
+  const id=document.getElementById('edit-lanc-id').value;
+  const cid=document.getElementById('edit-lanc-cons').value;
+  const dia=parseInt(document.getElementById('edit-lanc-dia').value);
+  const data=document.getElementById('edit-lanc-data').value;
+  const obs=document.getElementById('edit-lanc-obs').value.trim();
+  const ciclos=parseInt(document.getElementById('edit-lanc-ciclos').value)||0;
+  const modo=document.getElementById('edit-lanc-modo').value||'exclusivo';
+  if(!dia||!data){toast('Preencha dia e data',true);return}
+  const a=ac();const c=a.consultoras[cid];
+  const funisData={};
+  (c.funis||[]).forEach(fid=>{
+    const f=fInfo(fid);if(!f)return;
+    const g=field=>parseFloat(document.getElementById(`edit-${fid}-${field}`)?.value)||0;
+    const isF2=fid==='f2';
+    const tent_novas=g('tent_novas'),tent_cadencia=g('tent_cadencia');
+    const planos={};PLANOS.forEach(p=>{planos[p.k]=parseInt(document.getElementById(`edit-${fid}-pl-${p.k}`)?.value)||0});
+    const vendido=isF2?g('vendido_rs'):g('vendido');
+    const conv_indicacoes=isF2?g('vendido'):0;
+    const total_conv_lista=isF2?0:g('total_conv_lista');
+    funisData[fid]={
+      lista_total:g('lista_total'),novos_leads:g('novos_leads'),
+      tent_novas,tent_cadencia,total_dia:tent_novas+tent_cadencia,
+      efetivos:g('efetivos'),ag_mat:g('ag_mat'),ag_exp:g('ag_exp'),
+      convertidos:g('convertidos'),vendido,conv_indicacoes,total_conv_lista,planos
+    };
+  });
+  const btn=document.getElementById('btn-salvar-edit');btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    await fetch(`${SB_URL}/rest/v1/registros?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({consultora_id:cid,dia,data,obs,ciclos,modo,funis:funisData,ts:Date.now()})});
+    closeM('m-edit-lanc');toast('Lançamento atualizado!');await loadAll();
+  }catch(e){toast('Erro ao salvar',true);console.error(e)}
+  btn.disabled=false;btn.textContent='Salvar Alterações';
+}
+
+async function deletarLancamento(id){
+  if(!confirm('Excluir este lançamento? Essa ação não pode ser desfeita.'))return;
+  try{
+    await sbDelete('registros',{id});toast('Lançamento excluído');await loadAll();
+  }catch(e){toast('Erro ao excluir',true);console.error(e)}
+}
+
+// ══ FINALIZAR DESAFIO ══
+function confirmarFinalizarDesafio(){
+  if(isAdmin())return;
+  const a=ac();if(!a)return;
+  const regs=a.registros||[];
+  const diaMax=regs.length?Math.max(...regs.map(r=>r.dia)):0;
+  const datas=regs.map(r=>r.data).filter(Boolean).sort();
+  const dtInicio=datas[0]?new Date(datas[0]+'T00:00:00').toLocaleDateString('pt-BR'):'—';
+  const dtFim=datas[datas.length-1]?new Date(datas[datas.length-1]+'T00:00:00').toLocaleDateString('pt-BR'):'—';
+  const tMat=acMat(a);
+  const tVend=acVend(a);
+  const nCons=Object.keys(a.consultoras).length;
+  document.getElementById('finalizar-resumo').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+      <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--or)">${diaMax}</div><div style="font-size:10px;color:var(--td)">Dias ativos</div></div>
+      <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--or)">${tMat}</div><div style="font-size:10px;color:var(--td)">Matrículas</div></div>
+      <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--gr)">R$${tVend.toLocaleString('pt-BR')}</div><div style="font-size:10px;color:var(--td)">Vendido</div></div>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--td);text-align:center">${dtInicio} → ${dtFim} · ${nCons} consultor${nCons!==1?'es':'a'}</div>
+  `;
+  document.getElementById('finalizar-nome').value=`Desafio ${new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}`;
+  openM('m-finalizar');
+}
+
+async function finalizarDesafio(){
+  const a=ac();if(!a)return;
+  const nomeDesafio=document.getElementById('finalizar-nome').value.trim()||`Desafio ${new Date().toLocaleDateString('pt-BR')}`;
+  const regs=a.registros||[];
+  const diaMax=regs.length?Math.max(...regs.map(r=>r.dia)):0;
+  const datas=regs.map(r=>r.data).filter(Boolean).sort();
+  // conta desafios anteriores
+  const desafiosAnt=await sbGet('desafios',`academia_id=eq.${acId}&order=numero.desc&limit=1`);
+  const numAnterior=desafiosAnt&&desafiosAnt.length?desafiosAnt[0].numero:0;
+  const resumo={
+    matrículas:acMat(a),vendido:acVend(a),
+    consultoras:Object.keys(a.consultoras).length,
+    dias_ativos:diaMax
+  };
+  try{
+    // 1. Salva resumo do desafio
+    await sbPost('desafios',{
+      id:uid(),academia_id:acId,numero:numAnterior+1,
+      data_inicio:datas[0]||null,data_fim:datas[datas.length-1]||null,
+      dias_ativos:diaMax,resumo:{...resumo,nome:nomeDesafio}
+    });
+    // 2. Deleta todos os registros da academia
+    await fetch(`${SB_URL}/rest/v1/registros?academia_id=eq.${acId}`,{method:'DELETE',headers:{...H,'Prefer':''}});
+    // 3. Zera lista dos funis em todas as consultoras
+    const updates=Object.keys(a.consultoras).map(cid=>
+      fetch(`${SB_URL}/rest/v1/consultoras?id=eq.${cid}`,{method:'PATCH',headers:H,body:JSON.stringify({lista:{}})})
+    );
+    await Promise.all(updates);
+    closeM('m-finalizar');
+    toast(`Desafio "${nomeDesafio}" finalizado! Novo desafio iniciado.`);
+    await loadAll();
+    carregarHistoricoDesafios();
+  }catch(e){toast('Erro ao finalizar',true);console.error(e)}
+}
+
+async function carregarHistoricoDesafios(){
+  if(isAdmin()||!acId)return;
+  try{
+    const hist=await sbGet('desafios',`academia_id=eq.${acId}&order=numero.desc`);
+    const sel=document.getElementById('sel-desafio');
+    if(!sel)return;
+    sel.innerHTML='<option value="">Desafio Atual</option>';
+    (hist||[]).forEach(d=>{
+      const o=document.createElement('option');
+      o.value=d.id;
+      const nome=d.resumo&&d.resumo.nome?d.resumo.nome:`Desafio #${d.numero}`;
+      const dtI=d.data_inicio?new Date(d.data_inicio+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
+      const dtF=d.data_fim?new Date(d.data_fim+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}):'';
+      o.textContent=`${nome} (${dtI}–${dtF})`;
+      sel.appendChild(o);
+    });
+    // mostra botão finalizar só para gestor com registros
+    const btn=document.getElementById('btn-finalizar-desafio');
+    if(btn)btn.style.display=!isAdmin()&&acId?'block':'none';
+  }catch(e){console.error(e)}
+}
+
+function switchDesafio(desafioId){
+  const sel=document.getElementById('sel-desafio');
+  if(!desafioId){
+    // volta para desafio atual
+    document.getElementById('btn-finalizar-desafio').style.display='block';
+    renderAll();return;
+  }
+  // mostra dados históricos (somente leitura)
+  document.getElementById('btn-finalizar-desafio').style.display='none';
+  sbGet('desafios',`id=eq.${desafioId}`).then(rows=>{
+    if(!rows||!rows.length)return;
+    const d=rows[0];const r=d.resumo||{};
+    const dtI=d.data_inicio?new Date(d.data_inicio+'T00:00:00').toLocaleDateString('pt-BR'):'—';
+    const dtF=d.data_fim?new Date(d.data_fim+'T00:00:00').toLocaleDateString('pt-BR'):'—';
+    document.getElementById('hero-nm').textContent=r.nome||`Desafio #${d.numero}`;
+    document.getElementById('hero-sub').textContent=`${dtI} → ${dtF} · ${d.dias_ativos} dias ativos`;
+    document.getElementById('roi-dia').textContent=d.dias_ativos||0;
+    document.getElementById('kpi-grid').innerHTML=`
+      <div class="kpi hi"><div class="kpi-lbl">Matrículas</div><div class="kpi-val or">${r.matrículas||0}</div></div>
+      <div class="kpi hi"><div class="kpi-lbl">Total Vendido</div><div class="kpi-val or">R$${(r.vendido||0).toLocaleString('pt-BR')}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Dias Ativos</div><div class="kpi-val am">${d.dias_ativos||0}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Consultores</div><div class="kpi-val">${r.consultoras||0}</div></div>
+      <div class="kpi"><div class="kpi-lbl">Período</div><div class="kpi-val" style="font-size:14px">${dtI}</div><div class="kpi-sub">→ ${dtF}</div></div>
+    `;
+    document.getElementById('painel-prod-time').style.display='none';
+    document.getElementById('painel-funis-grid').innerHTML='<div style="color:var(--td);font-size:12px;padding:12px 0">Detalhes por funil não disponíveis para desafios arquivados.</div>';
+    if(evolChart)evolChart.destroy();
+  });
+}
+
+// ══ EXPORT CSV ══
 function exportCSV(){
   const a=ac();if(!a){toast('Sem dados',true);return}
   const hdr=['Dia','Data','Consultor(a)','Funil','Lista Atual','Novos Leads','1ª Tentativas','Cadência','Total Dia','Efetivos','Ag.Mat','Ag.Exp','Convertidos','Vendido R$','Anual','Mensal','Especial','Recorrencia','Outro','Obs'];
