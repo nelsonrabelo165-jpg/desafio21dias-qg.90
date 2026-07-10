@@ -1715,7 +1715,7 @@ async function toggleGavAtiva(){
 
 function abrirPainelGav(id){
   const a=gavAcademias.find(x=>x.id===id);if(!a)return;
-  const base=window.location.href.replace(/\/[^\/]*$/','/').replace('index.html','');
+  const base=window.location.href.replace(/\/[^\/]*$/,'/').replace('index.html','');
   const url=`${base}QG90-gestao.html?ac=${encodeURIComponent(a.nome)}&pw=${encodeURIComponent(a.senha_gestor)}&pf=gestor`;
   window.open(url,'_blank');
 }
