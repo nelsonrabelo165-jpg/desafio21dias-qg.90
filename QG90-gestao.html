@@ -317,7 +317,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
     </div>
     <div class="login-field">
       <label>Senha de acesso</label>
-      <input type="password" id="l-senha" placeholder="Senha fornecida pelo QG.90" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
+      <input type="password" id="l-senha" placeholder="Senha fornecida pelo QG.90" autocomplete="current-password" autocorrect="off" autocapitalize="none" spellcheck="false" onkeydown="if(event.key==='Enter')fazerLogin()">
     </div>
 
     <button class="btn-login" id="btn-entrar" onclick="fazerLogin()">Entrar →</button>
@@ -356,15 +356,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
 
     <div class="login-field">
       <label>👑 Senha do Gestor(a) — acesso total</label>
-      <input type="text" id="cad-s-gestor" placeholder="Ex: minhaacademia@gest">
+      <input type="text" id="cad-s-gestor" placeholder="Ex: minhaacademia@gest" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
     </div>
     <div class="login-field">
       <label>💼 Senha da Liderança Comercial</label>
-      <input type="text" id="cad-s-comercial" placeholder="Ex: minhaacademia@com">
+      <input type="text" id="cad-s-comercial" placeholder="Ex: minhaacademia@com" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
     </div>
     <div class="login-field">
       <label>🏋️ Senha da Liderança Técnica</label>
-      <input type="text" id="cad-s-tecnico" placeholder="Ex: minhaacademia@tec">
+      <input type="text" id="cad-s-tecnico" placeholder="Ex: minhaacademia@tec" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
     </div>
 
     <button class="btn-login" id="btn-cadastrar" onclick="fazerCadastro()" style="margin-top:16px">Criar conta →</button>
@@ -388,6 +388,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);font
     <span class="tb-clock" id="clock"></span>
     <button class="btn btn-tv" onclick="toggleTV()" id="btn-tv">📺 TV</button>
     <button class="btn btn-o" onclick="nav('lancamento')">+ Lançar dia</button>
+    <a href="https://nelsonrabelo165-jpg.github.io/desafio21dias-qg.90" target="_blank" style="background:rgba(255,107,0,0.15);color:var(--o);border:1px solid rgba(255,107,0,0.35);border-radius:6px;padding:5px 12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;text-decoration:none;white-space:nowrap">🏆 Desafio ROI 21 Dias</a>
   </div>
 </header>
 
@@ -1626,11 +1627,12 @@ window.saveDB=function(){
   const p=new URLSearchParams(window.location.search);
   const ac=p.get('ac'),pw=p.get('pw'),pf=p.get('pf');
   if(!ac||!pw||!pf)return;
-  // Preenche campos e faz login automático
+  // Preenche campos
   document.getElementById('l-academia').value=ac;
   document.getElementById('l-perfil').value=pf;
   document.getElementById('l-senha').value=pw;
-  await fazerLogin();
+  // Aguarda página carregar completamente antes de fazer login
+  setTimeout(async()=>{ await fazerLogin(); }, 800);
 })();
 
 // ══════════════════════════════════════
