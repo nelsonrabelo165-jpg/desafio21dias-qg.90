@@ -295,6 +295,9 @@ tbody tr:hover td{background:var(--s2)}
       </div>
       <div class="kpi-grid" id="kpi-grid"></div>
 
+      <!-- PRODUTIVIDADE DO TIME -->
+      <div id="painel-prod-time" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:18px 20px;margin-bottom:16px"></div>
+
       <!-- SITUAÇÃO POR FUNIL -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tm)">Situação por Funil</div>
@@ -485,6 +488,33 @@ tbody tr:hover td{background:var(--s2)}
       <div style="margin-bottom:12px">
         <button class="btn-gh" style="width:100%;padding:9px;border-color:var(--bdo);color:var(--or)" onclick="renderLancFunis()">▶ Carregar campos do funil para esta consultora</button>
       </div>
+
+      <!-- CICLOS E MODO DO DIA -->
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--td);margin-bottom:10px">⏱ Modo de trabalho do dia</div>
+        <div class="form-row">
+          <div class="fg">
+            <label class="fl">Ciclos exclusivos CRM (0–6)</label>
+            <select class="fi" id="lanc-ciclos">
+              <option value="0">0 — nenhum ciclo exclusivo</option>
+              <option value="1">1 ciclo exclusivo</option>
+              <option value="2">2 ciclos exclusivos</option>
+              <option value="3">3 ciclos exclusivos</option>
+              <option value="4">4 ciclos exclusivos</option>
+              <option value="5">5 ciclos exclusivos</option>
+              <option value="6">6 ciclos exclusivos</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label class="fl">Modo do dia</label>
+            <select class="fi" id="lanc-modo">
+              <option value="exclusivo">✅ Exclusivo CRM — sem interrupções</option>
+              <option value="recepcao">⚠️ CRM + Recepção / outras tarefas</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div class="fg" style="margin-bottom:10px"><label class="fl">Observação do dia</label><input class="fi" id="lanc-obs" placeholder="Ex: Campanha ativa, evento na academia..."></div>
       <div class="sec-div"><div class="sec-div-line"></div><div class="sec-div-lbl">Indicadores por Funil</div><div class="sec-div-line"></div></div>
       <div id="lanc-funis-body"></div>
@@ -967,6 +997,8 @@ async function lancarDia(){
   const dia=parseInt(document.getElementById('lanc-dia').value);
   const data=document.getElementById('lanc-data').value;
   const obs=document.getElementById('lanc-obs').value.trim();
+  const ciclos=parseInt(document.getElementById('lanc-ciclos').value)||0;
+  const modo=document.getElementById('lanc-modo').value||'exclusivo';
   if(!cid){toast('Selecione o(a) consultor(a)',true);return}
   if(!dia||dia<1||dia>21){toast('Dia deve ser 1–21',true);return}
   if(!data){toast('Informe a data',true);return}
@@ -990,7 +1022,7 @@ async function lancarDia(){
   });
   const btn=document.getElementById('btn-lancar');btn.disabled=true;btn.textContent='Salvando...';
   try{
-    await sbPost('registros',{id:uid(),academia_id:acId,consultora_id:cid,dia,data,obs,funis:funisData,ts:Date.now()});
+    await sbPost('registros',{id:uid(),academia_id:acId,consultora_id:cid,dia,data,obs,ciclos,modo,funis:funisData,ts:Date.now()});
     closeM('m-lanc');toast('Lançamento salvo!');await loadAll();
   }catch(e){toast('Erro ao salvar',true);console.error(e)}
   btn.disabled=false;btn.textContent='Salvar Lançamento';
@@ -1004,6 +1036,29 @@ function listaAtualFunil(regs,fid){const u=[...regs].reverse().find(r=>r.funis&&
 function consMat(a,cid){const regs=consRegs(a,cid);return(a.consultoras[cid].funis||[]).reduce((s,fid)=>s+sumF(regs,fid,'convertidos'),0)}
 function acMat(a){return Object.keys(a.consultoras).reduce((s,cid)=>s+consMat(a,cid),0)}
 function acVend(a){return(a.registros||[]).reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.vendido||0),0)},0)}
+
+// ══ PRODUTIVIDADE DIÁRIA ══
+function calcProdutividade(regs){
+  const dias=new Set(regs.map(r=>r.dia)).size||1;
+  const totalTent=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.tent_novas||0)+(fd.tent_cadencia||0),0)},0);
+  const totalContatos=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.efetivos||0),0)},0);
+  const totalAg=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.ag_mat||0)+(fd.ag_exp||0),0)},0);
+  const totalCiclos=regs.reduce((s,r)=>s+(r.ciclos||0),0);
+  const diasExclusivo=regs.filter(r=>r.modo==='exclusivo').length;
+  const diasRecepcao=regs.filter(r=>r.modo==='recepcao').length;
+  const diasSemInfo=dias-diasExclusivo-diasRecepcao;
+  return{
+    dias,
+    mediaTent:dias>0?(totalTent/dias).toFixed(1):0,
+    mediaContatos:dias>0?(totalContatos/dias).toFixed(1):0,
+    mediaAg:dias>0?(totalAg/dias).toFixed(1):0,
+    mediaCiclos:dias>0?(totalCiclos/dias).toFixed(1):0,
+    taxaContato:totalTent>0?Math.round(totalContatos/totalTent*100):0,
+    taxaAg:totalContatos>0?Math.round(totalAg/totalContatos*100):0,
+    diasExclusivo,diasRecepcao,diasSemInfo,
+    totalTent,totalContatos,totalAg
+  };
+}
 
 // ══ RENDER ALL ══
 async function renderAll(){
@@ -1040,6 +1095,59 @@ function renderPainel(a){
     <div class="kpi hi"><div class="kpi-lbl">Total Vendido</div><div class="kpi-val or">R$${tVend.toLocaleString('pt-BR')}</div></div>
     <div class="kpi"><div class="kpi-lbl">Dia Atual</div><div class="kpi-val am">${diaMax}</div><div class="kpi-sub">de 21</div></div>
   `;
+
+  // PRODUTIVIDADE DO TIME
+  const prodTime=calcProdutividade(regs);
+  const nCons=Object.keys(a.consultoras).length||1;
+  const semTentTime=parseFloat(prodTime.mediaTent)>=30?'var(--gr)':parseFloat(prodTime.mediaTent)>=15?'var(--am)':'var(--re)';
+  const semContTime=prodTime.taxaContato>=25?'var(--gr)':prodTime.taxaContato>=15?'var(--am)':'var(--re)';
+  const semAgTime=prodTime.taxaAg>=20?'var(--gr)':prodTime.taxaAg>=10?'var(--am)':'var(--re)';
+  const pctExclTime=prodTime.diasExclusivo+prodTime.diasRecepcao>0?Math.round(prodTime.diasExclusivo/(prodTime.diasExclusivo+prodTime.diasRecepcao)*100):0;
+  const prodEl=document.getElementById('painel-prod-time');
+  if(prodEl&&regs.length>0){
+    prodEl.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tm)">Produtividade do Time — Médias por dia</div>
+        <div style="font-size:11px;color:var(--td)">${prodTime.dias} dias lançados · ${nCons} consultor${nCons!==1?'es':'a'}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:10px">
+        <div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center;border-top:2px solid ${semTentTime}">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:${semTentTime}">${prodTime.mediaTent}</div>
+          <div style="font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:.8px;margin-top:2px">Tentativas/dia</div>
+          <div style="font-size:10px;color:var(--td);margin-top:2px">ref: 30–50</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center;border-top:2px solid ${semContTime}">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:${semContTime}">${prodTime.mediaContatos}</div>
+          <div style="font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:.8px;margin-top:2px">Contatos/dia</div>
+          <div style="font-size:10px;color:var(--td);margin-top:2px">ref: 20–30</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center;border-top:2px solid ${semAgTime}">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:${semAgTime}">${prodTime.mediaAg}</div>
+          <div style="font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:.8px;margin-top:2px">Agendamentos/dia</div>
+          <div style="font-size:10px;color:var(--td);margin-top:2px">ref: 5–10</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center;border-top:2px solid var(--bd)">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--tm)">${prodTime.taxaContato}%</div>
+          <div style="font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:.8px;margin-top:2px">Taxa contato</div>
+          <div style="font-size:10px;color:var(--td);margin-top:2px">cont/tent.</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:12px;text-align:center;border-top:2px solid var(--bd)">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--tm)">${prodTime.taxaAg}%</div>
+          <div style="font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:.8px;margin-top:2px">Taxa ag.</div>
+          <div style="font-size:10px;color:var(--td);margin-top:2px">ag/contato</div>
+        </div>
+      </div>
+      ${prodTime.diasExclusivo+prodTime.diasRecepcao>0?`
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="font-size:11px;color:var(--td)">Modo de trabalho:</div>
+        <span style="font-size:11px;background:var(--gr-d);color:var(--gr);padding:3px 10px;border-radius:4px;font-weight:600">✅ ${prodTime.diasExclusivo}d exclusivo CRM</span>
+        <span style="font-size:11px;background:var(--am-d);color:var(--am);padding:3px 10px;border-radius:4px;font-weight:600">⚠️ ${prodTime.diasRecepcao}d recepção/tarefas</span>
+        <span style="font-size:11px;color:${pctExclTime>=60?'var(--gr)':pctExclTime>=30?'var(--am)':'var(--re)'};font-weight:700">${pctExclTime}% exclusivo</span>
+      </div>`:''}
+    `;
+    prodEl.style.display='block';
+  } else if(prodEl){prodEl.style.display='none';}
+
   if(evolChart)evolChart.destroy();
   const byDia={};for(let d=1;d<=21;d++)byDia[d]=0;
   regs.forEach(r=>{if(!r.funis)return;const m=Object.values(r.funis).reduce((s,fd)=>s+(fd.convertidos||0),0);byDia[r.dia]=(byDia[r.dia]||0)+m});
@@ -1240,18 +1348,27 @@ function renderConsGrid(a){
   el.innerHTML=en.map(([id,c])=>{
     const regs=consRegs(a,id);
     const mat=consMat(a,id);
-    const tNovas=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.tent_novas||0),0)},0);
-    const tCad=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.tent_cadencia||0),0)},0);
-    const efet=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.efetivos||0),0)},0);
+    const prod=calcProdutividade(regs);
     const vend=regs.reduce((s,r)=>{if(!r.funis)return s;return s+Object.values(r.funis).reduce((s2,fd)=>s2+(fd.vendido||0),0)},0);
-    const conv=efet>0?Math.round(mat/efet*100):0;
-    const dias=new Set(regs.map(r=>r.dia)).size;
     const fps=(c.funis||[]).map(fid=>{const f=fInfo(fid);return f?`<span class="fpill" style="background:${f.cor}22;color:${f.cor}">${f.nome.split(' ')[0]}</span>`:''}).join('');
-    // progresso meta
     let pct=0,metaStr='';
-    if(c.meta_tipo==='treino'){metaStr='Treinamento';pct=Math.min(100,dias/21*100);}
+    if(c.meta_tipo==='treino'){metaStr='Treinamento';pct=Math.min(100,prod.dias/21*100);}
     else if(c.meta_tipo==='rs'){metaStr=`R$ ${c.meta.toLocaleString('pt-BR')}`;pct=c.meta>0?Math.min(100,Math.round(vend/c.meta*100)):0;}
     else{metaStr=`${c.meta} planos`;pct=c.meta>0?Math.min(100,Math.round(mat/c.meta*100)):0;}
+
+    // Semáforo tentativas (base: 15/ciclo, mínimo 2 ciclos = 30/dia)
+    const ciclosEst=parseFloat(c.horas||0);
+    const tentMin=ciclosEst*15*0.6; // 60% do potencial como mínimo
+    const tentOk=ciclosEst*15;
+    const tentBom=ciclosEst*20;
+    const semTent=parseFloat(prod.mediaTent)>=tentBom?'var(--gr)':parseFloat(prod.mediaTent)>=tentMin?'var(--am)':'var(--re)';
+    const semCont=prod.taxaContato>=25?'var(--gr)':prod.taxaContato>=15?'var(--am)':'var(--re)';
+    const semAg=prod.taxaAg>=20?'var(--gr)':prod.taxaAg>=10?'var(--am)':'var(--re)';
+
+    // Modo de trabalho
+    const totalDiasInfo=prod.diasExclusivo+prod.diasRecepcao;
+    const pctExclusivo=totalDiasInfo>0?Math.round(prod.diasExclusivo/totalDiasInfo*100):0;
+
     return`<div class="cons-card">
       <div class="cons-head">
         <div class="avatar">${initials(c.nome)}</div>
@@ -1259,15 +1376,47 @@ function renderConsGrid(a){
         <div class="cons-funis">${fps}</div>
       </div>
       <div class="cons-body">
-        <div class="cons-stats">
+        <!-- RESULTADO -->
+        <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;color:var(--td);margin-bottom:6px">Resultado</div>
+        <div class="cons-stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:8px">
           <div class="cs"><span class="cs-num or">${mat}</span><span class="cs-lbl">Matrículas</span></div>
-          <div class="cs"><span class="cs-num bl">${tNovas}</span><span class="cs-lbl">1ªs Tent.</span></div>
-          <div class="cs"><span class="cs-num">${tCad}</span><span class="cs-lbl">Cadência</span></div>
-          <div class="cs"><span class="cs-num gr">${conv}%</span><span class="cs-lbl">Conv.</span></div>
+          <div class="cs"><span class="cs-num gr">R$${vend>=1000?Math.round(vend/1000)+'k':vend}</span><span class="cs-lbl">Vendido</span></div>
+          <div class="cs"><span class="cs-num">${prod.dias}</span><span class="cs-lbl">Dias ativos</span></div>
         </div>
-        <div style="font-size:10px;color:var(--td);margin-bottom:5px">R$${vend.toLocaleString('pt-BR')} vendidos · ${dias} dias ativos</div>
-        <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%"></div></div>
-        <div class="pct-lbl">${Math.round(pct)}% da meta</div>
+        <div class="mini-bar-wrap" style="margin-bottom:3px"><div class="mini-bar" style="width:${pct}%"></div></div>
+        <div class="pct-lbl" style="margin-bottom:10px">${Math.round(pct)}% da meta</div>
+
+        <!-- PRODUTIVIDADE DIÁRIA -->
+        <div style="height:1px;background:var(--bd);margin-bottom:8px"></div>
+        <div style="font-size:9px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;color:var(--td);margin-bottom:6px">Produtividade média/dia</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">
+          <div style="background:var(--s2);border-radius:6px;padding:7px;text-align:center;border-left:2px solid ${semTent}">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:${semTent}">${prod.mediaTent}</div>
+            <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:.4px">Tent./dia</div>
+          </div>
+          <div style="background:var(--s2);border-radius:6px;padding:7px;text-align:center;border-left:2px solid ${semCont}">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:${semCont}">${prod.mediaContatos}</div>
+            <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:.4px">Cont./dia</div>
+          </div>
+          <div style="background:var(--s2);border-radius:6px;padding:7px;text-align:center;border-left:2px solid ${semAg}">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:${semAg}">${prod.mediaAg}</div>
+            <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:.4px">Ag./dia</div>
+          </div>
+        </div>
+
+        <!-- TAXAS E MODO -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+          <span style="font-size:10px;background:var(--s2);border-radius:4px;padding:3px 8px;color:${semCont}">
+            ${prod.taxaContato}% contato/tent.
+          </span>
+          <span style="font-size:10px;background:var(--s2);border-radius:4px;padding:3px 8px;color:${semAg}">
+            ${prod.taxaAg}% ag./contato
+          </span>
+        </div>
+        ${totalDiasInfo>0?`<div style="font-size:10px;color:var(--td)">
+          ✅ ${prod.diasExclusivo}d exclusivo · ⚠️ ${prod.diasRecepcao}d recepção
+          <span style="color:${pctExclusivo>=60?'var(--gr)':pctExclusivo>=30?'var(--am)':'var(--re)'};font-weight:700;margin-left:4px">${pctExclusivo}% exclusivo</span>
+        </div>`:''}
       </div>
     </div>`;
   }).join('');
