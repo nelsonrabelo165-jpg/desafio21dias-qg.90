@@ -811,8 +811,8 @@ tbody tr:hover td{background:var(--s2)}
 
 <!-- MODAL ACESSO ACADEMIA -->
 <div class="modal-ov" id="m-acesso">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-hd"><h3>🔑 Acesso da Academia</h3><button class="btn-x" onclick="closeM('m-acesso')">×</button></div>
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hd"><h3>🔑 Gerenciar Academia</h3><button class="btn-x" onclick="closeM('m-acesso')">×</button></div>
     <div id="acesso-body"></div>
   </div>
 </div>
@@ -1668,35 +1668,108 @@ function openAcesso(acId2){
   const a=db.acs[acId2];
   const g=gestoresDB[acId2];
   const el=document.getElementById('acesso-body');
-  if(!g){
-    el.innerHTML=`<div style="color:var(--td);font-size:13px">Nenhum gestor cadastrado para esta academia.</div>`;
-  } else {
-    el.innerHTML=`
-      <div style="margin-bottom:14px">
+  const ativo=g?g.ativo!==false:null; // true = ativo, false = suspenso
+  el.innerHTML=`
+    <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+      <div>
         <div style="font-size:12px;color:var(--td);margin-bottom:4px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Academia</div>
         <div style="font-weight:600;font-size:15px">${a.nome}</div>
       </div>
-      <div style="margin-bottom:10px">
-        <div style="font-size:12px;color:var(--td);margin-bottom:4px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Gestor(a)</div>
-        <div style="font-size:14px">${g.nome}</div>
-      </div>
-      <div style="margin-bottom:10px">
-        <div style="font-size:12px;color:var(--td);margin-bottom:4px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">E-mail de acesso</div>
-        <div style="font-size:14px;font-weight:600;color:var(--or)">${g.email}</div>
-      </div>
-      <div style="margin-bottom:20px">
-        <div style="font-size:12px;color:var(--td);margin-bottom:4px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Senha atual</div>
-        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px 14px;font-size:15px;font-family:monospace;color:var(--gr);letter-spacing:1px">${g.senha_hash}</div>
-      </div>
-      <div class="divider"></div>
-      <div style="font-size:12px;color:var(--td);margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Resetar senha</div>
-      <div style="display:flex;gap:8px">
-        <input class="fi" id="nova-senha-input" placeholder="Nova senha" style="flex:1">
-        <button class="btn-or" onclick="resetSenha('${g.id}')">Salvar</button>
-      </div>
-    `;
-  }
+      ${g?`<span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:${ativo?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'};color:${ativo?'#22c55e':'#ef4444'}">${ativo?'● ATIVO':'● SUSPENSO'}</span>`:''}
+    </div>
+
+    <div class="divider"></div>
+    <div style="font-size:12px;color:var(--td);margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Editar cadastro da academia</div>
+    <div class="form-row">
+      <div class="fg"><label class="fl">Nome</label><input class="fi" id="ac-edit-nome" value="${a.nome||''}"></div>
+      <div class="fg"><label class="fl">Cidade</label><input class="fi" id="ac-edit-cidade" value="${a.cidade||''}"></div>
+    </div>
+    <button class="btn-gh btn-sm" onclick="salvarCadastroAcademia('${acId2}')">Salvar cadastro</button>
+
+    <div class="divider"></div>
+
+    ${g?`
+    <div style="font-size:12px;color:var(--td);margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Editar gestor(a) / usuário</div>
+    <div class="form-row">
+      <div class="fg"><label class="fl">Nome</label><input class="fi" id="ac-edit-gnome" value="${g.nome||''}"></div>
+      <div class="fg"><label class="fl">E-mail de acesso</label><input class="fi" id="ac-edit-gemail" value="${g.email||''}"></div>
+    </div>
+    <button class="btn-gh btn-sm" onclick="salvarUsuarioAcademia('${g.id}')">Salvar usuário</button>
+
+    <div class="divider"></div>
+    <div style="font-size:12px;color:var(--td);margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Senha atual</div>
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px 14px;font-size:15px;font-family:monospace;color:var(--gr);letter-spacing:1px;margin-bottom:10px">${g.senha_hash}</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input class="fi" id="nova-senha-input" placeholder="Nova senha" style="flex:1">
+      <button class="btn-or" onclick="resetSenha('${g.id}')">Salvar</button>
+    </div>
+
+    <div class="divider"></div>
+    <div style="font-size:12px;color:var(--td);margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Acesso ao sistema</div>
+    <button class="btn-${ativo?'danger':'or'}" style="width:100%;margin-bottom:10px" onclick="toggleAtivoAcademia('${g.id}',${ativo})">${ativo?'⛔ Suspender acesso':'✅ Reativar acesso'}</button>
+    `:`<div style="color:var(--td);font-size:13px;margin-bottom:16px">Nenhum gestor cadastrado para esta academia.</div>`}
+
+    <div class="divider"></div>
+    <div style="font-size:12px;color:var(--vermelho,#ef4444);margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Zona de risco</div>
+    <button class="btn-danger" style="width:100%" onclick="excluirAcademiaCompleta('${acId2}','${(a.nome||'').replace(/'/g,"\\'")}')">🗑 Excluir academia (permanente)</button>
+  `;
   document.getElementById('m-acesso').classList.add('open');
+}
+
+async function salvarCadastroAcademia(acId2){
+  const nome=document.getElementById('ac-edit-nome').value.trim();
+  const cidade=document.getElementById('ac-edit-cidade').value.trim();
+  if(!nome){toast('Nome não pode ficar vazio',true);return}
+  try{
+    await fetch(`${SB_URL}/rest/v1/academias?id=eq.${acId2}`,{method:'PATCH',headers:H,body:JSON.stringify({nome,cidade})});
+    toast('Cadastro da academia atualizado!');
+    await loadAll();
+    if(typeof renderAdminPanel==='function')renderAdminPanel();
+  }catch(e){toast('Erro ao salvar',true);console.error(e)}
+}
+
+async function salvarUsuarioAcademia(gId){
+  const nome=document.getElementById('ac-edit-gnome').value.trim();
+  const email=document.getElementById('ac-edit-gemail').value.trim().toLowerCase();
+  if(!nome||!email){toast('Preencha nome e e-mail',true);return}
+  try{
+    await fetch(`${SB_URL}/rest/v1/gestores?id=eq.${gId}`,{method:'PATCH',headers:H,body:JSON.stringify({nome,email})});
+    toast('Usuário atualizado!');
+    Object.values(gestoresDB).forEach(g=>{if(g.id===gId){g.nome=nome;g.email=email}});
+    if(typeof renderAdminPanel==='function')renderAdminPanel();
+  }catch(e){toast('Erro ao salvar',true);console.error(e)}
+}
+
+// Suspender/reativar: usa o MESMO campo `ativo` da tabela gestores — bloqueia login
+// tanto no Desafio ROI quanto na Central de Scripts AQÚI (mesma verificação nos dois)
+async function toggleAtivoAcademia(gId,ativoAtual){
+  const novo=!ativoAtual;
+  const acao=novo?'reativar':'suspender';
+  if(!confirm(`Confirma ${acao} o acesso desta academia?`))return;
+  try{
+    await fetch(`${SB_URL}/rest/v1/gestores?id=eq.${gId}`,{method:'PATCH',headers:H,body:JSON.stringify({ativo:novo})});
+    toast(novo?'Acesso reativado!':'Acesso suspenso!');
+    Object.values(gestoresDB).forEach(g=>{if(g.id===gId)g.ativo=novo});
+    closeM('m-acesso');
+    if(typeof renderAdminPanel==='function')renderAdminPanel();
+  }catch(e){toast('Erro ao atualizar acesso',true);console.error(e)}
+}
+
+// Exclui a academia e TODOS os dados vinculados (gestores, consultoras, registros).
+// Ação permanente — pede confirmação dupla por segurança.
+async function excluirAcademiaCompleta(acId2,nomeAc){
+  const conf=prompt(`Isso vai excluir "${nomeAc}" e TODOS os dados vinculados (consultores, lançamentos, acessos) PERMANENTEMENTE.\n\nDigite o nome da academia para confirmar:`);
+  if(conf!==nomeAc){if(conf!==null)toast('Nome não confere — exclusão cancelada.',true);return}
+  try{
+    await sbDelete('registros',{academia_id:acId2});
+    await sbDelete('consultoras',{academia_id:acId2});
+    await sbDelete('gestores',{academia_id:acId2});
+    await sbDelete('academias',{id:acId2});
+    toast('Academia excluída permanentemente.');
+    closeM('m-acesso');
+    await loadAll();
+    if(typeof renderAdminPanel==='function')renderAdminPanel();
+  }catch(e){toast('Erro ao excluir academia',true);console.error(e)}
 }
 
 async function resetSenha(gId){
