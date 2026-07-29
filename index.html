@@ -267,6 +267,7 @@ tbody tr:hover td{background:var(--s2)}
       <span id="user-chip" class="user-chip"></span>
       <button class="btn-gh btn-sm" id="btn-add-cons-top" onclick="openM('m-cons')" style="display:none">+ Consultor(a)</button>
       <button class="btn-or" id="btn-lancar-top" onclick="openM('m-lanc')" style="display:none">Lançar Dia</button>
+      <button class="btn-gh btn-sm" onclick="abrirCentralScripts()" title="Abre em nova aba, já logado">📚 Central de Scripts</button>
       <button class="btn-logout" onclick="doLogout()">Sair</button>
     </div>
   </div>
@@ -934,6 +935,13 @@ async function doLogin(){
   btn.disabled=false;btn.textContent='Entrar';
 }
 function doLogout(){sessao=null;acId=null;db={acs:{}};document.getElementById('app').classList.remove('show');document.getElementById('login-email').value='';document.getElementById('login-senha').value='';showScreen('screen-login')}
+
+// Abre a Central de Scripts AQÚI já autenticada, sem pedir login de novo.
+// IMPORTANTE: se o arquivo estiver em outra pasta/domínio, ajuste a URL abaixo.
+function abrirCentralScripts(){
+  if(!sessao||!sessao.id){toast('Faça login primeiro.',true);return;}
+  window.open(`central-scripts-aqui.html?uid=${encodeURIComponent(sessao.id)}`,'_blank');
+}
 
 // ══ INICIAR APP ══
 async function iniciarApp(){
