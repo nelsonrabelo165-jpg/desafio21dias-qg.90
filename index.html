@@ -1343,7 +1343,7 @@ function renderPainelFunis(){
     } else {
       steps=[
         {lbl:'Lista Ativa',val:d.lista,cor:'var(--tm)',sub:'oportunidades'},
-        {lbl:'Tentativas',val:totalTent,cor:'var(--tm)',sub:`${tentNovasCap} únicas · ${d.tent_cad} retornos`},
+        {lbl:'Cobertura da Lista',val:tentNovasCap,cor:'var(--tm)',sub:`${d.lista>0?Math.round(tentNovasCap/d.lista*100):0}% da lista · +${d.tent_cad} retornos (cadência)`},
         {lbl:'Contatos Efetivos',val:d.efetivos,cor:'var(--am)',sub:totalTent>0?`${Math.round(d.efetivos/totalTent*100)}% tent.`:''},
         {lbl:'Agendamentos',val:d.ag_mat+d.ag_exp,cor:'var(--am)',sub:`mat: ${d.ag_mat} · exp: ${d.ag_exp}`},
         {lbl:'Convertidos',val:d.convertidos,cor:f.cor,sub:`${convPct}% efetivos`},
