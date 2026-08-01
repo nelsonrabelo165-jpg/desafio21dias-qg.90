@@ -268,6 +268,7 @@ tbody tr:hover td{background:var(--s2)}
       <button class="btn-gh btn-sm" id="btn-add-cons-top" onclick="openM('m-cons')" style="display:none">+ Consultor(a)</button>
       <button class="btn-or" id="btn-lancar-top" onclick="openM('m-lanc')" style="display:none">Lançar Dia</button>
       <button class="btn-gh btn-sm" onclick="abrirCentralScripts()" title="Abre em nova aba, já logado">📚 Central de Scripts</button>
+      <button class="btn-gh btn-sm" onclick="abrirCampanhas()" title="Abre em nova aba, já logado">📢 Campanhas</button>
       <button class="btn-logout" onclick="doLogout()">Sair</button>
     </div>
   </div>
@@ -942,6 +943,10 @@ function abrirCentralScripts(){
   if(!sessao||!sessao.id){toast('Faça login primeiro.',true);return;}
   window.open(`central-scripts-aqui.html?uid=${encodeURIComponent(sessao.id)}`,'_blank');
 }
+function abrirCampanhas(){
+  if(!sessao||!sessao.id){toast('Faça login primeiro.',true);return;}
+  window.open(`campanhas.html?uid=${encodeURIComponent(sessao.id)}`,'_blank');
+}
 
 // ══ INICIAR APP ══
 async function iniciarApp(){
@@ -1497,6 +1502,7 @@ function renderConsGrid(a){
         <div class="avatar">${initials(c.nome)}</div>
         <div><div class="cons-nm">${c.nome}</div><div class="cons-sub">Meta: ${metaStr} · ${c.horas}h/dia</div></div>
         <div class="cons-funis">${fps}</div>
+        <button class="btn-gh btn-sm" style="flex-shrink:0;font-size:11px;padding:3px 10px;margin-left:6px" onclick="event.stopPropagation();abrirAcessoConsultora('${id}','${c.nome.replace(/'/g,"\\'")}')">🔑 Acesso</button>
       </div>
       <div class="cons-body">
         <!-- RESULTADO -->
@@ -1770,6 +1776,69 @@ async function excluirAcademiaCompleta(acId2,nomeAc){
     await loadAll();
     if(typeof renderAdminPanel==='function')renderAdminPanel();
   }catch(e){toast('Erro ao excluir academia',true);console.error(e)}
+}
+
+// ══ ACESSO DE CONSULTOR(A) CRM-VENDAS — até 5 por academia ══
+// Cada consultora pode ter (opcionalmente) uma conta de login própria (role='consultor'),
+// vinculada pelo campo gestores.consultora_id. Isso dá acesso individual à Central de
+// Campanhas, filtrado só pros cards dela.
+async function abrirAcessoConsultora(consultoraId,consultoraNome){
+  const el=document.getElementById('acesso-body');
+  document.querySelector('#m-acesso .modal-hd h3').textContent='🔑 Acesso do(a) Consultor(a)';
+  el.innerHTML='<div style="color:var(--td);font-size:13px;padding:10px 0">Carregando...</div>';
+  openM('m-acesso');
+  try{
+    const existentes=await sbGet('gestores',`consultora_id=eq.${consultoraId}&select=id,nome,email,senha_hash,ativo`);
+    const login=existentes[0];
+    if(login){
+      el.innerHTML=`
+        <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+          <div><div style="font-size:12px;color:var(--td);margin-bottom:4px">Consultor(a)</div><div style="font-weight:600;font-size:15px">${consultoraNome}</div></div>
+          <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:${login.ativo?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'};color:${login.ativo?'#22c55e':'#ef4444'}">${login.ativo?'● ATIVO':'● SUSPENSO'}</span>
+        </div>
+        <div class="divider"></div>
+        <div style="font-size:12px;color:var(--td);margin-bottom:6px">E-mail de acesso</div>
+        <div style="font-weight:600;color:var(--or);margin-bottom:14px">${login.email}</div>
+        <div style="font-size:12px;color:var(--td);margin-bottom:6px">Senha atual</div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px 14px;font-family:monospace;color:var(--gr);margin-bottom:14px">${login.senha_hash}</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <input class="fi" id="nova-senha-input" placeholder="Nova senha" style="flex:1">
+          <button class="btn-or" onclick="resetSenha('${login.id}')">Salvar</button>
+        </div>
+        <div class="divider"></div>
+        <button class="btn-${login.ativo?'danger':'or'}" style="width:100%" onclick="toggleAtivoAcademia('${login.id}',${login.ativo})">${login.ativo?'⛔ Suspender acesso':'✅ Reativar acesso'}</button>
+      `;
+      return;
+    }
+    // Sem login ainda — verifica limite de 5 antes de mostrar o formulário de criação
+    const todos=await sbGet('gestores',`academia_id=eq.${acId}&role=eq.consultor&select=id`);
+    if(todos.length>=5){
+      el.innerHTML=`<div style="color:var(--re);font-size:13.5px;padding:10px 0">⚠️ Limite de 5 consultores(as) com acesso já atingido nesta academia. Suspenda ou remova um acesso existente antes de criar outro.</div>`;
+      return;
+    }
+    el.innerHTML=`
+      <div style="margin-bottom:14px"><div style="font-size:12px;color:var(--td);margin-bottom:4px">Criar acesso para</div><div style="font-weight:600;font-size:15px">${consultoraNome}</div></div>
+      <p style="font-size:12.5px;color:var(--td);margin-bottom:14px">${todos.length}/5 acessos de consultor(a) usados nesta academia.</p>
+      <div class="fg" style="margin-bottom:10px"><label class="fl">E-mail de acesso</label><input class="fi" id="novo-cons-email" placeholder="consultora@email.com"></div>
+      <div class="fg" style="margin-bottom:16px"><label class="fl">Senha</label><input class="fi" id="novo-cons-senha" placeholder="Defina uma senha"></div>
+      <button class="btn-or" style="width:100%" onclick="criarAcessoConsultora('${consultoraId}','${consultoraNome.replace(/'/g,"\\'")}')">Criar acesso</button>
+    `;
+  }catch(e){console.error(e);el.innerHTML='<div style="color:var(--re);font-size:13px">Erro ao carregar. Veja o console.</div>';}
+}
+async function criarAcessoConsultora(consultoraId,consultoraNome){
+  const email=document.getElementById('novo-cons-email').value.trim().toLowerCase();
+  const senha=document.getElementById('novo-cons-senha').value;
+  if(!email||!senha||senha.length<4){toast('Preencha e-mail e uma senha com ao menos 4 caracteres',true);return}
+  try{
+    const existeEmail=await sbGet('gestores',`email=eq.${encodeURIComponent(email)}&select=id`);
+    if(existeEmail.length){toast('Já existe um acesso com esse e-mail.',true);return}
+    await fetch(`${SB_URL}/rest/v1/gestores`,{method:'POST',headers:H,body:JSON.stringify({
+      nome:consultoraNome,email,senha_hash:senha,academia_id:acId,
+      role:'consultor',ativo:true,consultora_id:consultoraId
+    })});
+    toast('Acesso criado! A consultora já pode entrar pela Central de Campanhas.');
+    closeM('m-acesso');
+  }catch(e){console.error(e);toast('Erro ao criar acesso',true);}
 }
 
 async function resetSenha(gId){
