@@ -161,6 +161,7 @@ tbody tr:hover td{background:var(--s2)}
 .fg{display:flex;flex-direction:column;gap:4px}
 .fl{font-size:10px;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;color:var(--td)}
 .fi{background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:7px 9px;color:var(--tx);font-family:'Barlow',sans-serif;font-size:13px;transition:border-color .15s;width:100%}
+.fi[readonly]{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.35);color:var(--gr);cursor:not-allowed}
 .fi:focus{outline:none;border-color:var(--or)}
 .fi::placeholder{color:var(--td)}
 .fi-full{grid-column:1/-1}
@@ -826,6 +827,13 @@ tbody tr:hover td{background:var(--s2)}
   </div>
 </div>
 
+<div class="modal-ov" id="m-cons-detalhe">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-hd"><h3 id="cd-nome">Consultor(a)</h3><button class="btn-x" onclick="closeM('m-cons-detalhe')">×</button></div>
+    <div id="cd-body"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- MODAL BOAS-VINDAS -->
@@ -875,8 +883,12 @@ let metaTipo='planos'; // 'planos' | 'rs' | 'treino'
 const FUNIS=[
   {id:'f0',nome:'Leads Novos',cor:'#FF6B00',sub:'Mês anterior + vigente',planos:true},
   {id:'f1',nome:'Renovação',cor:'#3b82f6',sub:'Não renovados + a vencer',planos:true},
+  {id:'f3',nome:'Rematrícula',cor:'#B57BEE',sub:'Ex-alunos',planos:true},
   {id:'f2',nome:'Feedback + Indicação',cor:'#a855f7',sub:'Novos via indicação',planos:true}
 ];
+// Liga o funil do ROI ao perfil correspondente no módulo de Campanhas — usado pra
+// puxar os números automaticamente no Lançar Dia, quando a consultora tem cards lá.
+const FUNIL_PARA_PERFIL_CAMPANHA={f0:'leads',f1:'renovacao',f3:'rematricula',f2:null};
 const PLANOS=[{k:'anual',lbl:'Anual'},{k:'mensal',lbl:'Mensal'},{k:'especial',lbl:'Especial'},{k:'recorrencia',lbl:'Recorr.'},{k:'outro',lbl:'Outro'}];
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
@@ -1083,13 +1095,44 @@ function populateLancCons(){
   Object.entries(a.consultoras).forEach(([id,c])=>{const o=document.createElement('option');o.value=id;o.textContent=c.nome;sel.appendChild(o)});
 }
 
-function renderLancFunis(){
+// Busca os números de HOJE no módulo de Campanhas pra um funil+consultora — usado
+// pra auto-preencher o Lançar Dia sem a consultora digitar de novo o que já registrou
+// no Modo Atendimento. Retorna null se ela não tem nenhum card nesse perfil.
+async function buscarDadosCampanhaHoje(consultoraId,perfil){
+  if(!perfil)return null;
+  try{
+    const cards=await sbGet('campanha_cards',`consultora_id=eq.${consultoraId}&perfil=eq.${perfil}&select=id,status,etapa_atual,created_at,updated_at`);
+    if(!cards.length)return null;
+    const hojeStr=new Date().toISOString().slice(0,10);
+    const inicioHoje=new Date();inicioHoje.setHours(0,0,0,0);
+    const fimHoje=new Date();fimHoje.setHours(23,59,59,999);
+    const emHoje=ts=>ts>=inicioHoje.getTime()&&ts<=fimHoje.getTime();
+
+    const cardIds=cards.map(c=>c.id);
+    const interacoesHoje=cardIds.length?await sbGet('campanha_interacoes',`card_id=in.(${cardIds.join(',')})&data=eq.${hojeStr}`):[];
+
+    const tent_novas=interacoesHoje.filter(i=>i.tentativa_numero===1).length;
+    const tent_cadencia=interacoesHoje.filter(i=>i.tentativa_numero>1).length;
+    const efetivos=interacoesHoje.filter(i=>(i.resultado||'').includes('contato_efetivo')).length;
+    const novos_leads=cards.filter(c=>c.created_at&&emHoje(c.created_at)).length;
+    const ag_mat=cards.filter(c=>['agendada_matricula','feedback_matricula'].includes(c.etapa_atual)&&c.updated_at&&emHoje(c.updated_at)).length;
+    const ag_exp=cards.filter(c=>c.etapa_atual==='exp_agendada'&&c.updated_at&&emHoje(c.updated_at)).length;
+    const convertidos=cards.filter(c=>c.status==='convertido'&&c.updated_at&&emHoje(c.updated_at)).length;
+    const total_conv_lista=cards.filter(c=>c.status==='convertido').length;
+    const lista_total=cards.length;
+
+    return{lista_total,novos_leads,tent_novas,tent_cadencia,efetivos,ag_mat,ag_exp,convertidos,total_conv_lista};
+  }catch(e){console.error(e);return null;}
+}
+
+async function renderLancFunis(){
   const a=ac();if(!a)return;
   const cid=document.getElementById('lanc-cons').value;
   const el=document.getElementById('lanc-funis-body');
   if(!cid){el.innerHTML='<div style="color:var(--td);font-size:12px">Selecione um(a) consultor(a).</div>';return}
   const c=a.consultoras[cid];
   if(!c||!c.funis||!c.funis.length){el.innerHTML='<div style="color:var(--td);font-size:12px">Sem funis configurados.</div>';return}
+  el.innerHTML='<div style="color:var(--td);font-size:12px">Carregando...</div>';
 
   // calcula lista atual por funil (último valor registrado)
   const regs=consRegs(a,cid);
@@ -1099,9 +1142,16 @@ function renderLancFunis(){
     listaAtual[fid]=ultimoComLista?ultimoComLista.funis[fid].lista_total:0;
   });
 
+  // busca dados automáticos do Campanhas em paralelo, um por funil
+  const dadosAuto={};
+  await Promise.all(c.funis.map(async fid=>{
+    dadosAuto[fid]=await buscarDadosCampanhaHoje(cid,FUNIL_PARA_PERFIL_CAMPANHA[fid]);
+  }));
+
   el.innerHTML=c.funis.map(fid=>{
     const f=fInfo(fid);if(!f)return'';
-    const laAtual=listaAtual[fid];
+    const auto=dadosAuto[fid]; // null = sem cards no Campanhas, segue manual
+    const laAtual=auto?auto.lista_total:listaAtual[fid];
     const isF2=fid==='f2';
     // Labels específicos por funil
     const lblLista=isF2?'Planos para Feedback':'Total Lista Hoje';
@@ -1111,9 +1161,13 @@ function renderLancFunis(){
     const lblConv=isF2?'Experiências Iniciadas':'Convertidos';
     const lblVendido=isF2?'Indicações Convertidas (mat.)':'Total Vendido R$';
     const phLista=isF2?'Ex: 45':'Ex: 125';
-    const infoLista=isF2
-      ?(laAtual>0?`Base atual: <strong>${laAtual}</strong> planos para feedback`:'Base ainda não informada — informe abaixo o total de planos para feedback hoje')
-      :(laAtual>0?`Lista atual: <strong>${laAtual}</strong> leads`:'Lista ainda não informada — informe abaixo o total atualizado hoje');
+    const infoLista=auto
+      ?`🔗 <strong>Automático</strong> — puxado ao vivo do módulo de Campanhas (${auto.lista_total} cards nesse funil)`
+      :(isF2
+        ?(laAtual>0?`Base atual: <strong>${laAtual}</strong> planos para feedback`:'Base ainda não informada — informe abaixo o total de planos para feedback hoje')
+        :(laAtual>0?`Lista atual: <strong>${laAtual}</strong> leads`:'Lista ainda não informada — informe abaixo o total atualizado hoje'));
+    const ro=auto?'readonly':''; // campos automáticos ficam travados pra não sobrescrever por engano
+    const val=k=>auto&&auto[k]!==undefined?`value="${auto[k]}"`:'';
     const pl=f.planos?`
       <div class="sec-div" style="margin:7px 0 5px"><div class="sec-div-line"></div><div class="sec-div-lbl">Planos Vendidos</div><div class="sec-div-line"></div></div>
       <div class="planos-form">${PLANOS.map(p=>`<div class="fg"><label class="fl">${p.lbl}</label><input class="fi" type="number" id="lanc-${fid}-pl-${p.k}" placeholder="0" min="0"></div>`).join('')}</div>`:'';
@@ -1123,24 +1177,24 @@ function renderLancFunis(){
         <span style="color:${f.cor}">${f.nome}</span>
         <span style="color:var(--td);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px">${f.sub}</span>
       </div>
-      <div class="info-box">📋 ${infoLista}</div>
+      <div class="info-box" style="${auto?'border-color:var(--gr);color:var(--gr)':''}">📋 ${infoLista}</div>
       <div class="form-row">
-        <div class="fg"><label class="fl">${lblLista}</label><input class="fi" type="number" id="lanc-${fid}-lista_total" placeholder="${laAtual||phLista}" min="0"></div>
-        <div class="fg"><label class="fl">${lblNovos}</label><input class="fi" type="number" id="lanc-${fid}-novos_leads" placeholder="0" min="0"></div>
+        <div class="fg"><label class="fl">${lblLista}</label><input class="fi" type="number" id="lanc-${fid}-lista_total" placeholder="${laAtual||phLista}" min="0" ${val('lista_total')} ${ro}></div>
+        <div class="fg"><label class="fl">${lblNovos}</label><input class="fi" type="number" id="lanc-${fid}-novos_leads" placeholder="0" min="0" ${val('novos_leads')} ${ro}></div>
       </div>
       <div class="sec-div" style="margin:7px 0 5px"><div class="sec-div-line"></div><div class="sec-div-lbl">Tentativas do Dia</div><div class="sec-div-line"></div></div>
       <div class="form-row">
-        <div class="fg"><label class="fl">1ª Tentativa (novos)</label><input class="fi" type="number" id="lanc-${fid}-tent_novas" placeholder="Ex: 35" min="0"></div>
-        <div class="fg"><label class="fl">Cadência (retorno)</label><input class="fi" type="number" id="lanc-${fid}-tent_cadencia" placeholder="Ex: 20" min="0"></div>
+        <div class="fg"><label class="fl">1ª Tentativa (novos)</label><input class="fi" type="number" id="lanc-${fid}-tent_novas" placeholder="Ex: 35" min="0" ${val('tent_novas')} ${ro}></div>
+        <div class="fg"><label class="fl">Cadência (retorno)</label><input class="fi" type="number" id="lanc-${fid}-tent_cadencia" placeholder="Ex: 20" min="0" ${val('tent_cadencia')} ${ro}></div>
       </div>
       <div class="form-row">
-        <div class="fg"><label class="fl">Contatos Efetivos</label><input class="fi" type="number" id="lanc-${fid}-efetivos" placeholder="Ex: 12" min="0"></div>
-        <div class="fg"><label class="fl">${lblAgMat}</label><input class="fi" type="number" id="lanc-${fid}-ag_mat" placeholder="Ex: 4" min="0"></div>
-        <div class="fg"><label class="fl">${lblAgExp}</label><input class="fi" type="number" id="lanc-${fid}-ag_exp" placeholder="Ex: 2" min="0"></div>
+        <div class="fg"><label class="fl">Contatos Efetivos</label><input class="fi" type="number" id="lanc-${fid}-efetivos" placeholder="Ex: 12" min="0" ${val('efetivos')} ${ro}></div>
+        <div class="fg"><label class="fl">${lblAgMat}</label><input class="fi" type="number" id="lanc-${fid}-ag_mat" placeholder="Ex: 4" min="0" ${val('ag_mat')} ${ro}></div>
+        <div class="fg"><label class="fl">${lblAgExp}</label><input class="fi" type="number" id="lanc-${fid}-ag_exp" placeholder="Ex: 2" min="0" ${val('ag_exp')} ${ro}></div>
       </div>
       <div class="form-row">
-        <div class="fg"><label class="fl">${isF2?lblConv:'Total Convertidos Lista'}</label><input class="fi" type="number" id="lanc-${fid}-${isF2?'convertidos':'total_conv_lista'}" placeholder="Ex: ${isF2?'3':'15'}" min="0"></div>
-        <div class="fg"><label class="fl">${isF2?lblVendido:'Convertidos Hoje'}</label><input class="fi" type="number" id="lanc-${fid}-${isF2?'vendido':'convertidos'}" placeholder="Ex: ${isF2?'5':'3'}" min="0"></div>
+        <div class="fg"><label class="fl">${isF2?lblConv:'Total Convertidos Lista'}</label><input class="fi" type="number" id="lanc-${fid}-${isF2?'convertidos':'total_conv_lista'}" placeholder="Ex: ${isF2?'3':'15'}" min="0" ${val('total_conv_lista')} ${ro}></div>
+        <div class="fg"><label class="fl">${isF2?lblVendido:'Convertidos Hoje'}</label><input class="fi" type="number" id="lanc-${fid}-${isF2?'vendido':'convertidos'}" placeholder="Ex: ${isF2?'5':'3'}" min="0" ${!isF2&&auto?val('convertidos'):''} ${!isF2?ro:''}></div>
         <div class="fg"><label class="fl">Total Vendido Hoje R$</label><input class="fi" type="number" id="lanc-${fid}-${isF2?'vendido_rs':'vendido'}" placeholder="Ex: 2250" min="0"></div>
       </div>
       ${pl}
@@ -1232,13 +1286,21 @@ function renderPainel(a){
   const regs=a.registros||[];
   // Dias corridos = desde a data de início do Desafio Ativo (planejada pelo gestor).
   // Dias de CRM ativo = quantos dias distintos, desde o início, tiveram pelo menos
-  // 1 "ciclo exclusivo CRM" lançado por qualquer consultora (campo que já existia).
+  // 1 tentativa (nova ou de cadência) lançada por qualquer consultora, em qualquer
+  // funil — derivado do que já é preenchido, sem exigir campo/pergunta extra.
   let diasCorridos=0,diasComCRM=0;
   if(a.desafio_inicio){
     const ini=new Date(a.desafio_inicio+'T00:00:00');
     const hoje=new Date();hoje.setHours(0,0,0,0);
     diasCorridos=Math.max(1,Math.floor((hoje-ini)/86400000)+1);
-    diasComCRM=new Set(regs.filter(r=>r.data&&r.data>=a.desafio_inicio&&(r.ciclos||0)>=1).map(r=>r.data)).size;
+    // "Dia de CRM ativo" = teve pelo menos 1 tentativa (nova ou de cadência) lançada
+    // em qualquer funil naquele dia — não depende de bloco exclusivo, funciona pra
+    // times multitarefa também.
+    const temAtividade=r=>{
+      if(!r.funis)return false;
+      return Object.values(r.funis).some(fd=>(fd.tent_novas||0)+(fd.tent_cadencia||0)>0);
+    };
+    diasComCRM=new Set(regs.filter(r=>r.data&&r.data>=a.desafio_inicio&&temAtividade(r)).map(r=>r.data)).size;
     document.getElementById('roi-dia').textContent=diasCorridos;
     document.getElementById('roi-dia-crm').textContent=`${diasComCRM} dia${diasComCRM===1?'':'s'} de CRM ativo`;
   }else{
@@ -1557,7 +1619,7 @@ function renderConsGrid(a){
     const totalDiasInfo=prod.diasExclusivo+prod.diasRecepcao;
     const pctExclusivo=totalDiasInfo>0?Math.round(prod.diasExclusivo/totalDiasInfo*100):0;
 
-    return`<div class="cons-card">
+    return`<div class="cons-card" onclick="abrirDetalheConsultora('${id}','${c.nome.replace(/'/g,"\\'")}')" style="cursor:pointer">
       <div class="cons-head">
         <div class="avatar">${initials(c.nome)}</div>
         <div><div class="cons-nm">${c.nome}</div><div class="cons-sub">Meta: ${metaStr} · ${c.horas}h/dia</div></div>
@@ -1842,6 +1904,66 @@ async function excluirAcademiaCompleta(acId2,nomeAc){
 // Cada consultora pode ter (opcionalmente) uma conta de login própria (role='consultor'),
 // vinculada pelo campo gestores.consultora_id. Isso dá acesso individual à Central de
 // Campanhas, filtrado só pros cards dela.
+// ══ DETALHE DA CONSULTORA — dados AO VIVO do módulo de Campanhas, por funil ══
+// Sem campo duplicado: tudo aqui é lido direto de campanha_cards/campanha_ondas/campanhas.
+const FUNIS_CAMPANHAS=[
+  {p:'leads',label:'Leads Novos'},
+  {p:'rematricula',label:'Rematrícula (Ex-Alunos)'},
+  {p:'renovacao',label:'Renovação'},
+  {p:'feedback',label:'Feedback + Indicação'}
+];
+async function abrirDetalheConsultora(consultoraId,consultoraNome){
+  document.getElementById('cd-nome').textContent=consultoraNome;
+  const body=document.getElementById('cd-body');
+  body.innerHTML='<div style="color:var(--td);font-size:13px;padding:10px 0">Carregando dados do módulo de Campanhas...</div>';
+  openM('m-cons-detalhe');
+  try{
+    const cards=await sbGet('campanha_cards',`consultora_id=eq.${consultoraId}&select=id,perfil,status,onda_id,campanha_id`);
+    if(!cards.length){
+      body.innerHTML='<div style="color:var(--td);font-size:13.5px;padding:10px 0">Esta consultora ainda não tem cards em nenhuma campanha do módulo de Campanhas.</div>';
+      return;
+    }
+    const ondaIds=[...new Set(cards.map(c=>c.onda_id).filter(Boolean))];
+    const campIds=[...new Set(cards.map(c=>c.campanha_id).filter(Boolean))];
+    const [ondas,camps]=await Promise.all([
+      ondaIds.length?sbGet('campanha_ondas',`id=in.(${ondaIds.join(',')})&select=id,data_inicio,numero_onda`):[],
+      campIds.length?sbGet('campanhas',`id=in.(${campIds.join(',')})&select=id,nome`):[]
+    ]);
+    const ondaById={};ondas.forEach(o=>ondaById[o.id]=o);
+    const campById={};camps.forEach(c=>campById[c.id]=c);
+    const hoje=new Date();hoje.setHours(0,0,0,0);
+
+    const linhas=FUNIS_CAMPANHAS.map(f=>{
+      const doFunil=cards.filter(c=>c.perfil===f.p);
+      if(!doFunil.length)return{...f,vazio:true};
+      const ativos=doFunil.filter(c=>c.status==='ativo').length;
+      const convertidos=doFunil.filter(c=>c.status==='convertido').length;
+      // pega a onda mais antiga entre os cards ativos, pra saber "desde quando" ela trabalha esse funil
+      const ondasDoFunil=doFunil.map(c=>ondaById[c.onda_id]).filter(Boolean);
+      let inicioStr='—',diasAtivos='—',campNome='—';
+      if(ondasDoFunil.length){
+        const maisAntiga=ondasDoFunil.reduce((a,b)=>a.data_inicio<b.data_inicio?a:b);
+        inicioStr=maisAntiga.data_inicio?new Date(maisAntiga.data_inicio+'T00:00:00').toLocaleDateString('pt-BR'):'—';
+        if(maisAntiga.data_inicio){diasAtivos=Math.max(0,Math.floor((hoje-new Date(maisAntiga.data_inicio+'T00:00:00'))/86400000)+1);}
+      }
+      const campanhaId=doFunil[0]?.campanha_id;
+      if(campanhaId&&campById[campanhaId])campNome=campById[campanhaId].nome;
+      return{...f,vazio:false,campNome,inicioStr,diasAtivos,ativos,convertidos};
+    });
+
+    body.innerHTML=`
+      <table class="map-table" style="width:100%">
+        <tr><th>Funil</th><th>Campanha</th><th>Início</th><th>Dias ativos</th><th>Cards ativos</th><th>Convertidos</th></tr>
+        ${linhas.map(l=>l.vazio?
+          `<tr><td>${l.label}</td><td colspan="5" style="color:var(--td)">— nenhuma campanha ativa —</td></tr>`:
+          `<tr><td>${l.label}</td><td>${l.campNome}</td><td>${l.inicioStr}</td><td>${l.diasAtivos}</td><td>${l.ativos}</td><td style="color:var(--gr);font-weight:700">${l.convertidos}</td></tr>`
+        ).join('')}
+      </table>
+      <p style="font-size:11.5px;color:var(--td);margin-top:12px">Dados ao vivo do módulo de Campanhas — pra ajustar datas ou mover cards, use o Kanban de Campanhas diretamente.</p>
+    `;
+  }catch(e){console.error(e);body.innerHTML='<div style="color:var(--re);font-size:13px">Erro ao carregar. Veja o console.</div>';}
+}
+
 async function abrirAcessoConsultora(consultoraId,consultoraNome){
   const el=document.getElementById('acesso-body');
   document.querySelector('#m-acesso .modal-hd h3').textContent='🔑 Acesso do(a) Consultor(a)';
