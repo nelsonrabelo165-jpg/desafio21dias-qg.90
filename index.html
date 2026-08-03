@@ -929,23 +929,44 @@ async function doLogin(){
     const res=await sbGet('gestores',`email=eq.${encodeURIComponent(email)}&senha_hash=eq.${encodeURIComponent(senha)}&ativo=eq.true&select=id,nome,email,academia_id,role`);
     if(!res||!res.length){err.textContent='E-mail ou senha incorretos.';err.classList.add('show');btn.disabled=false;btn.textContent='Entrar';return}
     sessao=res[0];
+    sessionStorage.setItem('qg90_sessao_roi',JSON.stringify(sessao));
     document.querySelectorAll('.auth-screen').forEach(s=>s.classList.remove('active'));
     document.getElementById('app').classList.add('show');
     await iniciarApp();
   }catch(e){err.textContent='Erro de conexão.';err.classList.add('show');console.error(e)}
   btn.disabled=false;btn.textContent='Entrar';
 }
-function doLogout(){sessao=null;acId=null;db={acs:{}};document.getElementById('app').classList.remove('show');document.getElementById('login-email').value='';document.getElementById('login-senha').value='';showScreen('screen-login')}
+function doLogout(){sessionStorage.removeItem('qg90_sessao_roi');sessao=null;acId=null;db={acs:{}};document.getElementById('app').classList.remove('show');document.getElementById('login-email').value='';document.getElementById('login-senha').value='';showScreen('screen-login')}
+
+// Ao carregar a página: se já tem sessão salva neste navegador, REVALIDA no Supabase
+// (garante que suspensão de acesso continua valendo) e pula a tela de login direto —
+// resolve o "precisa logar de novo toda vez que navega entre as telas".
+async function checkSessaoInicial(){
+  const raw=sessionStorage.getItem('qg90_sessao_roi');
+  if(!raw)return; // segue fluxo normal, mostra tela de login
+  let s;
+  try{s=JSON.parse(raw);}catch(e){sessionStorage.removeItem('qg90_sessao_roi');return;}
+  try{
+    const res=await sbGet('gestores',`id=eq.${encodeURIComponent(s.id)}&ativo=eq.true&select=id,nome,email,academia_id,role`);
+    if(!res||!res.length){sessionStorage.removeItem('qg90_sessao_roi');return;}
+    sessao=res[0];
+    sessionStorage.setItem('qg90_sessao_roi',JSON.stringify(sessao));
+    document.querySelectorAll('.auth-screen').forEach(s2=>s2.classList.remove('active'));
+    document.getElementById('app').classList.add('show');
+    await iniciarApp();
+  }catch(e){console.error(e);}
+}
 
 // Abre a Central de Scripts AQÚI já autenticada, sem pedir login de novo.
+// Navega na MESMA aba (em vez de abrir aba nova) — evita acumular abas no navegador.
 // IMPORTANTE: se o arquivo estiver em outra pasta/domínio, ajuste a URL abaixo.
 function abrirCentralScripts(){
   if(!sessao||!sessao.id){toast('Faça login primeiro.',true);return;}
-  window.open(`central-scripts-aqui.html?uid=${encodeURIComponent(sessao.id)}`,'_blank');
+  window.location.href=`central-scripts-aqui.html?uid=${encodeURIComponent(sessao.id)}`;
 }
 function abrirCampanhas(){
   if(!sessao||!sessao.id){toast('Faça login primeiro.',true);return;}
-  window.open(`campanhas.html?uid=${encodeURIComponent(sessao.id)}`,'_blank');
+  window.location.href=`campanhas.html?uid=${encodeURIComponent(sessao.id)}`;
 }
 
 // ══ INICIAR APP ══
@@ -2729,6 +2750,7 @@ async function initAdmin(){
   }catch(e){console.log('Admin init:',e)}
 }
 initAdmin();
+checkSessaoInicial();
 </script>
 </body>
 </html>
