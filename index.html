@@ -62,6 +62,9 @@ select.fi-sel:focus{outline:none;border-color:var(--or)}
 .dia-box{text-align:center;background:var(--or-d);border:1px solid var(--bdo);border-radius:9px;padding:14px 22px;min-width:100px}
 .dia-num{font-family:'Barlow Condensed',sans-serif;font-size:50px;font-weight:800;color:var(--or);line-height:1}
 .dia-lbl{font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--td);margin-top:2px}
+.dia-crm{font-size:11px;color:var(--gr);font-weight:700;margin-top:8px;padding-top:8px;border-top:1px solid var(--bdo)}
+.dia-edit{font-size:10px;color:var(--td);margin-top:4px;cursor:pointer;text-decoration:underline}
+.dia-edit:hover{color:var(--or)}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
 .kpi{background:var(--s1);border:1px solid var(--bd);border-radius:9px;padding:13px 15px}
 .kpi.hi{border-color:var(--bdo)}
@@ -298,7 +301,12 @@ tbody tr:hover td{background:var(--s2)}
             <button id="btn-finalizar-desafio" class="btn-danger" onclick="confirmarFinalizarDesafio()" style="display:none;font-size:12px;padding:5px 12px">🏁 Finalizar Desafio</button>
           </div>
         </div>
-        <div class="dia-box"><div class="dia-num" id="roi-dia">0</div><div class="dia-lbl">de 21 dias</div></div>
+        <div class="dia-box">
+          <div class="dia-num" id="roi-dia">0</div>
+          <div class="dia-lbl">dias corridos</div>
+          <div class="dia-crm" id="roi-dia-crm">0 dias de CRM ativo</div>
+          <div class="dia-edit" id="roi-dia-edit" onclick="abrirEdicaoInicioDesafio()">✎ editar início</div>
+        </div>
       </div>
       <div class="kpi-grid" id="kpi-grid"></div>
 
@@ -1222,8 +1230,21 @@ async function renderAll(){
 function renderPainel(a){
   document.getElementById('hero-nm').textContent=a.nome;
   const regs=a.registros||[];
-  const diaMax=regs.length?Math.max(...regs.map(r=>r.dia)):0;
-  document.getElementById('roi-dia').textContent=diaMax;
+  // Dias corridos = desde a data de início do Desafio Ativo (planejada pelo gestor).
+  // Dias de CRM ativo = quantos dias distintos, desde o início, tiveram pelo menos
+  // 1 "ciclo exclusivo CRM" lançado por qualquer consultora (campo que já existia).
+  let diasCorridos=0,diasComCRM=0;
+  if(a.desafio_inicio){
+    const ini=new Date(a.desafio_inicio+'T00:00:00');
+    const hoje=new Date();hoje.setHours(0,0,0,0);
+    diasCorridos=Math.max(1,Math.floor((hoje-ini)/86400000)+1);
+    diasComCRM=new Set(regs.filter(r=>r.data&&r.data>=a.desafio_inicio&&(r.ciclos||0)>=1).map(r=>r.data)).size;
+    document.getElementById('roi-dia').textContent=diasCorridos;
+    document.getElementById('roi-dia-crm').textContent=`${diasComCRM} dia${diasComCRM===1?'':'s'} de CRM ativo`;
+  }else{
+    document.getElementById('roi-dia').textContent='—';
+    document.getElementById('roi-dia-crm').textContent='defina a data de início';
+  }
   const iniStr=a.inicio?new Date(a.inicio+'T00:00:00').toLocaleDateString('pt-BR'):'';
   document.getElementById('hero-sub').textContent=(a.cidade||'')+(iniStr?` · Início: ${iniStr}`:'');
   const tMat=acMat(a);
@@ -1242,7 +1263,7 @@ function renderPainel(a){
     <div class="kpi"><div class="kpi-lbl">Efetivos</div><div class="kpi-val">${tEfet}</div></div>
     <div class="kpi"><div class="kpi-lbl">Conversão</div><div class="kpi-val gr">${tConv}%</div></div>
     <div class="kpi hi"><div class="kpi-lbl">Total Vendido</div><div class="kpi-val or">R$${tVend.toLocaleString('pt-BR')}</div></div>
-    <div class="kpi"><div class="kpi-lbl">Dia Atual</div><div class="kpi-val am">${diaMax}</div><div class="kpi-sub">de 21</div></div>
+    <div class="kpi"><div class="kpi-lbl">Dias Corridos</div><div class="kpi-val am">${diasCorridos}</div><div class="kpi-sub">${diasComCRM} c/ CRM ativo</div></div>
   `;
 
   // PRODUTIVIDADE DO TIME
@@ -1315,6 +1336,24 @@ function populateFilters(){
   });
   const rf=document.getElementById('rel-funil-f');
   if(rf){rf.innerHTML='<option value="">Todos funis</option>';FUNIS.forEach(f=>{const o=document.createElement('option');o.value=f.id;o.textContent=f.nome;rf.appendChild(o)})}
+}
+
+// Define/edita a data de início do Desafio Ativo (planejamento do gestor).
+// Fica separada do sistema de arquivamento retroativo ("Finalizar Desafio") — essa
+// data é só o ponto de partida usado pra calcular os 2 contadores da caixa "Dia".
+async function abrirEdicaoInicioDesafio(){
+  const a=ac();
+  if(!a){toast('Selecione uma academia primeiro',true);return;}
+  const atual=a.desafio_inicio||new Date().toISOString().slice(0,10);
+  const nova=prompt('Data de início do Desafio Ativo (AAAA-MM-DD):',atual);
+  if(!nova)return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(nova)){toast('Formato inválido. Use AAAA-MM-DD.',true);return;}
+  try{
+    await fetch(`${SB_URL}/rest/v1/academias?id=eq.${acId}`,{method:'PATCH',headers:H,body:JSON.stringify({desafio_inicio:nova})});
+    a.desafio_inicio=nova;
+    toast('Início do Desafio atualizado!');
+    renderPainel(a);
+  }catch(e){console.error(e);toast('Erro ao salvar',true);}
 }
 
 function renderPainelFunis(){
