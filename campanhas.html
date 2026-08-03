@@ -433,6 +433,18 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
     <button class="btn-primary" style="width:100%" onclick="salvarNovoCardManual()">Adicionar ao Kanban</button>
   </div>
 </div>
+
+<div class="modal-ov" id="m-agendar-compromisso">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hd"><h3 id="ac-titulo">Agendar Compromisso</h3><button class="btn-x" onclick="cancelarAgendamentoModal()">×</button></div>
+    <p style="font-size:12.5px;color:var(--texto2);margin-bottom:16px" id="ac-subtitulo"></p>
+    <div class="form-row">
+      <div class="fg"><label>Data</label><input class="fi" type="date" id="ac-data"></div>
+      <div class="fg"><label>Hora</label><input class="fi" type="time" id="ac-hora" value="09:00"></div>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:6px" onclick="confirmarAgendamentoModal()">Confirmar</button>
+  </div>
+</div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -933,7 +945,7 @@ function renderKanbanBoard(){
 function renderKbCard(c){
   let prox;
   if(ETAPAS_COMPROMISSO.includes(c.etapa_atual)){
-    prox=`Compromisso: ${c.data_agendamento?new Date(c.data_agendamento+'T00:00:00').toLocaleDateString('pt-BR'):'sem data'}`;
+    prox=`Compromisso: ${c.data_agendamento?new Date(c.data_agendamento+'T00:00:00').toLocaleDateString('pt-BR'):'sem data'}${c.hora_agendamento?' às '+c.hora_agendamento:''}`;
   }else if(c.status==='espera'){
     prox=`Retorno: ${c.proxima_acao_data||'—'}`;
   }else{
@@ -963,16 +975,42 @@ function onDragEndCard(ev){
   ev.target.classList.remove('dragging');
   document.querySelectorAll('.kb-col.drag-over').forEach(c=>c.classList.remove('drag-over'));
 }
+// Modal reutilizável de "Data + Hora do compromisso" — baseado em Promise, pra
+// poder usar com await em qualquer fluxo (drag-and-drop, registro, movimentação manual).
+let _resolveAgendamentoModal=null;
+function pedirDataHoraAgendamento(titulo,subtitulo){
+  document.getElementById('ac-titulo').textContent=titulo;
+  document.getElementById('ac-subtitulo').textContent=subtitulo||'';
+  document.getElementById('ac-data').value=new Date().toISOString().slice(0,10);
+  document.getElementById('ac-hora').value='09:00';
+  openM('m-agendar-compromisso');
+  return new Promise(resolve=>{_resolveAgendamentoModal=resolve;});
+}
+function confirmarAgendamentoModal(){
+  const data=document.getElementById('ac-data').value;
+  const hora=document.getElementById('ac-hora').value;
+  if(!data){toast('Informe a data',true);return;}
+  closeM('m-agendar-compromisso');
+  if(_resolveAgendamentoModal)_resolveAgendamentoModal({data,hora});
+  _resolveAgendamentoModal=null;
+}
+function cancelarAgendamentoModal(){
+  closeM('m-agendar-compromisso');
+  if(_resolveAgendamentoModal)_resolveAgendamentoModal(null);
+  _resolveAgendamentoModal=null;
+}
+
 async function onDropCard(ev,novaEtapa){
   ev.preventDefault();
   ev.currentTarget.classList.remove('drag-over');
   if(!dragCardId)return;
-  let data=null;
+  let data=null,hora=null;
   if(ETAPAS_QUE_PEDEM_DATA.includes(novaEtapa)){
-    data=prompt('Essa etapa precisa de uma data de agendamento (AAAA-MM-DD):',new Date().toISOString().slice(0,10));
-    if(!data){dragCardId=null;return;} // cancelou
+    const escolha=await pedirDataHoraAgendamento('Agendar Compromisso','Pra quando fica marcado esse compromisso?');
+    if(!escolha){dragCardId=null;return;} // cancelou
+    data=escolha.data;hora=escolha.hora;
   }
-  await moverCardParaEtapa(dragCardId,novaEtapa,data);
+  await moverCardParaEtapa(dragCardId,novaEtapa,data,hora);
   dragCardId=null;
 }
 
@@ -1144,7 +1182,7 @@ function renderCardModalBody(){
 
   let blocoAtendimento='';
   if(c.status==='ativo'&&emModoCompromisso){
-    const dataFmt=c.data_agendamento?new Date(c.data_agendamento+'T00:00:00').toLocaleDateString('pt-BR'):'sem data definida';
+    const dataFmt=c.data_agendamento?new Date(c.data_agendamento+'T00:00:00').toLocaleDateString('pt-BR')+(c.hora_agendamento?' às '+c.hora_agendamento:''):'sem data definida';
     const scriptTexto=montarScriptCompromisso(c,modoScriptCompromisso);
     blocoAtendimento=`
       <div class="at-proxima"><b>📅 Compromisso agendado:</b> ${dataFmt} — cadência de prospecção pausada</div>
@@ -1167,7 +1205,10 @@ function renderCardModalBody(){
           </label>`).join('')}
       </div>
       <div class="fg" style="margin-bottom:10px"><label class="fl">Nota (opcional)</label><input class="fi" id="notaContato" placeholder="Alguma observação relevante..." value="${interacaoHojeAtual?.nota||''}" oninput="formTocado=true"></div>
-      <div class="fg" style="margin-bottom:14px"><label class="fl">Se remarcou/faltou: nova data do compromisso</label><input type="date" class="fi" id="proximaDataContato" value="${sugestaoISO}" onchange="formTocado=true"></div>
+      <div class="form-row" style="margin-bottom:14px">
+        <div class="fg"><label class="fl">Se remarcou/faltou: nova data</label><input type="date" class="fi" id="proximaDataContato" value="${sugestaoISO}" onchange="formTocado=true"></div>
+        <div class="fg"><label class="fl">Nova hora</label><input type="time" class="fi" id="proximaHoraContato" value="${c.hora_agendamento||'09:00'}" onchange="formTocado=true"></div>
+      </div>
       <button class="btn-primary" style="width:100%;margin-bottom:8px" onclick="registrarCompromissoCard()">✅ ${interacaoHojeAtual?'Atualizar registro de hoje':'Registrar e salvar'}</button>
     `;
   }else if(c.status==='ativo'&&semScript){
@@ -1186,9 +1227,15 @@ function renderCardModalBody(){
       <div class="at-checks">
         ${acoesDisponiveis.map(a=>`
           <label class="at-check-item">
-            <input type="checkbox" class="chkAcao" value="${a.k}" ${acoesPrevias.includes(a.k)?'checked':''} onchange="formTocado=true">
+            <input type="checkbox" class="chkAcao" value="${a.k}" ${acoesPrevias.includes(a.k)?'checked':''} onchange="formTocado=true;toggleDataHoraAgendamentoInline()">
             <span>${a.l}</span>
           </label>`).join('')}
+      </div>
+      <div id="agendamentoInlineWrap" style="display:none;margin-bottom:14px">
+        <div class="form-row">
+          <div class="fg"><label class="fl">Data do compromisso</label><input type="date" class="fi" id="agendamentoInlineData" value="${sugestaoISO}" onchange="formTocado=true"></div>
+          <div class="fg"><label class="fl">Hora</label><input type="time" class="fi" id="agendamentoInlineHora" value="${c.hora_agendamento||'09:00'}" onchange="formTocado=true"></div>
+        </div>
       </div>
       <div class="fg" style="margin-bottom:10px"><label class="fl">Nota (opcional)</label><input class="fi" id="notaContato" placeholder="Alguma observação relevante..." value="${interacaoHojeAtual?.nota||''}" oninput="formTocado=true"></div>
       <div class="fg" style="margin-bottom:14px"><label class="fl">Próximo contato (obrigatório)</label><input type="date" class="fi" id="proximaDataContato" value="${sugestaoISO}" onchange="formTocado=true"></div>
@@ -1223,8 +1270,10 @@ function renderCardModalBody(){
         ${etapas.map(et=>`<option value="${et.k}" ${et.k===c.etapa_atual?'selected':''}>${et.l}</option>`).join('')}
       </select>
       <div id="dataAgendamentoWrap" style="display:none;margin-bottom:14px">
-        <label style="display:block;font-size:12.5px;color:var(--texto2);font-weight:600;margin-bottom:6px;">Data do agendamento</label>
-        <input type="date" class="fi" id="dataAgendamentoInput" value="${c.data_agendamento||''}">
+        <div class="form-row">
+          <div class="fg"><label style="display:block;font-size:12.5px;color:var(--texto2);font-weight:600;margin-bottom:6px;">Data do agendamento</label><input type="date" class="fi" id="dataAgendamentoInput" value="${c.data_agendamento||''}"></div>
+          <div class="fg"><label style="display:block;font-size:12.5px;color:var(--texto2);font-weight:600;margin-bottom:6px;">Hora</label><input type="time" class="fi" id="horaAgendamentoInput" value="${c.hora_agendamento||'09:00'}"></div>
+        </div>
       </div>
       <button class="btn-gh" style="width:100%;margin-bottom:10px" onclick="salvarMovimentacao()">Salvar movimentação manual</button>
     </div>
@@ -1235,8 +1284,15 @@ function renderCardModalBody(){
     </div>
   `;
   toggleDataAgendamentoInput();
+  toggleDataHoraAgendamentoInline();
 }
 
+function toggleDataHoraAgendamentoInline(){
+  const wrap=document.getElementById('agendamentoInlineWrap');
+  if(!wrap)return;
+  const marcouAgendamento=document.querySelector('.chkAcao[value="ag_experiencia"]:checked')||document.querySelector('.chkAcao[value="ag_visita"]:checked');
+  wrap.style.display=marcouAgendamento?'block':'none';
+}
 function toggleDadosCard(){
   const w=document.getElementById('dadosCardWrap');
   const aberto=w.style.display!=='none';
@@ -1283,13 +1339,20 @@ async function registrarContatoCard(){
         if(idxNova>idxAtualMax)patch.etapa_maxima='tentativa1';
       }
     }
-    // Marcar um Agendamento já move o card pra etapa certa e usa a data informada como data do compromisso
+    // Marcar um Agendamento já move o card pra etapa certa, usando a data/hora específicas do compromisso
+    const dataAgendInline=document.getElementById('agendamentoInlineData')?.value;
+    const horaAgendInline=document.getElementById('agendamentoInlineHora')?.value;
     if(marcados.includes('ag_experiencia')&&c.perfil!=='renovacao'&&c.etapa_atual!=='exp_agendada'){
       patch.etapa_atual='exp_agendada';
-      patch.data_agendamento=proximaData;
+      patch.data_agendamento=dataAgendInline||proximaData;
+      patch.hora_agendamento=horaAgendInline;
     }else if(marcados.includes('ag_visita')){
       const etapaVisita=c.perfil==='renovacao'?'feedback_matricula':'agendada_matricula';
-      if(c.etapa_atual!==etapaVisita){patch.etapa_atual=etapaVisita;patch.data_agendamento=proximaData;}
+      if(c.etapa_atual!==etapaVisita){
+        patch.etapa_atual=etapaVisita;
+        patch.data_agendamento=dataAgendInline||proximaData;
+        patch.hora_agendamento=horaAgendInline;
+      }
     }
     if(patch.etapa_atual&&patch.etapa_atual!==c.etapa_atual){
       const idxNova2=(ETAPAS[c.perfil]||[]).findIndex(e=>e.k===patch.etapa_atual);
@@ -1319,9 +1382,10 @@ async function registrarCompromissoCard(){
   const nota=document.getElementById('notaContato').value.trim();
   const c=cardAberto;
   const precisaNovaData=marcados.includes('nao_compareceu')||marcados.includes('remarcado');
-  let novaData=null;
+  let novaData=null,novaHora=null;
   if(precisaNovaData){
     novaData=document.getElementById('proximaDataContato').value;
+    novaHora=document.getElementById('proximaHoraContato').value;
     if(!novaData){toast('Informe a nova data do compromisso',true);return;}
   }
   const resultadoCSV=marcados.join(',');
@@ -1333,7 +1397,7 @@ async function registrarCompromissoCard(){
       await sbPost('campanha_interacoes',{card_id:c.id,data:new Date().toISOString().slice(0,10),canal:'compromisso',tentativa_numero:null,resultado:resultadoCSV,nota,consultora_id:c.consultora_id,created_at:Date.now()});
     }
     const patch={updated_at:Date.now()};
-    if(precisaNovaData)patch.data_agendamento=novaData;
+    if(precisaNovaData){patch.data_agendamento=novaData;patch.hora_agendamento=novaHora;}
     await sbPatch('campanha_cards',c.id,patch);
     toast(precisaNovaData?'Novo compromisso registrado!':'Confirmação registrada!');
     acaoConfirmadaNesteCard=true;
@@ -1413,15 +1477,16 @@ function salvarMovimentacao(){
   const finalizar=()=>{acaoConfirmadaNesteCard=true;renderCardModalBody();};
   if(ETAPAS_QUE_PEDEM_DATA.includes(novaEtapa)){
     const data=document.getElementById('dataAgendamentoInput').value;
+    const hora=document.getElementById('horaAgendamentoInput').value;
     if(!data){toast('Informe a data do agendamento',true);return;}
-    moverCardParaEtapa(cardAberto.id,novaEtapa,data).then(finalizar);
+    moverCardParaEtapa(cardAberto.id,novaEtapa,data,hora).then(finalizar);
   }else{
     moverCardParaEtapa(cardAberto.id,novaEtapa).then(finalizar);
   }
 }
 
 // Função única de movimentação — usada tanto pelo drag-and-drop quanto pelo seletor manual do modal
-async function moverCardParaEtapa(cardId,novaEtapa,dataAgendamento){
+async function moverCardParaEtapa(cardId,novaEtapa,dataAgendamento,horaAgendamento){
   const card=kbCards.find(c=>c.id===cardId);
   if(!card)return;
   const etapasPerfil=ETAPAS[card.perfil]||[];
@@ -1429,6 +1494,7 @@ async function moverCardParaEtapa(cardId,novaEtapa,dataAgendamento){
   if(!etapaInfo||etapaInfo.k===card.etapa_atual)return;
   const patch={etapa_atual:novaEtapa,updated_at:Date.now()};
   if(dataAgendamento)patch.data_agendamento=dataAgendamento;
+  if(horaAgendamento)patch.hora_agendamento=horaAgendamento;
 
   // Mantém etapa_maxima (a etapa "real" mais avançada já alcançada), usada no painel resumido acumulado.
   // Convertido/Cadência Futura são ramificações, não avançam a etapa_maxima por si — ela já reflete
