@@ -271,7 +271,7 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
   <div id="viewLista">
   <div class="hero">
     <h1>Campanhas</h1>
-    <p>Planeje campanhas mensais por perfil (Leads Novos, Rematrícula, Ciclo Renovação), suba a lista e organize a divisão em ondas semanais.</p>
+    <p>Planeje campanhas mensais por perfil (Leads Novos, Rematrícula, Ciclo Renovação), suba a lista e organize a divisão em ciclos semanais.</p>
   </div>
 
   <div class="itabs">
@@ -354,7 +354,7 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
       <!-- STEP 3 -->
       <div class="wstep" id="wstep-3" style="display:none">
         <div class="section">
-          <h3>3. Divisão em Ondas Semanais</h3>
+          <h3>3. Divisão em Ciclos Ativados</h3>
           <div id="ondaConfigArea"></div>
         </div>
         <button class="btn-gh" onclick="voltarStep(2)">← Voltar</button>
@@ -1505,7 +1505,7 @@ async function rodarCrossCheckPerdas(cards){
     ${wiz.bloqueados>0?`<div class="alert-box">🚫 <b>${wiz.bloqueados}</b> pessoa(s) removida(s) automaticamente por já terem pedido não-contato.</div>`:''}
     ${wiz.alertas.length>0?`<div class="warn-box">⚠️ <b>${wiz.alertas.length}</b> pessoa(s) já tiveram um card de Perdas antes (motivo diferente) — foram mantidas na lista, revise se quiser remover alguma manualmente depois.</div>`:''}
     <p style="font-size:14px;margin-bottom:14px"><b>${wiz.cardsProntos.length}</b> pessoas prontas para entrar na campanha (perfil: ${PERFIL_LABEL[wiz.perfilAtual]}).</p>
-    <button class="btn-primary" onclick="irParaStep(3);renderOndaConfig();">Continuar para divisão em ondas →</button>
+    <button class="btn-primary" onclick="irParaStep(3);renderOndaConfig();">Continuar para divisão em ciclos →</button>
   `;
 }
 
@@ -1551,7 +1551,7 @@ function renderOndasPreview(){
   const el=document.getElementById('ondasPreview');
   el.innerHTML=ondasCalc.map((o,oi)=>`
     <div class="onda-box">
-      <h4>Onda ${o.numero} <span style="color:var(--texto2);font-weight:400;font-size:12.5px">(dias ${(o.numero-1)*7+1}–${o.numero*7})</span></h4>
+      <h4>Ciclo ${o.numero} <span style="color:var(--texto2);font-weight:400;font-size:12.5px">(dias ${(o.numero-1)*7+1}–${o.numero*7})</span></h4>
       ${o.dist.map((d,di)=>`<div class="cons-row"><span>${d.nome}</span><input type="number" min="0" value="${d.qtd}" onchange="ondasCalc[${oi}].dist[${di}].qtd=parseInt(this.value)||0;atualizarTotalCheck()"></div>`).join('')}
     </div>`).join('')+`
     <div id="totalCheck" style="font-size:13px;color:var(--texto2);margin:10px 0 16px"></div>
