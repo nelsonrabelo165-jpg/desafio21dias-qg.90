@@ -942,12 +942,14 @@ const ACOES_CONTATO=[
 
 let cardAberto=null;
 let acaoConfirmadaNesteCard=false; // controla a trava
+let formTocado=false; // true assim que a consultora mexe em algo do formulário de registro (não conta só abrir/consultar)
 let interacaoHojeAtual=null; // registro de hoje já existente pra esse card (se houver) — permite atualizar em vez de duplicar
 
 async function abrirCardModal(cardId){
   cardAberto=kbCards.find(c=>c.id===cardId);
   if(!cardAberto)return;
   acaoConfirmadaNesteCard=(cardAberto.status!=='ativo'); // só trava quando o card está ativo
+  formTocado=false;
   document.getElementById('cardModalNome').textContent=cardAberto.nome;
   document.getElementById('cardModalBody').innerHTML='<div class="ag-empty">Carregando...</div>';
   openM('m-card');
@@ -997,12 +999,12 @@ function renderCardModalBody(){
       <div class="at-checks">
         ${acoesDisponiveis.map(a=>`
           <label class="at-check-item">
-            <input type="checkbox" class="chkAcao" value="${a.k}" ${acoesPrevias.includes(a.k)?'checked':''}>
+            <input type="checkbox" class="chkAcao" value="${a.k}" ${acoesPrevias.includes(a.k)?'checked':''} onchange="formTocado=true">
             <span>${a.l}</span>
           </label>`).join('')}
       </div>
-      <div class="fg" style="margin-bottom:10px"><label class="fl">Nota (opcional)</label><input class="fi" id="notaContato" placeholder="Alguma observação relevante..." value="${interacaoHojeAtual?.nota||''}"></div>
-      <div class="fg" style="margin-bottom:14px"><label class="fl">Próximo contato (obrigatório)</label><input type="date" class="fi" id="proximaDataContato" value="${sugestaoISO}"></div>
+      <div class="fg" style="margin-bottom:10px"><label class="fl">Nota (opcional)</label><input class="fi" id="notaContato" placeholder="Alguma observação relevante..." value="${interacaoHojeAtual?.nota||''}" oninput="formTocado=true"></div>
+      <div class="fg" style="margin-bottom:14px"><label class="fl">Próximo contato (obrigatório)</label><input type="date" class="fi" id="proximaDataContato" value="${sugestaoISO}" onchange="formTocado=true"></div>
       <button class="btn-primary" style="width:100%;margin-bottom:8px" onclick="registrarContatoCard()">✅ ${interacaoHojeAtual?'Atualizar registro de hoje':'Registrar contato e avançar'}</button>
     `;
   }else if(c.status==='ativo'&&cadenciaEsgotada){
@@ -1015,6 +1017,7 @@ function renderCardModalBody(){
     ${blocoQualificacao}
     ${blocoAtendimento}
     <div class="at-trava-msg" id="travaMsg">🔒 Confirme a próxima ação (registre o contato) ou envie para Perdas antes de fechar este card.</div>
+    <button class="at-collapse-btn" onclick="fecharSemRegistrar()" style="color:var(--texto2);margin-bottom:4px">✕ Fechar sem salvar (descarta o que foi preenchido, se houver)</button><br>
     <button class="at-collapse-btn" onclick="toggleDadosCard()" id="btnToggleDados">▸ Ver dados completos e mover manualmente</button>
     <div id="dadosCardWrap" style="display:none;margin-top:12px">
       <div style="font-size:13px;color:var(--texto2);margin-bottom:14px;line-height:1.8">
@@ -1120,12 +1123,24 @@ async function registrarContatoCard(){
 }
 
 // Trava: só fecha se a ação já foi confirmada nesta sessão do card
+// Trava: só bloqueia fechar se a consultora MEXEU em algo do formulário sem confirmar
+// a ação. Só abrir e consultar o card (sem tocar em nada) sempre fecha livre.
 function tentarFecharCardModal(){
-  if(!acaoConfirmadaNesteCard){
+  if(formTocado&&!acaoConfirmadaNesteCard){
     const msg=document.getElementById('travaMsg');
     if(msg)msg.classList.add('show');
     return;
   }
+  closeM('m-card');
+}
+
+// Descartar o que foi preenchido e fechar — só pede confirmação se algo foi de fato
+// tocado no formulário; se a consultora só estava consultando, fecha direto.
+function fecharSemRegistrar(){
+  if(formTocado&&!acaoConfirmadaNesteCard){
+    if(!confirm('Descartar o que foi marcado/escrito e fechar sem salvar?'))return;
+  }
+  acaoConfirmadaNesteCard=true;
   closeM('m-card');
 }
 
