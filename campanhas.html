@@ -234,6 +234,19 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
 .at-qual-box textarea{width:100%;background:var(--fundo3);border:1px solid var(--borda);color:var(--texto);padding:10px 12px;border-radius:8px;font-size:13.5px;font-family:inherit;resize:vertical;}
 .at-qual-box textarea:focus{outline:none;border-color:var(--verde);}
 .at-qual-meta{font-size:11.5px;color:var(--texto2);margin-top:6px;}
+.at-perfil-box{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.at-perfil-lbl{font-size:12.5px;color:var(--texto2);font-weight:600;}
+.at-perfil-btn{background:var(--fundo3);border:1px solid var(--borda);color:var(--texto2);font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:20px;cursor:pointer;}
+.at-perfil-btn:hover{border-color:var(--laranja);}
+.at-perfil-btn.ativo{color:#0E0E0E;background:var(--texto2);border-color:var(--texto2);}
+.at-perfil-btn.ativo.p5{background:var(--azul);border-color:var(--azul);}
+.at-perfil-btn.ativo.p95{background:var(--laranja);border-color:var(--laranja);}
+.at-script-tabs{display:flex;gap:6px;margin-bottom:10px;}
+.at-tab-btn{background:var(--fundo3);border:1px solid var(--borda);color:var(--texto2);font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:8px;cursor:pointer;}
+.at-tab-btn.active{color:#0E0E0E;background:var(--laranja);border-color:var(--laranja);}
+.kb-card .kperfil{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;margin-left:4px;}
+.kperfil-5{background:rgba(74,159,224,.2);color:var(--azul);}
+.kperfil-95{background:rgba(242,140,15,.2);color:var(--laranja);}
 .divider{height:1px;background:var(--borda);margin:14px 0;}
 
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--fundo3);border:1px solid var(--laranja);color:var(--texto);padding:12px 22px;border-radius:10px;font-size:14px;font-weight:600;transition:.3s;z-index:999;opacity:0;}
@@ -338,6 +351,7 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
               <div style="font-size:15px;font-weight:700;margin-bottom:6px">📄 Clique ou arraste o arquivo CSV aqui</div>
               <div style="font-size:12.5px;color:var(--texto2)">Exporte do seu sistema de gestão como CSV (separado por vírgula ou ponto e vírgula)</div>
             </div>
+            <p style="text-align:center;margin-top:12px;font-size:12.5px;color:var(--texto2)">Ainda não tem lista pronta? <a onclick="pularUploadPerfil()" style="color:var(--laranja);cursor:pointer;text-decoration:underline">Ativar este funil vazio</a> e adicione cards manualmente pelo Kanban quando surgirem.</p>
           </div>
 
           <div id="mapArea" style="display:none;margin-top:18px">
@@ -372,7 +386,10 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
     </div>
     <div class="kb-ptabs" id="kbPerfilTabs"></div>
     <div class="kb-summary" id="kbSummary"></div>
-    <input class="kb-search" id="kbSearch" placeholder="🔍 Buscar por nome ou código..." oninput="renderKanbanBoard()">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+      <input class="kb-search" id="kbSearch" placeholder="🔍 Buscar por nome ou código..." oninput="renderKanbanBoard()" style="margin-bottom:0;flex:1;min-width:220px">
+      <button class="btn-primary" onclick="abrirNovoCardManual()">+ Adicionar Card</button>
+    </div>
     <div class="kb-board" id="kbBoard"></div>
   </div>
 
@@ -392,6 +409,28 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
     <div class="modal-hd"><h3>Enviar para Perdas</h3><button class="btn-x" onclick="closeM('m-perda')">×</button></div>
     <p style="font-size:13px;color:var(--texto2);margin-bottom:14px">Selecione o motivo:</p>
     <div id="motivosList"></div>
+  </div>
+</div>
+
+<div class="modal-ov" id="m-novo-card">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hd"><h3>+ Adicionar Card Manualmente</h3><button class="btn-x" onclick="closeM('m-novo-card')">×</button></div>
+    <p style="font-size:12.5px;color:var(--texto2);margin-bottom:14px">Use isso pra leads/alunos que chegaram fora da planilha original (indicação, walk-in, ou enquanto não há integração automática com o sistema de gestão da academia).</p>
+    <div class="form-row">
+      <div class="fg"><label>Nome *</label><input class="fi" id="nc-nome" placeholder="Nome completo"></div>
+      <div class="fg"><label>Telefone</label><input class="fi" id="nc-telefone" placeholder="11999998888"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Código de matrícula/visita</label><input class="fi" id="nc-codigo"></div>
+      <div class="fg"><label>Idade</label><input class="fi" type="number" id="nc-idade"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Plano atual</label><input class="fi" id="nc-plano"></div>
+      <div class="fg"><label>Ticket médio (R$)</label><input class="fi" type="number" id="nc-ticket"></div>
+    </div>
+    <div class="fg" style="margin-bottom:10px"><label>Consultora responsável</label><select class="fsel" id="nc-consultora"></select></div>
+    <div class="fg" style="margin-bottom:16px"><label>Etapa inicial no Kanban</label><select class="fsel" id="nc-etapa"></select></div>
+    <button class="btn-primary" style="width:100%" onclick="salvarNovoCardManual()">Adicionar ao Kanban</button>
   </div>
 </div>
 </div>
@@ -740,6 +779,52 @@ async function abrirCardPelaAgenda(cardId){
   await abrirCardModal(cardId);
 }
 
+// ── Adicionar card manualmente (sem passar pelo upload) ──
+// Usado pra leads/alunos que chegam fora da planilha original: indicação, walk-in,
+// ou enquanto não há integração automática com o sistema de gestão da academia.
+const CADENCIA_TOTAL_PADRAO_MANUAL={leads:9,rematricula:4,renovacao:4};
+function abrirNovoCardManual(){
+  document.getElementById('nc-nome').value='';
+  document.getElementById('nc-telefone').value='';
+  document.getElementById('nc-codigo').value='';
+  document.getElementById('nc-idade').value='';
+  document.getElementById('nc-plano').value='';
+  document.getElementById('nc-ticket').value='';
+  const selCons=document.getElementById('nc-consultora');
+  selCons.innerHTML=consultoras.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')||'<option value="">Nenhuma cadastrada</option>';
+  const etapas=ETAPAS[kbPerfilAtivo]||[];
+  const selEtapa=document.getElementById('nc-etapa');
+  selEtapa.innerHTML=etapas.filter(e=>!e.end).map(e=>`<option value="${e.k}">${e.l}</option>`).join('');
+  openM('m-novo-card');
+}
+async function salvarNovoCardManual(){
+  const nome=document.getElementById('nc-nome').value.trim();
+  if(!nome){toast('Nome é obrigatório',true);return;}
+  const etapaInicial=document.getElementById('nc-etapa').value;
+  const etapas=ETAPAS[kbPerfilAtivo]||[];
+  const idxEtapa=etapas.findIndex(e=>e.k===etapaInicial);
+  try{
+    await sbPost('campanha_cards',{
+      campanha_id:kbCampanha.id,onda_id:null,perfil:kbPerfilAtivo,
+      nome,codigo_matricula:document.getElementById('nc-codigo').value.trim(),
+      telefone:document.getElementById('nc-telefone').value.replace(/\D/g,''),
+      idade:parseInt(document.getElementById('nc-idade').value)||null,
+      plano_atual:document.getElementById('nc-plano').value.trim(),
+      ticket_medio:parseFloat(document.getElementById('nc-ticket').value)||0,
+      etapa_atual:etapaInicial,etapa_maxima:etapaInicial,
+      consultora_id:document.getElementById('nc-consultora').value||null,
+      cadencia_atual:idxEtapa>0?1:0, // se já entra numa etapa além de "lista", assume que já teve 1ª tentativa
+      cadencia_total:CADENCIA_TOTAL_PADRAO_MANUAL[kbPerfilAtivo]||5,
+      status:'ativo',created_at:Date.now(),updated_at:Date.now()
+    });
+    toast(`${nome} adicionado(a) ao Kanban!`);
+    closeM('m-novo-card');
+    await carregarCardsKanban();
+    renderKanbanBoard();
+    renderKbSummary();
+  }catch(e){console.error(e);toast('Erro ao adicionar card',true);}
+}
+
 async function abrirKanban(camp){
   kbCampanha=camp;
   document.getElementById('viewLista').style.display='none';
@@ -846,14 +931,23 @@ function renderKanbanBoard(){
   ativarArrasteBoard();
 }
 function renderKbCard(c){
-  const prox=c.status==='espera'?`Retorno: ${c.proxima_acao_data||'—'}`:(c.cadencia_atual>0?`Tentativa ${c.cadencia_atual} de ${c.cadencia_total}`:'Aguardando 1º contato');
+  let prox;
+  if(ETAPAS_COMPROMISSO.includes(c.etapa_atual)){
+    prox=`Compromisso: ${c.data_agendamento?new Date(c.data_agendamento+'T00:00:00').toLocaleDateString('pt-BR'):'sem data'}`;
+  }else if(c.status==='espera'){
+    prox=`Retorno: ${c.proxima_acao_data||'—'}`;
+  }else{
+    prox=c.cadencia_atual>0?`Tentativa ${c.cadencia_atual} de ${c.cadencia_total}`:'Aguardando 1º contato';
+  }
+  const badgeCadencia=ETAPAS_COMPROMISSO.includes(c.etapa_atual)?'📅':`${c.cadencia_atual}/${c.cadencia_total}`;
+  const perfilBadge=c.perfil_qualificacao?`<span class="kperfil kperfil-${c.perfil_qualificacao}">${c.perfil_qualificacao}%</span>`:'';
   return `
     <div class="kb-card ${PTAG_CLASS[c.perfil]}-b" draggable="true" data-id="${c.id}"
          ondragstart="onDragStartCard(event,'${c.id}')" ondragend="onDragEndCard(event)"
          onclick="abrirCardModal('${c.id}')">
-      <h5>${c.nome}</h5>
+      <h5>${c.nome}${perfilBadge}</h5>
       <div class="kmeta">${nomeConsultora(c.consultora_id)}</div>
-      <span class="kbadge">${c.cadencia_atual}/${c.cadencia_total}</span>
+      <span class="kbadge">${badgeCadencia}</span>
       <div class="knext">→ ${prox}</div>
     </div>`;
 }
@@ -932,6 +1026,53 @@ const SCRIPT_CADENCIA={
     {tipo:'CTA presencial (D-2)',texto:'Vamos tomar um café antes do seu próximo treino, {NOME}? Acho que essa conversa merece acontecer pessoalmente.'}
   ]
 };
+
+// ── MODO COMPROMISSO — etapas onde o card já tem um agendamento confirmado.
+// Aqui a cadência de prospecção para de contar; o script vira Confirmação ou
+// Reconexão (se a pessoa faltou), nunca mais um script de "primeiro contato frio".
+const ETAPAS_COMPROMISSO=['exp_agendada','agendada_matricula','consultoria_agendada','feedback_matricula'];
+const ETAPAS_SEM_SCRIPT=['exp_iniciada']; // já em andamento, sem necessidade de script
+const COMPROMISSO_POR_ETAPA={
+  exp_agendada:'iniciar sua experiência',
+  agendada_matricula:'conhecer de perto o projeto que desenhamos pra você',
+  consultoria_agendada:'sua consultoria personalizada',
+  feedback_matricula:'conversarmos sobre os próximos passos da sua jornada'
+};
+const HEADLINES_CONFIRMACAO=[
+  'Chegou o dia de avançar e construir novos resultados!',
+  'Hoje você acessa sua nova versão.',
+  'O seu momento chegou — hoje é o dia!'
+];
+const HEADLINES_RECONEXAO=[
+  'Sentimos sua falta hoje!',
+  'Ei, {NOME}, vi que não conseguiu vir — tudo bem?'
+];
+function montarScriptCompromisso(card,modo){
+  const nome=card.nome;
+  const compromisso=COMPROMISSO_POR_ETAPA[card.etapa_atual]||'nosso compromisso combinado';
+  if(modo==='reconexao'){
+    const h=HEADLINES_RECONEXAO[Math.floor(Math.random()*HEADLINES_RECONEXAO.length)].replaceAll('{NOME}',nome);
+    return[
+      h,
+      'Imagino que algo tenha surgido de última hora. Quero muito que você não perca essa oportunidade.',
+      'Seu projeto continua disponível pra você — não quero que você fique sem viver isso.',
+      'Consigo remarcar pra amanhã ou depois — qual funciona melhor pra você?'
+    ].join('\n\n');
+  }
+  const h=HEADLINES_CONFIRMACAO[Math.floor(Math.random()*HEADLINES_CONFIRMACAO.length)];
+  return[
+    h,
+    `${nome}, conforme combinamos, estamos te esperando hoje para ${compromisso}. Foi a melhor decisão que você tomou, e pode ficar orgulhoso(a) disso.`,
+    'Vamos começar hoje essa jornada juntos — inclusive, vou te mostrar/entregar uma coisa que vai garantir mais segurança e resultados ainda mais rápidos pra você.',
+    'Te espero aqui, e tenho certeza que vai ser incrível. Qualquer dúvida antes do nosso encontro, é só me chamar. Até mais tarde!'
+  ].join('\n\n');
+}
+const ACOES_COMPROMISSO=[
+  {k:'confirmado',l:'Confirmou presença'},
+  {k:'nao_compareceu',l:'Não compareceu'},
+  {k:'remarcado',l:'Remarcado para nova data'}
+];
+
 const ACOES_CONTATO=[
   {k:'ligacao',l:'Tentativa Ligação'},
   {k:'contato_efetivo',l:'Contato Efetivo'},
@@ -944,6 +1085,7 @@ let cardAberto=null;
 let acaoConfirmadaNesteCard=false; // controla a trava
 let formTocado=false; // true assim que a consultora mexe em algo do formulário de registro (não conta só abrir/consultar)
 let interacaoHojeAtual=null; // registro de hoje já existente pra esse card (se houver) — permite atualizar em vez de duplicar
+let modoScriptCompromisso='confirmacao'; // 'confirmacao' ou 'reconexao' — só usado em Modo Compromisso
 
 async function abrirCardModal(cardId){
   cardAberto=kbCards.find(c=>c.id===cardId);
@@ -959,10 +1101,14 @@ async function abrirCardModal(cardId){
       const hoje=new Date().toISOString().slice(0,10);
       const existentes=await sbGet('campanha_interacoes',`card_id=eq.${cardAberto.id}&data=eq.${hoje}&order=created_at.desc`);
       interacaoHojeAtual=existentes[0]||null;
+      // se a última interação registrada foi "não compareceu", já abre direto na Reconexão
+      const ultimaGeral=await sbGet('campanha_interacoes',`card_id=eq.${cardAberto.id}&order=created_at.desc&limit=1`);
+      modoScriptCompromisso=(ultimaGeral[0]&&(ultimaGeral[0].resultado||'').includes('nao_compareceu'))?'reconexao':'confirmacao';
     }catch(e){console.error(e);}
   }
   renderCardModalBody();
 }
+function trocarModoScriptCompromisso(modo){modoScriptCompromisso=modo;renderCardModalBody();}
 
 function renderCardModalBody(){
   const c=cardAberto;
@@ -975,6 +1121,17 @@ function renderCardModalBody(){
   const sugestaoISO=c.proxima_acao_data||sugestaoData.toISOString().slice(0,10);
   const acoesPrevias=interacaoHojeAtual&&interacaoHojeAtual.resultado?interacaoHojeAtual.resultado.split(','):[];
   const acoesDisponiveis=c.perfil==='renovacao'?ACOES_CONTATO.filter(a=>a.k!=='ag_experiencia'):ACOES_CONTATO;
+  const emModoCompromisso=ETAPAS_COMPROMISSO.includes(c.etapa_atual);
+  const semScript=ETAPAS_SEM_SCRIPT.includes(c.etapa_atual);
+
+  const blocoPerfil=`
+    <div class="at-perfil-box">
+      <span class="at-perfil-lbl">Classificação do lead:</span>
+      <button class="at-perfil-btn ${c.perfil_qualificacao==='5'?'ativo p5':''}" onclick="salvarPerfilQualificacao('5')">Perfil 5%</button>
+      <button class="at-perfil-btn ${c.perfil_qualificacao==='95'?'ativo p95':''}" onclick="salvarPerfilQualificacao('95')">Perfil 95%</button>
+      <button class="at-perfil-btn ${!c.perfil_qualificacao?'ativo':''}" onclick="salvarPerfilQualificacao(null)">Ainda não qualificado</button>
+    </div>
+  `;
 
   const blocoQualificacao=`
     <div class="at-qual-box">
@@ -986,7 +1143,37 @@ function renderCardModalBody(){
   `;
 
   let blocoAtendimento='';
-  if(c.status==='ativo'&&!cadenciaEsgotada&&scriptAtual){
+  if(c.status==='ativo'&&emModoCompromisso){
+    const dataFmt=c.data_agendamento?new Date(c.data_agendamento+'T00:00:00').toLocaleDateString('pt-BR'):'sem data definida';
+    const scriptTexto=montarScriptCompromisso(c,modoScriptCompromisso);
+    blocoAtendimento=`
+      <div class="at-proxima"><b>📅 Compromisso agendado:</b> ${dataFmt} — cadência de prospecção pausada</div>
+      <div class="at-script-tabs">
+        <button class="at-tab-btn ${modoScriptCompromisso==='confirmacao'?'active':''}" onclick="trocarModoScriptCompromisso('confirmacao')">✅ Confirmação</button>
+        <button class="at-tab-btn ${modoScriptCompromisso==='reconexao'?'active':''}" onclick="trocarModoScriptCompromisso('reconexao')">↩️ Reconexão (faltou)</button>
+      </div>
+      <div class="at-script-box">
+        <div class="at-script-tipo">${modoScriptCompromisso==='confirmacao'?'Script de Confirmação':'Script de Reconexão (pós-ausência)'}</div>
+        <button class="at-copy-btn" onclick="copiarScriptAtendimento()">Copiar</button>
+        <div class="at-script-texto" id="scriptAtendimentoTexto">${scriptTexto}</div>
+      </div>
+      ${interacaoHojeAtual?'<div style="font-size:12px;color:var(--verde);margin-bottom:10px">✓ Já tem registro de hoje pra esse card — marque o que mudou e salve de novo.</div>':''}
+      <label class="fl" style="display:block;margin-bottom:8px">O que aconteceu?</label>
+      <div class="at-checks">
+        ${ACOES_COMPROMISSO.map(a=>`
+          <label class="at-check-item">
+            <input type="checkbox" class="chkAcaoCompromisso" value="${a.k}" ${acoesPrevias.includes(a.k)?'checked':''} onchange="formTocado=true">
+            <span>${a.l}</span>
+          </label>`).join('')}
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label class="fl">Nota (opcional)</label><input class="fi" id="notaContato" placeholder="Alguma observação relevante..." value="${interacaoHojeAtual?.nota||''}" oninput="formTocado=true"></div>
+      <div class="fg" style="margin-bottom:14px"><label class="fl">Se remarcou/faltou: nova data do compromisso</label><input type="date" class="fi" id="proximaDataContato" value="${sugestaoISO}" onchange="formTocado=true"></div>
+      <button class="btn-primary" style="width:100%;margin-bottom:8px" onclick="registrarCompromissoCard()">✅ ${interacaoHojeAtual?'Atualizar registro de hoje':'Registrar e salvar'}</button>
+    `;
+  }else if(c.status==='ativo'&&semScript){
+    blocoAtendimento=`<div style="color:var(--texto2);font-size:13px;margin-bottom:14px">Experiência em andamento — acompanhe presencialmente. Quando concluir, mova o card pra etapa seguinte na seção "Ver dados completos" abaixo.</div>`;
+    acaoConfirmadaNesteCard=true; // consultar essa etapa não exige registro obrigatório
+  }else if(c.status==='ativo'&&!cadenciaEsgotada&&scriptAtual){
     blocoAtendimento=`
       <div class="at-proxima"><b>Tentativa ${proximoIndice+1} de ${c.cadencia_total}</b> · ${scriptAtual.tipo}</div>
       <div class="at-script-box">
@@ -1014,6 +1201,7 @@ function renderCardModalBody(){
   }
 
   document.getElementById('cardModalBody').innerHTML=`
+    ${blocoPerfil}
     ${blocoQualificacao}
     ${blocoAtendimento}
     <div class="at-trava-msg" id="travaMsg">🔒 Confirme a próxima ação (registre o contato) ou envie para Perdas antes de fechar este card.</div>
@@ -1122,8 +1310,58 @@ async function registrarContatoCard(){
   }catch(e){console.error(e);toast('Erro ao registrar contato',true);}
 }
 
-// Trava: só fecha se a ação já foi confirmada nesta sessão do card
-// Trava: só bloqueia fechar se a consultora MEXEU em algo do formulário sem confirmar
+// Registro em Modo Compromisso — não conta cadência de prospecção. Se marcar
+// "não compareceu" ou "remarcado", exige nova data e mantém a etapa (aguardando
+// o novo encontro); se "confirmado", só loga, sem mudar mais nada.
+async function registrarCompromissoCard(){
+  const marcados=[...document.querySelectorAll('.chkAcaoCompromisso:checked')].map(el=>el.value);
+  if(!marcados.length){toast('Marque pelo menos uma opção',true);return;}
+  const nota=document.getElementById('notaContato').value.trim();
+  const c=cardAberto;
+  const precisaNovaData=marcados.includes('nao_compareceu')||marcados.includes('remarcado');
+  let novaData=null;
+  if(precisaNovaData){
+    novaData=document.getElementById('proximaDataContato').value;
+    if(!novaData){toast('Informe a nova data do compromisso',true);return;}
+  }
+  const resultadoCSV=marcados.join(',');
+  const ehNovoRegistroHoje=!interacaoHojeAtual;
+  try{
+    if(interacaoHojeAtual){
+      await fetch(`${SB_URL}/rest/v1/campanha_interacoes?id=eq.${interacaoHojeAtual.id}`,{method:'PATCH',headers:H,body:JSON.stringify({resultado:resultadoCSV,nota})});
+    }else{
+      await sbPost('campanha_interacoes',{card_id:c.id,data:new Date().toISOString().slice(0,10),canal:'compromisso',tentativa_numero:null,resultado:resultadoCSV,nota,consultora_id:c.consultora_id,created_at:Date.now()});
+    }
+    const patch={updated_at:Date.now()};
+    if(precisaNovaData)patch.data_agendamento=novaData;
+    await sbPatch('campanha_cards',c.id,patch);
+    toast(precisaNovaData?'Novo compromisso registrado!':'Confirmação registrada!');
+    acaoConfirmadaNesteCard=true;
+    modoScriptCompromisso=marcados.includes('nao_compareceu')?'reconexao':'confirmacao';
+    await carregarCardsKanban();
+    renderKanbanBoard();
+    renderKbSummary();
+    cardAberto=kbCards.find(x=>x.id===c.id)||cardAberto;
+    const hoje=new Date().toISOString().slice(0,10);
+    const existentes=await sbGet('campanha_interacoes',`card_id=eq.${cardAberto.id}&data=eq.${hoje}&order=created_at.desc`);
+    interacaoHojeAtual=existentes[0]||null;
+    renderCardModalBody();
+  }catch(e){console.error(e);toast('Erro ao registrar',true);}
+}
+
+// Tag de Perfil 5%/95% — Caminho A (seletor manual). Salva na hora, sem precisar
+// de botão "salvar" separado.
+async function salvarPerfilQualificacao(valor){
+  try{
+    await sbPatch('campanha_cards',cardAberto.id,{perfil_qualificacao:valor,updated_at:Date.now()});
+    cardAberto.perfil_qualificacao=valor;
+    toast(valor?`Classificado como Perfil ${valor}%`:'Classificação removida');
+    await carregarCardsKanban();
+    cardAberto=kbCards.find(x=>x.id===cardAberto.id)||cardAberto;
+    renderCardModalBody();
+    renderKanbanBoard();
+  }catch(e){console.error(e);toast('Erro ao salvar classificação',true);}
+}
 // a ação. Só abrir e consultar o card (sem tocar em nada) sempre fecha livre.
 function tentarFecharCardModal(){
   if(formTocado&&!acaoConfirmadaNesteCard){
@@ -1614,6 +1852,24 @@ async function confirmarOndasECards(){
     }
   }catch(e){console.error(e);toast('Erro ao salvar. Veja o console.',true);}
   btn.disabled=false;btn.textContent='✅ Confirmar e Salvar';
+}
+
+// Ativa o funil sem nenhum card — pra academias que ainda não têm lista pronta
+// e vão adicionar oportunidades manualmente pelo Kanban (ver "+ Adicionar Card").
+async function pularUploadPerfil(){
+  if(!confirm(`Ativar "${PERFIL_LABEL[wiz.perfilAtual]}" sem nenhuma lista por enquanto? Você poderá adicionar cards manualmente depois, pelo Kanban.`))return;
+  toast(`"${PERFIL_LABEL[wiz.perfilAtual]}" ativado sem lista.`);
+  wiz.perfisFila=wiz.perfisFila.filter(p=>p!==wiz.perfilAtual);
+  if(wiz.perfisFila.length){
+    wiz.csvHeaders=[];wiz.csvRows=[];wiz.cardsProntos=[];
+    prepararProximoUpload();
+    irParaStep(2);
+  }else{
+    await sbPatch('campanhas',wiz.campanhaId,{status:'ativa',updated_at:Date.now()});
+    toast('Campanha ativada! 🎉');
+    await carregarCampanhas();
+    switchITab('lista');
+  }
 }
 
 </script>
