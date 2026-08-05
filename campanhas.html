@@ -458,6 +458,48 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
     </div>
   </div>
 </div>
+
+<div class="modal-ov" id="m-venda">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hd"><h3>💰 Registrar Venda</h3><button class="btn-x" onclick="cancelarVendaModal()">×</button></div>
+    <p style="font-size:12.5px;color:var(--texto2);margin-bottom:14px">Antes de marcar como Convertido, confirme os dados da venda — vira uma linha automática no seu Livro de Vendas.</p>
+    <div class="form-row">
+      <div class="fg"><label>Nome do Cliente</label><input class="fi" id="v-nome"></div>
+      <div class="fg"><label>Nº Matrícula</label><input class="fi" id="v-matricula"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Perfil da Venda</label>
+        <select class="fsel" id="v-perfil">
+          <option value="novo">Novo</option>
+          <option value="renovacao">Renovação</option>
+          <option value="rematricula">Rematrícula</option>
+          <option value="upgrade">Upgrade</option>
+        </select>
+      </div>
+      <div class="fg"><label>Tipo</label>
+        <select class="fsel" id="v-tipo">
+          <option value="agendado">Agendado</option>
+          <option value="espontaneo">Espontâneo</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Valor da Venda (R$) *</label><input class="fi" type="number" id="v-valor" placeholder="0,00" min="0"></div>
+      <div class="fg"><label>Saldo Devedor (R$)</label><input class="fi" type="number" id="v-saldo" placeholder="0,00" min="0"></div>
+    </div>
+    <div class="fg" style="margin-bottom:16px"><label>Forma de Pagamento</label>
+      <select class="fsel" id="v-pgto">
+        <option value="cartao_credito">Cartão de Crédito</option>
+        <option value="cartao_debito">Cartão de Débito</option>
+        <option value="pix">Pix</option>
+        <option value="dinheiro">Dinheiro</option>
+        <option value="boleto">Boleto</option>
+        <option value="recorrencia">Recorrência (assinatura)</option>
+      </select>
+    </div>
+    <button class="btn-primary" style="width:100%" onclick="confirmarVendaModal()">✅ Confirmar Venda e Converter</button>
+  </div>
+</div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -907,12 +949,16 @@ function fecharKanban(){
   document.getElementById('viewLista').style.display='block';
   carregarCampanhas();
 }
+let vendasCampanha=[];
 async function carregarCardsKanban(){
   try{
     // Consultor(a) só vê os próprios cards; gestor(a)/admin veem tudo (visão completa)
     const filtroConsultora=sessao.role==='consultor'&&sessao.consultora_id?`&consultora_id=eq.${sessao.consultora_id}`:'';
     kbCards=await sbGet('campanha_cards',`campanha_id=eq.${kbCampanha.id}${filtroConsultora}&order=nome.asc`);
   }catch(e){console.error(e);toast('Erro ao carregar cards',true);kbCards=[];}
+  try{
+    vendasCampanha=await sbGet('vendas',`campanha_id=eq.${kbCampanha.id}&select=id,card_id,perfil_venda,valor`);
+  }catch(e){console.error(e);vendasCampanha=[];}
 }
 function trocarPerfilKanban(perfil){
   kbPerfilAtivo=perfil;
@@ -947,7 +993,8 @@ function renderKbSummary(){
   const invest=kbCampanha.investimento_trafego||0;
   const leadsGerados=kbCampanha.perfis?.includes('leads')?kbCards.filter(c=>c.perfil==='leads').length:0;
   const cpl=leadsGerados>0?(invest/leadsGerados):0;
-  const receitaConvertidos=convertidos.reduce((s,c)=>s+(parseFloat(c.ticket_medio)||0),0);
+  const idsConvertidosDoPerfil=new Set(convertidos.map(c=>c.id));
+  const receitaConvertidos=vendasCampanha.filter(v=>idsConvertidosDoPerfil.has(v.card_id)).reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
   const roas=invest>0?(receitaConvertidos/invest):0;
 
   const inicio=kbCampanha.created_at?new Date(kbCampanha.created_at).toLocaleDateString('pt-BR'):'—';
@@ -965,6 +1012,7 @@ function renderKbSummary(){
       <div>Investimento tráfego: <b>R$${invest.toLocaleString('pt-BR')}</b></div>
       <div>CPL: <b>${leadsGerados>0?'R$'+cpl.toFixed(2).replace('.',','):'—'}</b></div>
       <div>ROAS: <b>${invest>0?roas.toFixed(2).replace('.',',')+'x':'—'}</b></div>
+      <div>Total Vendido: <b style="color:var(--verde)">R$${receitaConvertidos.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></div>
       <div>Início/Ativação: <b>${inicio}</b></div>
       <div>Finalização: <b>${fim}</b></div>
       <div>Visão: <b>${sessao.role==='consultor'?'Meus cards ('+ (sessao.nome||'') +')':'Todas as consultoras (gestor)'}</b></div>
@@ -1054,6 +1102,53 @@ function cancelarAgendamentoModal(){
   _resolveAgendamentoModal=null;
 }
 
+// Modal de venda — Promise-based, igual o de data/hora. Abre antes de qualquer
+// card virar "Convertido", em qualquer fluxo (drag-and-drop ou movimentação manual).
+let _resolveVendaModal=null;
+const PERFIL_VENDA_PADRAO={leads:'novo',rematricula:'rematricula',renovacao:'renovacao'};
+function pedirDadosVenda(card){
+  document.getElementById('v-nome').value=card.nome;
+  document.getElementById('v-matricula').value=card.codigo_matricula||'';
+  document.getElementById('v-perfil').value=PERFIL_VENDA_PADRAO[card.perfil]||'novo';
+  document.getElementById('v-tipo').value='agendado';
+  document.getElementById('v-valor').value=card.ticket_medio||'';
+  document.getElementById('v-saldo').value='';
+  document.getElementById('v-pgto').value='cartao_credito';
+  openM('m-venda');
+  return new Promise(resolve=>{_resolveVendaModal=resolve;});
+}
+function confirmarVendaModal(){
+  const valor=parseFloat(document.getElementById('v-valor').value);
+  if(!valor||valor<=0){toast('Informe o valor da venda',true);return;}
+  const dados={
+    nome_cliente:document.getElementById('v-nome').value.trim(),
+    codigo_matricula:document.getElementById('v-matricula').value.trim(),
+    perfil_venda:document.getElementById('v-perfil').value,
+    tipo_venda:document.getElementById('v-tipo').value,
+    valor,
+    saldo_devedor:parseFloat(document.getElementById('v-saldo').value)||0,
+    forma_pagamento:document.getElementById('v-pgto').value
+  };
+  closeM('m-venda');
+  if(_resolveVendaModal)_resolveVendaModal(dados);
+  _resolveVendaModal=null;
+}
+function cancelarVendaModal(){
+  closeM('m-venda');
+  if(_resolveVendaModal)_resolveVendaModal(null);
+  _resolveVendaModal=null;
+}
+async function registrarLinhaVenda(card,dados){
+  await sbPost('vendas',{
+    campanha_id:card.campanha_id,card_id:card.id,academia_id:sessao.academia_id,
+    consultora_id:card.consultora_id,data:new Date().toISOString().slice(0,10),
+    nome_cliente:dados.nome_cliente,codigo_matricula:dados.codigo_matricula,
+    perfil_venda:dados.perfil_venda,valor:dados.valor,forma_pagamento:dados.forma_pagamento,
+    saldo_devedor:dados.saldo_devedor,tipo_venda:dados.tipo_venda,conferido_lider:false,
+    created_at:Date.now()
+  });
+}
+
 async function onDropCard(ev,novaEtapa){
   ev.preventDefault();
   ev.currentTarget.classList.remove('drag-over');
@@ -1063,6 +1158,12 @@ async function onDropCard(ev,novaEtapa){
     const escolha=await pedirDataHoraAgendamento('Agendar Compromisso','Pra quando fica marcado esse compromisso?');
     if(!escolha){dragCardId=null;return;} // cancelou
     data=escolha.data;hora=escolha.hora;
+  }
+  if(novaEtapa==='convertido'){
+    const card=kbCards.find(c=>c.id===dragCardId);
+    const dadosVenda=await pedirDadosVenda(card);
+    if(!dadosVenda){dragCardId=null;return;} // cancelou
+    await registrarLinhaVenda(card,dadosVenda);
   }
   await moverCardParaEtapa(dragCardId,novaEtapa,data,hora);
   dragCardId=null;
@@ -1568,9 +1669,17 @@ function toggleDataAgendamentoInput(){
   const wrap=document.getElementById('dataAgendamentoWrap');
   wrap.style.display=ETAPAS_QUE_PEDEM_DATA.includes(sel.value)?'block':'none';
 }
-function salvarMovimentacao(){
+async function salvarMovimentacao(){
   const novaEtapa=document.getElementById('moverEtapaSel').value;
   const finalizar=()=>{acaoConfirmadaNesteCard=true;renderCardModalBody();};
+  if(novaEtapa==='convertido'){
+    const dadosVenda=await pedirDadosVenda(cardAberto);
+    if(!dadosVenda)return; // cancelou
+    await registrarLinhaVenda(cardAberto,dadosVenda);
+    await moverCardParaEtapa(cardAberto.id,novaEtapa);
+    finalizar();
+    return;
+  }
   if(ETAPAS_QUE_PEDEM_DATA.includes(novaEtapa)){
     const data=document.getElementById('dataAgendamentoInput').value;
     const hora=document.getElementById('horaAgendamentoInput').value;
