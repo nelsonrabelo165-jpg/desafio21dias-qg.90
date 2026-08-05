@@ -142,6 +142,18 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
 .ag-day-group{margin-bottom:14px;}
 .ag-day-group h4{font-size:13px;color:var(--texto2);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;}
 .ag-empty{color:var(--texto2);font-size:13.5px;padding:14px 0;}
+.vd-filtros{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:22px;}
+.vd-filtros .fg{margin-bottom:0;}
+.vd-cons-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:26px;}
+.vd-cons-card{background:var(--fundo2);border:1px solid var(--borda);border-radius:12px;padding:16px;}
+.vd-cons-card h4{font-size:15px;margin-bottom:8px;}
+.vd-cons-card .vtot{font-size:24px;font-weight:800;color:var(--verde);}
+.vd-cons-card .vbar{height:6px;background:var(--fundo3);border-radius:4px;margin:8px 0;overflow:hidden;}
+.vd-cons-card .vbar-fill{height:100%;background:var(--laranja);}
+.vd-cons-card .vbreak{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--texto2);margin-top:8px;}
+table.vd-table{width:100%;border-collapse:collapse;font-size:13px;}
+table.vd-table th,table.vd-table td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--borda);}
+table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
 .ag-quickstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:26px;}
 .ag-qs-item{background:var(--fundo2);border:1px solid var(--borda);border-radius:12px;padding:16px;text-align:center;}
 .ag-qs-item .n{font-size:32px;font-weight:800;line-height:1;}
@@ -290,6 +302,7 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
   <div class="itabs">
     <button class="itab-btn active" onclick="switchITab('lista')">Minhas Campanhas</button>
     <button class="itab-btn" onclick="switchITab('agenda');carregarAgenda()">📅 Minha Agenda</button>
+    <button class="itab-btn" onclick="switchITab('vendas');carregarLivroVendas()">💰 Vendas</button>
     <button class="itab-btn" onclick="abrirNovaCampanhaEmBranco()">+ Nova Campanha</button>
   </div>
 
@@ -301,6 +314,11 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
   <!-- ===================== ABA: AGENDA ===================== -->
   <div class="ipane" id="itab-agenda">
     <div id="agendaWrap"></div>
+  </div>
+
+  <!-- ===================== ABA: VENDAS ===================== -->
+  <div class="ipane" id="itab-vendas">
+    <div id="vendasWrap"></div>
   </div>
 
   <!-- ===================== ABA: NOVA CAMPANHA ===================== -->
@@ -487,7 +505,8 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
       <div class="fg"><label>Valor da Venda (R$) *</label><input class="fi" type="number" id="v-valor" placeholder="0,00" min="0"></div>
       <div class="fg"><label>Saldo Devedor (R$)</label><input class="fi" type="number" id="v-saldo" placeholder="0,00" min="0"></div>
     </div>
-    <div class="fg" style="margin-bottom:16px"><label>Forma de Pagamento</label>
+    <div class="fg" style="margin-bottom:16px">
+      <label>Forma de Pagamento</label>
       <select class="fsel" id="v-pgto">
         <option value="cartao_credito">Cartão de Crédito</option>
         <option value="cartao_debito">Cartão de Débito</option>
@@ -497,6 +516,12 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
         <option value="recorrencia">Recorrência (assinatura)</option>
       </select>
     </div>
+    <div class="divider"></div>
+    <div class="form-row" style="margin-bottom:16px">
+      <div class="fg"><label>Recebido/Lançado por</label><select class="fsel" id="v-lancado-por"></select></div>
+      <div class="fg"><label>Venda atribuída a</label><select class="fsel" id="v-atribuido-a"></select></div>
+    </div>
+    <p style="font-size:11.5px;color:var(--texto2);margin-top:-10px;margin-bottom:16px">"Lançado por" é quem está registrando agora. "Atribuída a" é quem fez o CRM/agendou — é essa pessoa que recebe o crédito da venda, mesmo que outra tenha atendido no fechamento.</p>
     <button class="btn-primary" style="width:100%" onclick="confirmarVendaModal()">✅ Confirmar Venda e Converter</button>
   </div>
 </div>
@@ -587,14 +612,14 @@ async function iniciarApp(s){
   document.getElementById('userAcademia').textContent=s.role==='admin'?'QG.90 · Master':(s.role==='consultor'?'Consultor(a)':'Gestor(a)');
   mostrarTela('appWrap');
   try{
-    consultoras=s.academia_id?await sbGet('consultoras',`academia_id=eq.${s.academia_id}&select=id,nome`):[];
+    consultoras=s.academia_id?await sbGet('consultoras',`academia_id=eq.${s.academia_id}&select=id,nome,meta,meta_tipo`):[];
   }catch(e){console.error(e);consultoras=[];}
   try{
     treinadores=s.academia_id?await sbGet('treinadores',`academia_id=eq.${s.academia_id}&ativo=eq.true&select=id,nome`):[];
   }catch(e){console.error(e);treinadores=[];}
   // Consultor(a) não cria campanha nem sobe listas — só trabalha o próprio Kanban
   if(s.role==='consultor'){
-    const btnNova=document.querySelectorAll('.itab-btn')[2];
+    const btnNova=document.querySelectorAll('.itab-btn')[3];
     if(btnNova)btnNova.style.display='none';
   }
   await carregarCampanhas();
@@ -604,7 +629,7 @@ checkSession();
 // ══════════════════════════════════════════
 // TABS INTERNAS
 // ══════════════════════════════════════════
-const ITAB_INDEX={lista:0,agenda:1,nova:2};
+const ITAB_INDEX={lista:0,agenda:1,vendas:2,nova:3};
 function switchITab(tab){
   document.querySelectorAll('.ipane').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.itab-btn').forEach(b=>b.classList.remove('active'));
@@ -681,6 +706,100 @@ let agendaCampanhaPorCard={}; // cardId -> campanha (pra abrir o Kanban certo ao
 let ultimosCardsAgenda=[];
 let agendaView='lista';
 let agendaWeekOffset=0;
+
+// ══════════════════════════════════════════
+// LIVRO DE VENDAS — total por consultora, % de meta, breakdown por tipo, período
+// ══════════════════════════════════════════
+const PERFIL_VENDA_LABEL={novo:'Novos',renovacao:'Renovações',rematricula:'Rematrículas',upgrade:'Upgrades'};
+let vendasPeriodo=[];
+
+async function carregarLivroVendas(){
+  const wrap=document.getElementById('vendasWrap');
+  const hoje=new Date().toISOString().slice(0,10);
+  wrap.innerHTML=`
+    <div class="vd-filtros">
+      <div class="fg"><label class="fl">De</label><input class="fi" type="date" id="vd-inicio" value="${hoje}"></div>
+      <div class="fg"><label class="fl">Até</label><input class="fi" type="date" id="vd-fim" value="${hoje}"></div>
+      <button class="btn-primary" onclick="aplicarFiltroVendas()">Filtrar</button>
+      <button class="btn-gh" onclick="document.getElementById('vd-inicio').value=document.getElementById('vd-fim').value=new Date().toISOString().slice(0,10);aplicarFiltroVendas()">Hoje</button>
+    </div>
+    <div id="vendasConteudo"><div class="ag-empty">Carregando...</div></div>
+  `;
+  await aplicarFiltroVendas();
+}
+
+async function aplicarFiltroVendas(){
+  const inicio=document.getElementById('vd-inicio').value;
+  const fim=document.getElementById('vd-fim').value;
+  const el=document.getElementById('vendasConteudo');
+  if(!sessao.academia_id){el.innerHTML='<div class="ag-empty">Sem academia vinculada.</div>';return;}
+  try{
+    const filtroConsultora=sessao.role==='consultor'&&sessao.consultora_id?`&consultora_id=eq.${sessao.consultora_id}`:'';
+    vendasPeriodo=await sbGet('vendas',`academia_id=eq.${sessao.academia_id}&data=gte.${inicio}&data=lte.${fim}${filtroConsultora}&order=data.desc`);
+    renderLivroVendas();
+  }catch(e){console.error(e);el.innerHTML='<div class="ag-empty">Erro ao carregar. Veja o console.</div>';}
+}
+
+function renderLivroVendas(){
+  const el=document.getElementById('vendasConteudo');
+  const porConsultora={};
+  vendasPeriodo.forEach(v=>{
+    const cid=v.consultora_id||'sem_atribuicao';
+    if(!porConsultora[cid])porConsultora[cid]={total:0,qtd:0,porTipo:{}};
+    porConsultora[cid].total+=parseFloat(v.valor)||0;
+    porConsultora[cid].qtd++;
+    porConsultora[cid].porTipo[v.perfil_venda]=(porConsultora[cid].porTipo[v.perfil_venda]||0)+1;
+  });
+
+  const cards=Object.keys(porConsultora).map(cid=>{
+    const dados=porConsultora[cid];
+    const cons=consultoras.find(c=>c.id===cid);
+    const nome=cons?cons.nome:'Sem consultora atribuída';
+    let pctMeta=null;
+    if(cons&&cons.meta>0){
+      const base=cons.meta_tipo==='planos'?dados.qtd:dados.total;
+      pctMeta=Math.min(100,Math.round(base/cons.meta*100));
+    }
+    const breakdown=Object.keys(dados.porTipo).map(p=>`${PERFIL_VENDA_LABEL[p]||p}: ${dados.porTipo[p]}`).join(' · ');
+    return`
+      <div class="vd-cons-card">
+        <h4>${nome}</h4>
+        <div class="vtot">R$${dados.total.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+        <div style="font-size:12px;color:var(--texto2)">${dados.qtd} venda${dados.qtd===1?'':'s'}</div>
+        ${pctMeta!==null?`<div class="vbar"><div class="vbar-fill" style="width:${pctMeta}%"></div></div><div style="font-size:11.5px;color:var(--texto2)">${pctMeta}% da meta</div>`:''}
+        <div class="vbreak">${breakdown||'—'}</div>
+      </div>`;
+  }).join('');
+
+  const totalGeral=vendasPeriodo.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+
+  el.innerHTML=`
+    <div style="margin-bottom:16px;font-size:14px;color:var(--texto2)">Total do período: <b style="color:var(--verde);font-size:18px">R$${totalGeral.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b> em ${vendasPeriodo.length} venda${vendasPeriodo.length===1?'':'s'}</div>
+    <div class="vd-cons-cards">${cards||'<div class="ag-empty">Nenhuma venda nesse período.</div>'}</div>
+    ${vendasPeriodo.length?`
+    <h3 style="font-size:15px;margin-bottom:10px">Detalhamento</h3>
+    <table class="vd-table">
+      <tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Valor</th><th>Lançado por</th><th>Atribuída a</th><th>Conferido</th></tr>
+      ${vendasPeriodo.map(v=>`
+        <tr>
+          <td>${new Date(v.data+'T00:00:00').toLocaleDateString('pt-BR')}</td>
+          <td>${v.nome_cliente}</td>
+          <td>${PERFIL_VENDA_LABEL[v.perfil_venda]||v.perfil_venda}</td>
+          <td>R$${(parseFloat(v.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+          <td>${nomeConsultora(v.lancado_por_id)}</td>
+          <td>${nomeConsultora(v.consultora_id)}</td>
+          <td><input type="checkbox" ${v.conferido_lider?'checked':''} onchange="toggleConferidoLider('${v.id}',this.checked)"></td>
+        </tr>`).join('')}
+    </table>`:''}
+  `;
+}
+
+async function toggleConferidoLider(vendaId,valor){
+  try{
+    await fetch(`${SB_URL}/rest/v1/vendas?id=eq.${vendaId}`,{method:'PATCH',headers:H,body:JSON.stringify({conferido_lider:valor})});
+    toast(valor?'Marcado como conferido!':'Desmarcado.');
+  }catch(e){console.error(e);toast('Erro ao atualizar',true);}
+}
 
 async function carregarAgenda(){
   const wrap=document.getElementById('agendaWrap');
@@ -1114,12 +1233,21 @@ function pedirDadosVenda(card){
   document.getElementById('v-valor').value=card.ticket_medio||'';
   document.getElementById('v-saldo').value='';
   document.getElementById('v-pgto').value='cartao_credito';
+  const optsConsultoras=consultoras.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  const selLancado=document.getElementById('v-lancado-por');
+  selLancado.innerHTML=optsConsultoras;
+  if(sessao.role==='consultor'&&sessao.consultora_id)selLancado.value=sessao.consultora_id;
+  const selAtribuido=document.getElementById('v-atribuido-a');
+  selAtribuido.innerHTML=optsConsultoras;
+  selAtribuido.value=card.consultora_id||'';
   openM('m-venda');
   return new Promise(resolve=>{_resolveVendaModal=resolve;});
 }
 function confirmarVendaModal(){
   const valor=parseFloat(document.getElementById('v-valor').value);
   if(!valor||valor<=0){toast('Informe o valor da venda',true);return;}
+  const atribuidoA=document.getElementById('v-atribuido-a').value;
+  if(!atribuidoA){toast('Selecione a quem a venda é atribuída',true);return;}
   const dados={
     nome_cliente:document.getElementById('v-nome').value.trim(),
     codigo_matricula:document.getElementById('v-matricula').value.trim(),
@@ -1127,7 +1255,9 @@ function confirmarVendaModal(){
     tipo_venda:document.getElementById('v-tipo').value,
     valor,
     saldo_devedor:parseFloat(document.getElementById('v-saldo').value)||0,
-    forma_pagamento:document.getElementById('v-pgto').value
+    forma_pagamento:document.getElementById('v-pgto').value,
+    lancado_por_id:document.getElementById('v-lancado-por').value||null,
+    atribuido_a_id:atribuidoA
   };
   closeM('m-venda');
   if(_resolveVendaModal)_resolveVendaModal(dados);
@@ -1141,7 +1271,8 @@ function cancelarVendaModal(){
 async function registrarLinhaVenda(card,dados){
   await sbPost('vendas',{
     campanha_id:card.campanha_id,card_id:card.id,academia_id:sessao.academia_id,
-    consultora_id:card.consultora_id,data:new Date().toISOString().slice(0,10),
+    consultora_id:dados.atribuido_a_id,lancado_por_id:dados.lancado_por_id,
+    data:new Date().toISOString().slice(0,10),
     nome_cliente:dados.nome_cliente,codigo_matricula:dados.codigo_matricula,
     perfil_venda:dados.perfil_venda,valor:dados.valor,forma_pagamento:dados.forma_pagamento,
     saldo_devedor:dados.saldo_devedor,tipo_venda:dados.tipo_venda,conferido_lider:false,
