@@ -389,6 +389,7 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
       <input class="kb-search" id="kbSearch" placeholder="🔍 Buscar por nome ou código..." oninput="renderKanbanBoard()" style="margin-bottom:0;flex:1;min-width:220px">
       <button class="btn-primary" onclick="abrirNovoCardManual()">+ Adicionar Card</button>
+      <button class="btn-gh" onclick="abrirGerenciarTreinadores()">👥 Treinadores(as)</button>
     </div>
     <div class="kb-board" id="kbBoard"></div>
   </div>
@@ -445,6 +446,18 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
     <button class="btn-primary" style="width:100%;margin-top:6px" onclick="confirmarAgendamentoModal()">Confirmar</button>
   </div>
 </div>
+
+<div class="modal-ov" id="m-treinadores">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hd"><h3>👥 Treinadores(as)</h3><button class="btn-x" onclick="closeM('m-treinadores')">×</button></div>
+    <p style="font-size:12.5px;color:var(--texto2);margin-bottom:14px">Equipe técnica que recebe os alunos nas experiências, consultorias e avaliações.</p>
+    <div id="listaTreinadores" style="margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px">
+      <input class="fi" id="novoTreinadorNome" placeholder="Nome do(a) treinador(a)" style="flex:1">
+      <button class="btn-primary" onclick="adicionarTreinador()">+ Adicionar</button>
+    </div>
+  </div>
+</div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -459,6 +472,7 @@ const H={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bear
 const HR={...H,'Prefer':'return=representation'};
 async function sbGet(t,p=''){const r=await fetch(`${SB_URL}/rest/v1/${t}?${p}`,{headers:H});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbPost(t,b){const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:'POST',headers:HR,body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json();}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
 async function sbPatch(t,id,b){const r=await fetch(`${SB_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());}
 const ROLES_PERMITIDOS=['gestor','admin','consultor'];
 
@@ -523,6 +537,7 @@ async function checkSession(){
 }
 
 let consultoras=[];
+let treinadores=[];
 async function iniciarApp(s){
   sessao=s;
   sessionStorage.setItem('qg90_sessao',JSON.stringify(s));
@@ -532,6 +547,9 @@ async function iniciarApp(s){
   try{
     consultoras=s.academia_id?await sbGet('consultoras',`academia_id=eq.${s.academia_id}&select=id,nome`):[];
   }catch(e){console.error(e);consultoras=[];}
+  try{
+    treinadores=s.academia_id?await sbGet('treinadores',`academia_id=eq.${s.academia_id}&ativo=eq.true&select=id,nome`):[];
+  }catch(e){console.error(e);treinadores=[];}
   // Consultor(a) não cria campanha nem sobe listas — só trabalha o próprio Kanban
   if(s.role==='consultor'){
     const btnNova=document.querySelectorAll('.itab-btn')[2];
@@ -795,6 +813,42 @@ async function abrirCardPelaAgenda(cardId){
 // Usado pra leads/alunos que chegam fora da planilha original: indicação, walk-in,
 // ou enquanto não há integração automática com o sistema de gestão da academia.
 const CADENCIA_TOTAL_PADRAO_MANUAL={leads:9,rematricula:4,renovacao:4};
+// ── Gerenciar Treinadores(as) — equipe técnica que recebe as experiências/consultorias ──
+function abrirGerenciarTreinadores(){
+  renderListaTreinadores();
+  document.getElementById('novoTreinadorNome').value='';
+  openM('m-treinadores');
+}
+function renderListaTreinadores(){
+  const el=document.getElementById('listaTreinadores');
+  el.innerHTML=treinadores.length?treinadores.map(t=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--borda)">
+      <span style="font-size:13.5px">${t.nome}</span>
+      <button class="btn-gh" style="padding:3px 10px;font-size:11px;border-color:var(--vermelho);color:var(--vermelho)" onclick="removerTreinador('${t.id}')">Remover</button>
+    </div>`).join(''):'<div style="color:var(--texto2);font-size:13px">Nenhum(a) treinador(a) cadastrado ainda.</div>';
+}
+async function adicionarTreinador(){
+  const nome=document.getElementById('novoTreinadorNome').value.trim();
+  if(!nome){toast('Informe o nome',true);return;}
+  try{
+    await sbPost('treinadores',{id:uid(),academia_id:sessao.academia_id,nome,ativo:true,created_at:Date.now()});
+    toast(`${nome} adicionado(a)!`);
+    document.getElementById('novoTreinadorNome').value='';
+    treinadores=await sbGet('treinadores',`academia_id=eq.${sessao.academia_id}&ativo=eq.true&select=id,nome`);
+    renderListaTreinadores();
+  }catch(e){console.error(e);toast('Erro ao adicionar',true);}
+}
+async function removerTreinador(id){
+  if(!confirm('Remover este(a) treinador(a) da lista?'))return;
+  try{
+    await fetch(`${SB_URL}/rest/v1/treinadores?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({ativo:false})});
+    treinadores=treinadores.filter(t=>t.id!==id);
+    renderListaTreinadores();
+    toast('Removido(a).');
+  }catch(e){console.error(e);toast('Erro ao remover',true);}
+}
+function nomeTreinador(id){const t=treinadores.find(x=>x.id===id);return t?t.nome:'—';}
+
 function abrirNovoCardManual(){
   document.getElementById('nc-nome').value='';
   document.getElementById('nc-telefone').value='';
@@ -1107,9 +1161,23 @@ function montarScriptCompromisso(card,modo){
 }
 const ACOES_COMPROMISSO=[
   {k:'confirmado',l:'Confirmou presença'},
+  {k:'compareceu',l:'Compareceu'}, // label específico é montado em getLabelCompareceu()
   {k:'nao_compareceu',l:'Não compareceu'},
   {k:'remarcado',l:'Remarcado para nova data'}
 ];
+const LABEL_COMPARECEU_POR_ETAPA={
+  exp_agendada:'✅ Compareceu / Iniciou a experiência',
+  consultoria_agendada:'✅ Compareceu à consultoria',
+  agendada_matricula:'✅ Compareceu',
+  feedback_matricula:'✅ Compareceu'
+};
+// Se marcar "Compareceu", pra qual etapa o card avança sozinho (se houver uma etapa
+// intermediária real). Etapas que dariam em "Convertido" ficam paradas aqui, porque
+// converter exige dado de venda (valor, forma de pagamento) que ainda não construímos.
+const PROXIMA_ETAPA_APOS_COMPARECER={
+  exp_agendada:'exp_iniciada',
+  consultoria_agendada:'feedback_matricula'
+};
 
 const ACOES_CONTATO=[
   {k:'ligacao',l:'Tentativa Ligação'},
@@ -1185,7 +1253,7 @@ function renderCardModalBody(){
     const dataFmt=c.data_agendamento?new Date(c.data_agendamento+'T00:00:00').toLocaleDateString('pt-BR')+(c.hora_agendamento?' às '+c.hora_agendamento:''):'sem data definida';
     const scriptTexto=montarScriptCompromisso(c,modoScriptCompromisso);
     blocoAtendimento=`
-      <div class="at-proxima"><b>📅 Compromisso agendado:</b> ${dataFmt} — cadência de prospecção pausada</div>
+      <div class="at-proxima"><b>📅 Compromisso agendado:</b> ${dataFmt} — cadência de prospecção pausada${c.treinador_id?`<br><b>👤 Treinador(a):</b> ${nomeTreinador(c.treinador_id)}`:''}</div>
       <div class="at-script-tabs">
         <button class="at-tab-btn ${modoScriptCompromisso==='confirmacao'?'active':''}" onclick="trocarModoScriptCompromisso('confirmacao')">✅ Confirmação</button>
         <button class="at-tab-btn ${modoScriptCompromisso==='reconexao'?'active':''}" onclick="trocarModoScriptCompromisso('reconexao')">↩️ Reconexão (faltou)</button>
@@ -1200,9 +1268,17 @@ function renderCardModalBody(){
       <div class="at-checks">
         ${ACOES_COMPROMISSO.map(a=>`
           <label class="at-check-item">
-            <input type="checkbox" class="chkAcaoCompromisso" value="${a.k}" ${acoesPrevias.includes(a.k)?'checked':''} onchange="formTocado=true">
-            <span>${a.l}</span>
+            <input type="checkbox" class="chkAcaoCompromisso" value="${a.k}" ${acoesPrevias.includes(a.k)?'checked':''} onchange="formTocado=true;toggleTreinadorWrap()">
+            <span>${a.k==='compareceu'?(LABEL_COMPARECEU_POR_ETAPA[c.etapa_atual]||'✅ Compareceu'):a.l}</span>
           </label>`).join('')}
+      </div>
+      <div id="treinadorWrap" style="display:none;margin-bottom:14px">
+        <label class="fl" style="display:block;margin-bottom:6px">Quem da equipe técnica recebeu essa pessoa? *</label>
+        <select class="fsel" id="treinadorSelect" onchange="formTocado=true">
+          <option value="">— selecione —</option>
+          ${treinadores.map(t=>`<option value="${t.id}" ${c.treinador_id===t.id?'selected':''}>${t.nome}</option>`).join('')}
+        </select>
+        ${!treinadores.length?'<p style="font-size:11.5px;color:var(--vermelho);margin-top:6px">Nenhum(a) treinador(a) cadastrado — clique em "👥 Treinadores(as)" no topo do Kanban pra adicionar.</p>':''}
       </div>
       <div class="fg" style="margin-bottom:10px"><label class="fl">Nota (opcional)</label><input class="fi" id="notaContato" placeholder="Alguma observação relevante..." value="${interacaoHojeAtual?.nota||''}" oninput="formTocado=true"></div>
       <div class="form-row" style="margin-bottom:14px">
@@ -1285,8 +1361,15 @@ function renderCardModalBody(){
   `;
   toggleDataAgendamentoInput();
   toggleDataHoraAgendamentoInline();
+  toggleTreinadorWrap();
 }
 
+function toggleTreinadorWrap(){
+  const wrap=document.getElementById('treinadorWrap');
+  if(!wrap)return;
+  const marcouCompareceu=document.querySelector('.chkAcaoCompromisso[value="compareceu"]:checked');
+  wrap.style.display=marcouCompareceu?'block':'none';
+}
 function toggleDataHoraAgendamentoInline(){
   const wrap=document.getElementById('agendamentoInlineWrap');
   if(!wrap)return;
@@ -1388,18 +1471,31 @@ async function registrarCompromissoCard(){
     novaHora=document.getElementById('proximaHoraContato').value;
     if(!novaData){toast('Informe a nova data do compromisso',true);return;}
   }
+  let treinadorId=null;
+  if(marcados.includes('compareceu')){
+    treinadorId=document.getElementById('treinadorSelect').value;
+    if(!treinadorId){toast('Selecione quem da equipe técnica recebeu essa pessoa',true);return;}
+  }
   const resultadoCSV=marcados.join(',');
   const ehNovoRegistroHoje=!interacaoHojeAtual;
   try{
     if(interacaoHojeAtual){
-      await fetch(`${SB_URL}/rest/v1/campanha_interacoes?id=eq.${interacaoHojeAtual.id}`,{method:'PATCH',headers:H,body:JSON.stringify({resultado:resultadoCSV,nota})});
+      await fetch(`${SB_URL}/rest/v1/campanha_interacoes?id=eq.${interacaoHojeAtual.id}`,{method:'PATCH',headers:H,body:JSON.stringify({resultado:resultadoCSV,nota,treinador_id:treinadorId})});
     }else{
-      await sbPost('campanha_interacoes',{card_id:c.id,data:new Date().toISOString().slice(0,10),canal:'compromisso',tentativa_numero:null,resultado:resultadoCSV,nota,consultora_id:c.consultora_id,created_at:Date.now()});
+      await sbPost('campanha_interacoes',{card_id:c.id,data:new Date().toISOString().slice(0,10),canal:'compromisso',tentativa_numero:null,resultado:resultadoCSV,nota,consultora_id:c.consultora_id,treinador_id:treinadorId,created_at:Date.now()});
     }
     const patch={updated_at:Date.now()};
     if(precisaNovaData){patch.data_agendamento=novaData;patch.hora_agendamento=novaHora;}
+    if(treinadorId)patch.treinador_id=treinadorId;
+    if(marcados.includes('compareceu')&&PROXIMA_ETAPA_APOS_COMPARECER[c.etapa_atual]){
+      patch.etapa_atual=PROXIMA_ETAPA_APOS_COMPARECER[c.etapa_atual];
+      const etapasPerfil=ETAPAS[c.perfil]||[];
+      const idxNova=etapasPerfil.findIndex(e=>e.k===patch.etapa_atual);
+      const idxMax=etapasPerfil.findIndex(e=>e.k===(c.etapa_maxima||'lista'));
+      if(idxNova>idxMax)patch.etapa_maxima=patch.etapa_atual;
+    }
     await sbPatch('campanha_cards',c.id,patch);
-    toast(precisaNovaData?'Novo compromisso registrado!':'Confirmação registrada!');
+    toast(marcados.includes('compareceu')?'Presença registrada!':(precisaNovaData?'Novo compromisso registrado!':'Confirmação registrada!'));
     acaoConfirmadaNesteCard=true;
     modoScriptCompromisso=marcados.includes('nao_compareceu')?'reconexao':'confirmacao';
     await carregarCardsKanban();
