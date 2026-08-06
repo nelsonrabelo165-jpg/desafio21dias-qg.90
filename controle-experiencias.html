@@ -553,6 +553,40 @@ async function startApp(){
   if(DEMO_MODE) showToast("Modo demonstração — configure a ANON_KEY do Supabase para salvar dados de verdade.");
 }
 
+// Login automático quando chega pelo painel principal (ROI 21 Dias / Campanhas),
+// via ?uid=<id do gestor> na URL — mesmo padrão de SSO usado nos outros módulos.
+async function tentarLoginAutomatico(){
+  const params = new URLSearchParams(window.location.search);
+  const uid = params.get('uid');
+  if(!uid || DEMO_MODE || !supabase) return false;
+
+  try{
+    const {data, error} = await supabase
+      .from('gestores')
+      .select('*')
+      .eq('id', uid)
+      .eq('ativo', true)
+      .single();
+
+    if(error || !data) return false;
+
+    const modulos = data.modulos_ativos || [];
+    if(!modulos.includes('experiencias')){
+      document.getElementById('loginError').textContent = "Este módulo ainda não foi liberado para sua academia. Fale com o QG.90.";
+      document.getElementById('loginError').style.display='block';
+      return false;
+    }
+
+    currentUser = data;
+    startApp();
+    return true;
+  }catch(e){
+    console.error(e);
+    return false;
+  }
+}
+window.addEventListener('DOMContentLoaded', tentarLoginAutomatico);
+
 /* ================= DADOS ================= */
 function seedDemoData(){
   experiencias = [
