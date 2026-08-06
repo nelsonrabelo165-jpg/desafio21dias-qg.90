@@ -454,11 +454,11 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
 const SUPABASE_URL = "https://iheymzirmhjokeytokol.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloZXltemlybWhqb2tleXRva29sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzE4MDksImV4cCI6MjA5Njg0NzgwOX0.Bi7XXVbg1AhUF-_LcRQoTgUnEDkOds5Pqk51fTzpoF0";
 
-let supabase = null;
+let supabaseClient = null;
 let DEMO_MODE = false;
 try{
   if(SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== "COLE_SUA_ANON_KEY_AQUI"){
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   } else {
     DEMO_MODE = true;
   }
@@ -508,7 +508,7 @@ async function doLogin(){
   }
 
   try{
-    const {data, error} = await supabase
+    const {data, error} = await supabaseClient
       .from('gestores')
       .select('*')
       .eq('email', email)
@@ -558,10 +558,10 @@ async function startApp(){
 async function tentarLoginAutomatico(){
   const params = new URLSearchParams(window.location.search);
   const uid = params.get('uid');
-  if(!uid || DEMO_MODE || !supabase) return false;
+  if(!uid || DEMO_MODE || !supabaseClient) return false;
 
   try{
-    const {data, error} = await supabase
+    const {data, error} = await supabaseClient
       .from('gestores')
       .select('*')
       .eq('id', uid)
@@ -646,12 +646,12 @@ function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOSt
 function today(){return new Date().toISOString().slice(0,10);}
 
 async function loadExperiencias(){
-  if(DEMO_MODE || !supabase){
+  if(DEMO_MODE || !supabaseClient){
     seedDemoData();
     return;
   }
   try{
-    let query = supabase.from('experiencias').select('*').order('created_at',{ascending:false});
+    let query = supabaseClient.from('experiencias').select('*').order('created_at',{ascending:false});
     if(currentUser.academia_id){
       query = query.eq('academia_id', currentUser.academia_id);
     }
@@ -667,12 +667,12 @@ async function loadExperiencias(){
 }
 
 async function persist(exp){
-  if(DEMO_MODE || !supabase){
+  if(DEMO_MODE || !supabaseClient){
     return; // já está em memória
   }
   try{
     exp.updated_at = new Date().toISOString();
-    const {error} = await supabase.from('experiencias').upsert(exp);
+    const {error} = await supabaseClient.from('experiencias').upsert(exp);
     if(error) throw error;
   }catch(e){
     console.error(e);
