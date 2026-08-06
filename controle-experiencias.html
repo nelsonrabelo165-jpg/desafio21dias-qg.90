@@ -140,8 +140,8 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
   padding:2px 9px;border-radius:20px;
 }
 .col-body{padding:10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:9px;}
-.col[data-status="alerta"] .col-head{border-bottom-color:var(--red);}
-.col[data-status="alerta"] .name{color:var(--red);}
+.col[data-status="nao_convertida"] .col-head{border-bottom-color:var(--red);}
+.col[data-status="nao_convertida"] .name{color:var(--red);}
 .col[data-status="convertida"] .name{color:var(--green);}
 
 .card{
@@ -157,6 +157,7 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
 }
 .tag-95{background:rgba(255,107,0,.18);color:var(--orange);}
 .tag-5{background:rgba(158,158,158,.15);color:var(--grey);}
+.tag-noqual{background:rgba(230,184,0,.18);color:var(--yellow);}
 .tag-prog{background:var(--bg-elev);color:var(--grey);border:1px solid var(--border);}
 .card-meta{font-size:12px;color:var(--grey);display:flex;justify-content:space-between;align-items:center;}
 .card-alert-badge{
@@ -339,7 +340,9 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
     <div class="topbar-actions">
       <div class="tab-switch">
         <button class="active" id="tabKanbanBtn" onclick="switchTab('kanban')">Kanban</button>
+        <button id="tabAgendaBtn" onclick="switchTab('agenda')">Agenda</button>
         <button id="tabDashBtn" onclick="switchTab('dashboard')">Indicadores</button>
+        <button id="tabEquipeBtn" onclick="switchTab('equipe')" style="display:none;">Equipe</button>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button>
     </div>
@@ -360,6 +363,12 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
 
     <!-- DASHBOARD VIEW -->
     <div id="viewDashboard" style="display:none;"></div>
+
+    <!-- AGENDA VIEW -->
+    <div id="viewAgenda" style="display:none;"></div>
+
+    <!-- EQUIPE VIEW (admin/gestor) -->
+    <div id="viewEquipe" style="display:none;"></div>
   </main>
 </div>
 
@@ -382,25 +391,30 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
           <input type="text" id="f_nome" placeholder="Nome completo">
         </div>
         <div class="field">
-          <label>Contato (WhatsApp)</label>
-          <input type="text" id="f_contato" placeholder="(00) 00000-0000">
+          <label>Nº Cadastro</label>
+          <input type="text" id="f_numero_cadastro" placeholder="Nº do cadastro no sistema">
         </div>
       </div>
       <div class="grid2">
         <div class="field">
+          <label>Contato (WhatsApp)</label>
+          <input type="text" id="f_contato" placeholder="(00) 00000-0000">
+        </div>
+        <div class="field">
           <label>Data de Início</label>
           <input type="date" id="f_data_inicio">
         </div>
-        <div class="field">
-          <label>Consultor(a) Responsável</label>
-          <input type="text" id="f_consultor" placeholder="Nome do consultor">
-        </div>
+      </div>
+      <div class="field">
+        <label>Consultor(a) Responsável</label>
+        <select id="f_consultor_id"><option value="">— Selecione —</option></select>
       </div>
       <div class="field">
         <label>Perfil do Lead</label>
         <div class="status-pills">
           <div class="status-pill selected" data-perfil="95" onclick="selectPerfil('95')">95% · Precisa de orientação</div>
           <div class="status-pill" data-perfil="5" onclick="selectPerfil('5')">5% · Autônomo / já treina</div>
+          <div class="status-pill" data-perfil="sem_qualificacao" onclick="selectPerfil('sem_qualificacao')">Sem Qualificação</div>
         </div>
         <div class="hint" id="perfilHint">Duração sugerida: 10–12 dias · acompanhamento ativo do treinador, sinais de confiança e vínculo são o principal fator de conversão.</div>
       </div>
@@ -469,6 +483,8 @@ let currentUser = null;
 let experiencias = [];
 let currentCardId = null;
 let novaPerfil = "95";
+let equipeConsultoras = [];
+let equipeTreinadores = [];
 
 const PROGRAMAS = {
   emagrecimento_saude: "Emagrecimento com Saúde",
@@ -478,13 +494,10 @@ const PROGRAMAS = {
 };
 
 const STATUS_COLS = [
-  {key:"aguardando_dia1", label:"Aguardando Dia 1"},
-  {key:"acompanhamento_95", label:"Acompanhamento · 95%"},
-  {key:"acompanhamento_5", label:"Acompanhamento · 5%"},
-  {key:"alerta", label:"⚠ Alerta"},
-  {key:"pronta_conversao", label:"Pronta p/ Conversão"},
-  {key:"convertida", label:"Convertida"},
-  {key:"perdida", label:"Perdida"}
+  {key:"agendada", label:"Experiência Agendada"},
+  {key:"iniciada", label:"Experiência Iniciada"},
+  {key:"convertida", label:"Experiência Convertida"},
+  {key:"nao_convertida", label:"Não Convertida"}
 ];
 
 /* ================= LOGIN ================= */
@@ -548,9 +561,38 @@ async function startApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appShell').style.display='block';
   document.getElementById('fabBtn').style.display='flex';
+  await loadEquipe();
   await loadExperiencias();
+  await loadAgendaTarefas();
   renderKanban();
+  atualizarVisibilidadeEquipeTab();
   if(DEMO_MODE) showToast("Modo demonstração — configure a ANON_KEY do Supabase para salvar dados de verdade.");
+}
+
+async function loadEquipe(){
+  if(DEMO_MODE || !supabaseClient){
+    equipeConsultoras = [{id:'demo-c1',nome:'Camila'},{id:'demo-c2',nome:'Diego'}];
+    equipeTreinadores = [{id:'demo-t1',nome:'Rafael'},{id:'demo-t2',nome:'Bruna'}];
+    return;
+  }
+  try{
+    const academiaId = currentUser.academia_id;
+    if(!academiaId){ equipeConsultoras=[]; equipeTreinadores=[]; return; }
+    const [{data:cons}, {data:trei}] = await Promise.all([
+      supabaseClient.from('consultoras').select('id,nome').eq('academia_id', academiaId),
+      supabaseClient.from('treinadores').select('id,nome').eq('academia_id', academiaId).eq('ativo', true)
+    ]);
+    equipeConsultoras = cons || [];
+    equipeTreinadores = trei || [];
+  }catch(e){
+    console.error(e);
+    equipeConsultoras = []; equipeTreinadores = [];
+  }
+}
+
+function atualizarVisibilidadeEquipeTab(){
+  const podeGerenciar = currentUser && ['admin','gestor'].includes(currentUser.role);
+  document.getElementById('tabEquipeBtn').style.display = podeGerenciar ? 'inline-flex' : 'none';
 }
 
 // Login automático quando chega pelo painel principal (ROI 21 Dias / Campanhas),
@@ -592,7 +634,7 @@ function seedDemoData(){
   experiencias = [
     mkExp({nome_lead:"Marina Torres", contato:"(15) 99876-1122", perfil:"95", programa:"emagrecimento_saude",
       objetivo_especifico:"Perder peso e ganhar disposição no dia a dia", consultor_responsavel:"Camila",
-      duracao_dias:12, status:"acompanhamento_95", data_inicio: daysAgo(3),
+      duracao_dias:12, status:"iniciada", data_inicio: daysAgo(3),
       treinador_responsavel:"Rafael", data_dia1: daysAgo(3),
       checklist_dia1:{app_baixado:true, mapeamento_sintomas:true, consultoria_agendada:true, apresentacao_programa:true},
       mapeamento_sintomas_feito:true, presencas:[
@@ -601,16 +643,16 @@ function seedDemoData(){
       ]}),
     mkExp({nome_lead:"João Pedro Alves", contato:"(15) 99123-4455", perfil:"5", programa:"performance_esporte",
       objetivo_especifico:"Melhorar performance no futebol de fim de semana", consultor_responsavel:"Diego",
-      duracao_dias:5, status:"aguardando_dia1", data_inicio: today()}),
+      duracao_dias:5, status:"agendada", data_inicio: today()}),
     mkExp({nome_lead:"Letícia Fernandes", contato:"(15) 98877-3311", perfil:"95", programa:"cuidados_especiais",
       objetivo_especifico:"Retomar atividade física após afastamento por dor lombar", consultor_responsavel:"Camila",
-      duracao_dias:12, status:"alerta", data_inicio: daysAgo(6),
+      duracao_dias:12, status:"iniciada", data_inicio: daysAgo(6),
       treinador_responsavel:"Bruna", data_dia1: daysAgo(6),
       checklist_dia1:{app_baixado:true, mapeamento_sintomas:false, consultoria_agendada:false, apresentacao_programa:true},
       presencas:[{data:daysAgo(5), treinador:"Bruna", presente:true, temp:"estável", obs:""}]}),
     mkExp({nome_lead:"Fernanda Costa", contato:"(15) 99555-8890", perfil:"5", programa:"emagrecimento_saude",
       objetivo_especifico:"Emagrecer para evento em 2 meses", consultor_responsavel:"Diego",
-      duracao_dias:5, status:"pronta_conversao", data_inicio: daysAgo(5),
+      duracao_dias:5, status:"iniciada", data_inicio: daysAgo(5),
       treinador_responsavel:"Rafael", data_dia1: daysAgo(5),
       checklist_dia1:{app_baixado:true, mapeamento_sintomas:true, consultoria_agendada:true, apresentacao_programa:true},
       mapeamento_sintomas_feito:true, consultoria_realizada:true, consultoria_treinador:"Rafael",
@@ -631,6 +673,12 @@ function seedDemoData(){
 function mkExp(o){
   return Object.assign({
     id: 'demo-'+Math.random().toString(36).slice(2),
+    numero_cadastro: null,
+    campanha_card_id: null,
+    campanha_id: null,
+    consultor_id: null,
+    treinador_id: null,
+    consultoria_treinador_id: null,
     checklist_dia1:{app_baixado:false, mapeamento_sintomas:false, consultoria_agendada:false, apresentacao_programa:false},
     presencas:[], mapeamento_sintomas_feito:false, consultoria_realizada:false, consultoria_treinador:null,
     treinador_responsavel:null, data_dia1:null,
@@ -639,7 +687,7 @@ function mkExp(o){
     tarefa_agendamento_final:{feita:false,data:null,obs:null},
     tarefa_audio_cuidado:{feita:false,data:null,obs:null},
     tarefa_audio_consultoria:{feita:false,data:null,obs:null},
-    tarefas_sexta:[], data_conversao:null, motivo_perda:null
+    tarefas_sexta:[], data_conversao:null, motivo_perda:null, status:'agendada'
   }, o);
 }
 function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);}
@@ -684,10 +732,16 @@ async function persist(exp){
 function switchTab(tab){
   document.getElementById('viewKanban').style.display = tab==='kanban' ? 'block':'none';
   document.getElementById('viewDashboard').style.display = tab==='dashboard' ? 'block':'none';
+  document.getElementById('viewAgenda').style.display = tab==='agenda' ? 'block':'none';
+  document.getElementById('viewEquipe').style.display = tab==='equipe' ? 'block':'none';
   document.getElementById('tabKanbanBtn').classList.toggle('active', tab==='kanban');
   document.getElementById('tabDashBtn').classList.toggle('active', tab==='dashboard');
+  document.getElementById('tabAgendaBtn').classList.toggle('active', tab==='agenda');
+  document.getElementById('tabEquipeBtn').classList.toggle('active', tab==='equipe');
   document.getElementById('fabBtn').style.display = tab==='kanban' ? 'flex':'none';
   if(tab==='dashboard') renderDashboard();
+  if(tab==='agenda') renderAgendaTab();
+  if(tab==='equipe') renderEquipeTab();
 }
 
 /* ================= KANBAN RENDER ================= */
@@ -697,11 +751,11 @@ function calcFrequencia(exp){
   return {presentes, totalDias, pct: totalDias?Math.round(presentes/totalDias*100):0};
 }
 function isAlerta(exp){
-  if(['convertida','perdida'].includes(exp.status)) return false;
+  if(exp.status!=='iniciada') return false;
   const lastDate = exp.presencas.length ? exp.presencas[exp.presencas.length-1].data : exp.data_dia1;
   if(!lastDate) return false;
   const diff = Math.floor((new Date() - new Date(lastDate)) / 86400000);
-  const limite = exp.perfil==='95' ? 2 : 3;
+  const limite = exp.perfil==='5' ? 3 : 2; // 95% e sem_qualificacao usam o limite mais curto (mais seguro)
   return diff >= limite;
 }
 
@@ -709,13 +763,7 @@ function renderKanban(){
   const board = document.getElementById('kanbanBoard');
   board.innerHTML = '';
   STATUS_COLS.forEach(col=>{
-    let items = experiencias.filter(e=>{
-      if(col.key==='alerta') return isAlerta(e) && e.status!=='aguardando_dia1';
-      if(['acompanhamento_95','acompanhamento_5'].includes(col.key)){
-        return e.status===col.key && !isAlerta(e);
-      }
-      return e.status===col.key;
-    });
+    let items = experiencias.filter(e=>e.status===col.key);
 
     const colEl = document.createElement('div');
     colEl.className='col';
@@ -732,15 +780,18 @@ function renderKanban(){
   });
 }
 
+function perfilTagClass(p){ return p==='95'?'tag-95':p==='5'?'tag-5':'tag-noqual'; }
+function perfilLabel(p){ return p==='95'?'95%':p==='5'?'5%':'Sem Qualif.'; }
+
 function cardHtml(exp){
   const freq = calcFrequencia(exp);
-  const alerta = isAlerta(exp) && !['convertida','perdida','aguardando_dia1'].includes(exp.status);
+  const alerta = isAlerta(exp);
   return `
     <div class="card" onclick="openDetail('${exp.id}')">
       ${alerta ? '<div class="card-alert-badge">SEM TOQUE</div>' : ''}
-      <div class="name">${escapeHtml(exp.nome_lead)}</div>
+      <div class="name">${escapeHtml(exp.nome_lead)}${exp.numero_cadastro?' <span style="color:var(--grey);font-weight:400;font-size:12px;">#'+escapeHtml(exp.numero_cadastro)+'</span>':''}</div>
       <div class="card-tags">
-        <span class="tag ${exp.perfil==='95'?'tag-95':'tag-5'}">${exp.perfil}%</span>
+        <span class="tag ${perfilTagClass(exp.perfil)}">${perfilLabel(exp.perfil)}</span>
         <span class="tag tag-prog">${PROGRAMAS[exp.programa]||''}</span>
       </div>
       <div class="card-meta">
@@ -755,9 +806,11 @@ function escapeHtml(s){const d=document.createElement('div');d.textContent=s||''
 /* ================= NOVO CADASTRO ================= */
 function openNewModal(){
   document.getElementById('f_nome').value='';
+  document.getElementById('f_numero_cadastro').value='';
   document.getElementById('f_contato').value='';
   document.getElementById('f_data_inicio').value= today();
-  document.getElementById('f_consultor').value='';
+  const selCons = document.getElementById('f_consultor_id');
+  selCons.innerHTML = '<option value="">— Selecione —</option>' + equipeConsultoras.map(c=>`<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
   document.getElementById('f_objetivo').value='';
   document.getElementById('f_programa').value='emagrecimento_saude';
   selectPerfil('95');
@@ -768,25 +821,35 @@ function selectPerfil(p){
   document.querySelectorAll('.status-pill[data-perfil]').forEach(el=>{
     el.classList.toggle('selected', el.dataset.perfil===p);
   });
-  document.getElementById('f_duracao').value = p==='95' ? 12 : 4;
-  document.getElementById('perfilHint').textContent = p==='95'
-    ? "Duração sugerida: 10–12 dias · acompanhamento ativo do treinador, sinais de confiança e vínculo são o principal fator de conversão."
-    : "Duração sugerida: 3–5 dias · acompanhamento leve e pontual — evitar excesso de cobrança, foco em autonomia e diferenciais técnicos.";
+  if(p==='95'){
+    document.getElementById('f_duracao').value = 12;
+    document.getElementById('perfilHint').textContent = "Duração sugerida: 10–12 dias · acompanhamento ativo do treinador, sinais de confiança e vínculo são o principal fator de conversão.";
+  } else if(p==='5'){
+    document.getElementById('f_duracao').value = 4;
+    document.getElementById('perfilHint').textContent = "Duração sugerida: 3–5 dias · acompanhamento leve e pontual — evitar excesso de cobrança, foco em autonomia e diferenciais técnicos.";
+  } else {
+    document.getElementById('f_duracao').value = 12;
+    document.getElementById('perfilHint').textContent = "Sem qualificação prévia — tratamos como 95% por padrão (mais seguro) até o treinador conseguir qualificar no Dia 1. Ajuste o perfil assim que possível.";
+  }
 }
 async function salvarNovaExperiencia(){
   const nome = document.getElementById('f_nome').value.trim();
   if(!nome){ showToast("Informe o nome do lead."); return; }
+  const consultorId = document.getElementById('f_consultor_id').value || null;
+  const consultorObj = equipeConsultoras.find(c=>c.id===consultorId);
   const exp = mkExp({
     academia_id: currentUser ? currentUser.academia_id : null,
     nome_lead:nome,
+    numero_cadastro:document.getElementById('f_numero_cadastro').value.trim(),
     contato:document.getElementById('f_contato').value.trim(),
     data_inicio:document.getElementById('f_data_inicio').value || today(),
-    consultor_responsavel:document.getElementById('f_consultor').value.trim(),
+    consultor_id: consultorId,
+    consultor_responsavel: consultorObj ? consultorObj.nome : '—',
     perfil:novaPerfil,
     programa:document.getElementById('f_programa').value,
-    duracao_dias:parseInt(document.getElementById('f_duracao').value)||(novaPerfil==='95'?12:4),
+    duracao_dias:parseInt(document.getElementById('f_duracao').value)||(novaPerfil==='5'?4:12),
     objetivo_especifico:document.getElementById('f_objetivo').value.trim(),
-    status:'aguardando_dia1'
+    status:'agendada'
   });
   experiencias.unshift(exp);
   await persist(exp);
@@ -830,19 +893,34 @@ function renderDetail(){
 
   document.getElementById('detailBody').innerHTML = `
 
+    <div class="section-block">
+      <h3><span class="dot"></span>Etapa da Experiência <span class="hint" style="margin-left:auto;font-size:11px;">clique para mover manualmente</span></h3>
+      <div class="status-pills">
+        ${STATUS_COLS.map(c=>`<div class="status-pill ${exp.status===c.key?'selected':''}" onclick="setStatusManual('${c.key}')">${c.label}</div>`).join('')}
+      </div>
+      ${exp.status==='nao_convertida' ? `
+        <div class="field" style="margin-top:10px;">
+          <label>Motivo</label>
+          <input type="text" id="motivo_perda_input" value="${escapeHtml(exp.motivo_perda)||''}" onchange="setMotivoPerda(this.value)" placeholder="Ex: preço, tempo, desistência...">
+        </div>` : ''}
+      ${exp.status==='convertida' ? `<div class="hint">Convertida em ${fmtDate(exp.data_conversao)}</div>` : ''}
+    </div>
+
     ${alerta ? `<div class="section-block" style="border-color:var(--red);background:rgba(230,71,62,.08);">
       <h3 style="color:var(--red);"><span class="dot" style="background:var(--red);"></span>Alerta de acompanhamento</h3>
-      <div style="font-size:13.5px;color:var(--grey);">Sem registro de toque há mais de ${exp.perfil==='95'?'2':'3'} dias. Essa experiência corre risco de esfriar no meio do caminho — priorize o contato hoje.</div>
+      <div style="font-size:13.5px;color:var(--grey);">Sem registro de toque há mais de ${exp.perfil==='5'?'3':'2'} dias. Essa experiência corre risco de esfriar no meio do caminho — priorize o contato hoje.</div>
     </div>` : ''}
 
     <div class="section-block">
       <h3><span class="dot"></span>Qualificação
-        <span class="tag ${exp.perfil==='95'?'tag-95':'tag-5'}" style="margin-left:auto;">${exp.perfil}%</span>
+        <span class="tag ${perfilTagClass(exp.perfil)}" style="margin-left:auto;">${perfilLabel(exp.perfil)}</span>
       </h3>
+      ${exp.campanha_card_id ? `<div class="hint" style="margin-bottom:8px;">🔗 Vinculado ao card de origem no Campanhas — fechamentos aqui são sincronizados lá automaticamente.</div>` : ''}
       <div class="grid2" style="font-size:13.5px;color:var(--grey);">
         <div><strong style="color:var(--white);">Programa:</strong> ${PROGRAMAS[exp.programa]}</div>
         <div><strong style="color:var(--white);">Duração:</strong> ${exp.duracao_dias} dias</div>
       </div>
+      ${exp.numero_cadastro ? `<div style="margin-top:8px;font-size:13.5px;color:var(--grey);"><strong style="color:var(--white);">Nº Cadastro:</strong> ${escapeHtml(exp.numero_cadastro)}</div>` : ''}
       <div style="margin-top:8px;font-size:13.5px;color:var(--grey);"><strong style="color:var(--white);">Objetivo:</strong> ${escapeHtml(exp.objetivo_especifico)||'—'}</div>
     </div>
 
@@ -853,7 +931,10 @@ function renderDetail(){
       ` : `
         <div class="field">
           <label>Registrar treinador do Dia 1</label>
-          <input type="text" id="input_treinador_dia1" placeholder="Nome do treinador">
+          <select id="input_treinador_dia1">
+            <option value="">— Selecione —</option>
+            ${equipeTreinadores.map(t=>`<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('')}
+          </select>
         </div>
         <button class="btn btn-sm" onclick="setTreinadorDia1()">Confirmar Dia 1</button>
         <div class="hint">Esse campo trava após salvo — é o indicador de eficiência de conversão do treinador.</div>
@@ -874,7 +955,10 @@ function renderDetail(){
       </div>
       ${exp.consultoria_realizada ? `<div class="hint">Treinador: ${exp.consultoria_treinador||'—'}</div>` : `
         <div class="field" style="margin-top:8px;">
-          <input type="text" id="input_consultoria_treinador" placeholder="Nome do treinador que vai realizar a consultoria">
+          <select id="input_consultoria_treinador">
+            <option value="">— Selecione o treinador —</option>
+            ${equipeTreinadores.map(t=>`<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('')}
+          </select>
         </div>`}
     </div>
 
@@ -924,21 +1008,6 @@ function renderDetail(){
       <h3><span class="dot" style="background:var(--green);"></span>Tarefas — Time Técnico</h3>
       ${taskItem(exp, 'tarefa_audio_cuidado', 'Áudio de cuidado (dia seguinte ao Dia 1)', 'tecnico', scriptAudioCuidado(exp))}
       ${taskItem(exp, 'tarefa_audio_consultoria', 'Áudio pós-consultoria (treino ajustado)', 'tecnico', scriptAudioConsultoria(exp))}
-    </div>
-
-    <div class="section-block close-block">
-      <h3><span class="dot"></span>Fechamento</h3>
-      <div class="status-pills">
-        <div class="status-pill ${exp.status==='convertida'?'selected':''}" onclick="setFechamento('convertida')">✅ Convertida</div>
-        <div class="status-pill ${exp.status==='pronta_conversao'?'selected':''}" onclick="setFechamento('pronta_conversao')">🕒 Pronta p/ conversão</div>
-        <div class="status-pill ${exp.status==='perdida'?'selected':''}" onclick="setFechamento('perdida')">✕ Perdida</div>
-      </div>
-      ${exp.status==='perdida' ? `
-        <div class="field">
-          <label>Motivo</label>
-          <input type="text" id="motivo_perda_input" value="${escapeHtml(exp.motivo_perda)||''}" onchange="setMotivoPerda(this.value)" placeholder="Ex: preço, tempo, desistência...">
-        </div>` : ''}
-      ${exp.status==='convertida' ? `<div class="hint">Convertida em ${fmtDate(exp.data_conversao)}</div>` : ''}
     </div>
     ` : `<div class="hint" style="padding:8px 4px;">Registre o Dia 1 (treinador responsável) para liberar checklist, pontos críticos, presenças e tarefas.</div>`}
   `;
@@ -1006,13 +1075,17 @@ function fmtDate(d){
 
 /* ================= AÇÕES DO CARD ================= */
 async function setTreinadorDia1(){
-  const val = document.getElementById('input_treinador_dia1').value.trim();
-  if(!val){ showToast("Informe o nome do treinador."); return; }
+  const id = document.getElementById('input_treinador_dia1').value;
+  if(!id){ showToast("Selecione o treinador."); return; }
+  const treinadorObj = equipeTreinadores.find(t=>t.id===id);
   const exp = getExp();
-  exp.treinador_responsavel = val;
+  exp.treinador_id = id;
+  exp.treinador_responsavel = treinadorObj ? treinadorObj.nome : '—';
   exp.data_dia1 = today();
-  exp.status = exp.perfil==='95' ? 'acompanhamento_95' : 'acompanhamento_5';
+  exp.status = 'iniciada';
   await persist(exp);
+  await sincronizarCampanhas(exp, 'iniciada');
+  await gerarTarefasDaJornada(exp);
   renderDetail(); renderKanban();
   showToast("Dia 1 registrado — responsável travado.");
 }
@@ -1031,11 +1104,14 @@ async function toggleField(field, val){
 async function toggleConsultoria(val){
   const exp = getExp();
   if(val){
-    const nome = document.getElementById('input_consultoria_treinador')?.value.trim();
-    exp.consultoria_treinador = nome || exp.treinador_responsavel;
+    const id = document.getElementById('input_consultoria_treinador')?.value;
+    const treinadorObj = equipeTreinadores.find(t=>t.id===id);
+    exp.consultoria_treinador_id = id || exp.treinador_id;
+    exp.consultoria_treinador = treinadorObj ? treinadorObj.nome : exp.treinador_responsavel;
   }
   exp.consultoria_realizada = val;
   await persist(exp);
+  if(val) await gerarTarefaAudioConsultoria(exp);
   renderDetail();
 }
 async function addPresenca(){
@@ -1063,13 +1139,32 @@ async function logSextaTask(tipo){
   renderDetail();
   showToast("Toque de sexta-feira registrado.");
 }
-async function setFechamento(status){
+async function setStatusManual(status){
   const exp = getExp();
   exp.status = status;
-  if(status==='convertida') exp.data_conversao = today();
+  if(status==='convertida' && !exp.data_conversao) exp.data_conversao = today();
   await persist(exp);
+  await sincronizarCampanhas(exp, status);
   renderDetail(); renderKanban();
-  showToast(status==='convertida' ? "🎉 Experiência convertida!" : "Status atualizado.");
+  showToast(status==='convertida' ? "🎉 Experiência convertida!" : "Etapa atualizada.");
+}
+
+// Fecha o ciclo com o Campanhas: quando a experiência converte ou não converte,
+// escreve de volta no card de origem lá — evita ter dois sistemas com informação divergente.
+async function sincronizarCampanhas(exp, status){
+  if(!exp.campanha_card_id || DEMO_MODE || !supabaseClient) return;
+  try{
+    if(status==='convertida'){
+      await supabaseClient.from('campanha_cards').update({etapa_atual:'convertido', status:'convertido', updated_at:Date.now()}).eq('id', exp.campanha_card_id);
+    } else if(status==='nao_convertida'){
+      await supabaseClient.from('campanha_cards').update({status:'perdido', updated_at:Date.now()}).eq('id', exp.campanha_card_id);
+    } else if(status==='iniciada'){
+      await supabaseClient.from('campanha_cards').update({etapa_atual:'exp_iniciada', updated_at:Date.now()}).eq('id', exp.campanha_card_id);
+    }
+  }catch(e){
+    console.error(e);
+    showToast("Etapa salva aqui, mas houve erro ao sincronizar com o Campanhas.");
+  }
 }
 async function setMotivoPerda(val){
   const exp = getExp();
@@ -1080,8 +1175,8 @@ async function setMotivoPerda(val){
 /* ================= DASHBOARD ================= */
 function renderDashboard(){
   const el = document.getElementById('viewDashboard');
-  const ativas = experiencias.filter(e=>!['convertida','perdida'].includes(e.status));
-  const finalizadas = experiencias.filter(e=>['convertida','perdida'].includes(e.status));
+  const ativas = experiencias.filter(e=>!['convertida','nao_convertida'].includes(e.status));
+  const finalizadas = experiencias.filter(e=>['convertida','nao_convertida'].includes(e.status));
   const convertidas = experiencias.filter(e=>e.status==='convertida');
   const taxaConv = finalizadas.length ? Math.round(convertidas.length/finalizadas.length*100) : 0;
 
@@ -1160,7 +1255,287 @@ function renderDashboard(){
   `;
 }
 
-/* ================= UTIL ================= */
+/* ================= AGENDA COMPARTILHADA DA EQUIPE ================= */
+// Tarefas geradas automaticamente (Dia 1, sexta-feira, consultoria) e listadas
+// numa agenda única da academia. Todo mundo vê tudo; só o responsável (ou admin)
+// pode marcar como feita.
+let agendaTarefas = [];
+
+async function loadAgendaTarefas(){
+  if(DEMO_MODE || !supabaseClient){
+    agendaTarefas = experienciasParaAgendaDemo();
+    return;
+  }
+  try{
+    let query = supabaseClient.from('agenda_tarefas').select('*').order('data_prevista',{ascending:true});
+    if(currentUser.academia_id) query = query.eq('academia_id', currentUser.academia_id);
+    const {data, error} = await query;
+    if(error) throw error;
+    agendaTarefas = data || [];
+  }catch(e){
+    console.error(e);
+    agendaTarefas = [];
+  }
+}
+
+// Gera tarefas de demonstração a partir das experiências carregadas (modo demo, sem Supabase)
+function experienciasParaAgendaDemo(){
+  const out = [];
+  experiencias.forEach(exp=>{
+    if(!exp.data_dia1) return;
+    out.push({id:'ag-'+exp.id+'-fb', experiencia_id:exp.id, tipo:'feedback_d1', titulo:'Feedback do dia seguinte — '+exp.nome_lead, responsavel_nome:exp.consultor_responsavel, papel:'vendas', data_prevista:addDays(exp.data_dia1,1), feita:exp.tarefa_feedback_d1?.feita||false});
+    out.push({id:'ag-'+exp.id+'-ac', experiencia_id:exp.id, tipo:'audio_cuidado', titulo:'Áudio de cuidado — '+exp.nome_lead, responsavel_nome:exp.treinador_responsavel, papel:'tecnico', data_prevista:addDays(exp.data_dia1,1), feita:exp.tarefa_audio_cuidado?.feita||false});
+  });
+  return out;
+}
+
+function addDays(dateStr, n){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function proximasSextas(dataInicioStr, duracaoDias){
+  const inicio = new Date(dataInicioStr+'T00:00:00');
+  const fim = new Date(inicio); fim.setDate(fim.getDate()+duracaoDias);
+  const sextas = [];
+  let cursor = new Date(inicio);
+  while(cursor <= fim){
+    if(cursor.getDay()===5) sextas.push(cursor.toISOString().slice(0,10));
+    cursor.setDate(cursor.getDate()+1);
+  }
+  return sextas;
+}
+
+async function criarTarefaAgenda(exp, tipo, titulo, responsavelId, responsavelNome, papel, dataPrevista){
+  const tarefa = {
+    id: 'ag_'+Date.now()+'_'+Math.random().toString(36).slice(2),
+    academia_id: exp.academia_id||null,
+    experiencia_id: exp.id,
+    tipo, titulo, responsavel_id: responsavelId||null, responsavel_nome: responsavelNome||'—', papel,
+    data_prevista: dataPrevista, feita:false
+  };
+  agendaTarefas.push(tarefa);
+  if(!DEMO_MODE && supabaseClient){
+    try{ await supabaseClient.from('agenda_tarefas').insert(tarefa); }
+    catch(e){ console.error(e); }
+  }
+}
+
+// Gera o conjunto de tarefas da jornada assim que o Dia 1 é confirmado —
+// feedback D+1, agendamento final, e uma tarefa de sexta-feira pra cada sexta
+// dentro do período da experiência.
+async function gerarTarefasDaJornada(exp){
+  await criarTarefaAgenda(exp, 'feedback_d1', `Feedback do dia seguinte — ${exp.nome_lead}`, exp.consultor_id, exp.consultor_responsavel, 'vendas', addDays(exp.data_dia1,1));
+  await criarTarefaAgenda(exp, 'audio_cuidado', `Áudio de cuidado — ${exp.nome_lead}`, exp.treinador_id, exp.treinador_responsavel, 'tecnico', addDays(exp.data_dia1,1));
+  await criarTarefaAgenda(exp, 'agendamento_final', `Agendamento final da experiência — ${exp.nome_lead}`, exp.consultor_id, exp.consultor_responsavel, 'vendas', addDays(exp.data_dia1, exp.duracao_dias));
+  const sextas = proximasSextas(exp.data_dia1, exp.duracao_dias);
+  for(const s of sextas){
+    await criarTarefaAgenda(exp, 'sexta', `Dia da Oportunidade — ${exp.nome_lead}`, exp.consultor_id, exp.consultor_responsavel, 'vendas', s);
+  }
+}
+
+// Sempre que marcamos "consultoria realizada", agenda o áudio pós-consultoria pro treinador
+async function gerarTarefaAudioConsultoria(exp){
+  const id = exp.consultoria_treinador_id || exp.treinador_id;
+  const nome = exp.consultoria_treinador || exp.treinador_responsavel;
+  await criarTarefaAgenda(exp, 'audio_consultoria', `Áudio pós-consultoria — ${exp.nome_lead}`, id, nome, 'tecnico', today());
+}
+
+function podeMarcarTarefa(tarefa){
+  if(!currentUser) return false;
+  if(['admin','gestor'].includes(currentUser.role)) return true; // dono/gestor da academia sempre pode
+  if(currentUser.role==='consultor' && tarefa.papel==='vendas') return currentUser.consultora_id && currentUser.consultora_id===tarefa.responsavel_id;
+  if(currentUser.role==='treinador' && tarefa.papel==='tecnico') return currentUser.treinador_id && currentUser.treinador_id===tarefa.responsavel_id;
+  return false;
+}
+
+async function toggleTarefaAgenda(id, feita){
+  const t = agendaTarefas.find(x=>x.id===id);
+  if(!t) return;
+  if(!podeMarcarTarefa(t)){ showToast("Só quem é responsável por essa tarefa pode marcá-la."); renderAgendaTab(); return; }
+  t.feita = feita;
+  t.feita_em = feita ? new Date().toISOString() : null;
+  if(!DEMO_MODE && supabaseClient){
+    try{ await supabaseClient.from('agenda_tarefas').update({feita:t.feita, feita_em:t.feita_em}).eq('id', id); }
+    catch(e){ console.error(e); }
+  }
+  renderAgendaTab();
+}
+
+let agendaFiltro = 'todos'; // 'todos' | 'meus'
+function setAgendaFiltro(f){ agendaFiltro = f; renderAgendaTab(); }
+
+const TIPO_LABEL = {
+  feedback_d1:'📞 Feedback do dia seguinte', audio_cuidado:'🎧 Áudio de cuidado',
+  agendamento_final:'📅 Agendamento final', sexta:'🎯 Dia da Oportunidade',
+  audio_consultoria:'🎧 Áudio pós-consultoria'
+};
+
+function isMinhaTarefa(t){
+  if(!currentUser) return false;
+  if(currentUser.role==='consultor') return currentUser.consultora_id && currentUser.consultora_id===t.responsavel_id;
+  if(currentUser.role==='treinador') return currentUser.treinador_id && currentUser.treinador_id===t.responsavel_id;
+  return false; // admin/gestor não têm "meus" individuais — usam Todos
+}
+
+function renderAgendaTab(){
+  const el = document.getElementById('viewAgenda');
+  let tarefas = [...agendaTarefas];
+  if(agendaFiltro==='meus'){
+    tarefas = tarefas.filter(isMinhaTarefa);
+  }
+  tarefas.sort((a,b)=> (a.data_prevista||'').localeCompare(b.data_prevista||'') || (a.feita - b.feita));
+
+  const porDia = {};
+  tarefas.forEach(t=>{
+    const dia = t.data_prevista || 'sem-data';
+    if(!porDia[dia]) porDia[dia]=[];
+    porDia[dia].push(t);
+  });
+  const dias = Object.keys(porDia).sort();
+
+  el.innerHTML = `
+    <div class="board-header">
+      <div>
+        <div class="board-title">Agenda da Equipe</div>
+        <div class="board-sub">Vendas e treinador, tarefas geradas automaticamente pela jornada — todos veem, cada um edita só o seu</div>
+      </div>
+      <div class="tab-switch">
+        <button class="${agendaFiltro==='todos'?'active':''}" onclick="setAgendaFiltro('todos')">Todos</button>
+        <button class="${agendaFiltro==='meus'?'active':''}" onclick="setAgendaFiltro('meus')">Meus compromissos</button>
+      </div>
+    </div>
+    ${dias.length ? dias.map(dia=>`
+      <div class="section-block">
+        <h3><span class="dot"></span>${fmtDateLong(dia)}</h3>
+        ${porDia[dia].map(t=>{
+          const posso = podeMarcarTarefa(t);
+          return `
+          <div class="task-item ${t.feita?'done':''}">
+            <div class="task-head">
+              <span class="t-name">${TIPO_LABEL[t.tipo]||t.titulo}</span>
+              <span class="t-role role-${t.papel}">${t.papel==='vendas'?'Vendas':'Técnico'}</span>
+            </div>
+            <div class="hint" style="margin-bottom:6px;">${escapeHtml(t.titulo)} · responsável: <strong style="color:var(--white);">${escapeHtml(t.responsavel_nome)||'—'}</strong></div>
+            <div class="check-row" style="border:none;padding:4px 0;">
+              <input type="checkbox" ${t.feita?'checked':''} ${posso?'':'disabled'} onchange="toggleTarefaAgenda('${t.id}', this.checked)">
+              <label style="${posso?'':'color:var(--grey-dim);'}">${posso?'Marcar como concluída':'Só '+escapeHtml(t.responsavel_nome||'o responsável')+' pode marcar'}</label>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('') : '<div class="hint" style="padding:20px;">Nenhuma tarefa agendada ainda — as tarefas aparecem aqui automaticamente quando o Dia 1 de uma experiência é registrado.</div>'}
+  `;
+}
+function fmtDateLong(d){
+  if(d==='sem-data') return 'Sem data definida';
+  const [y,m,day] = d.split('-');
+  const dt = new Date(y,m-1,day);
+  const dias = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  return `${dias[dt.getDay()]}, ${day}/${m}`;
+}
+
+/* ================= EQUIPE — LOGIN INDIVIDUAL (admin/gestor) ================= */
+let equipeLoginsCache = {}; // id (consultora ou treinador) -> registro de gestores
+
+async function renderEquipeTab(){
+  const el = document.getElementById('viewEquipe');
+  if(!['admin','gestor'].includes(currentUser.role)){
+    el.innerHTML = '<div class="hint" style="padding:20px;">Apenas gestores podem gerenciar acessos da equipe.</div>';
+    return;
+  }
+  if(!currentUser.academia_id){
+    el.innerHTML = '<div class="hint" style="padding:20px;">Conta master sem academia vinculada — entre com o login de uma academia específica pra gerenciar a equipe dela.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="hint" style="padding:20px;">Carregando equipe...</div>';
+
+  if(!DEMO_MODE && supabaseClient){
+    try{
+      const {data} = await supabaseClient.from('gestores').select('id,nome,email,senha_hash,ativo,consultora_id,treinador_id').eq('academia_id', currentUser.academia_id).in('role',['consultor','treinador']);
+      equipeLoginsCache = {};
+      (data||[]).forEach(g=>{ if(g.consultora_id) equipeLoginsCache['c_'+g.consultora_id]=g; if(g.treinador_id) equipeLoginsCache['t_'+g.treinador_id]=g; });
+    }catch(e){ console.error(e); equipeLoginsCache = {}; }
+  }
+
+  el.innerHTML = `
+    <div class="board-header">
+      <div>
+        <div class="board-title">Equipe — Acessos Individuais</div>
+        <div class="board-sub">Login próprio pra cada consultor(a) e treinador(a) — identidade real, sem depender de nome digitado</div>
+      </div>
+    </div>
+    <div class="section-title" style="margin-top:0;">Consultores(as)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+      ${equipeConsultoras.length ? equipeConsultoras.map(c=>equipeCardHtml(c,'c','vendas')).join('') : '<div class="hint">Nenhum(a) consultor(a) cadastrado(a) nesta academia ainda.</div>'}
+    </div>
+    <div class="section-title">Treinadores(as)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+      ${equipeTreinadores.length ? equipeTreinadores.map(t=>equipeCardHtml(t,'t','tecnico')).join('') : '<div class="hint">Nenhum(a) treinador(a) cadastrado(a) nesta academia ainda.</div>'}
+    </div>
+  `;
+}
+
+function equipeCardHtml(pessoa, prefixo, papel){
+  const login = equipeLoginsCache[prefixo+'_'+pessoa.id];
+  return `
+    <div class="section-block" style="margin-bottom:0;">
+      <h3 style="font-size:15px;"><span class="dot" style="background:${papel==='vendas'?'var(--orange)':'var(--green)'};"></span>${escapeHtml(pessoa.nome)}</h3>
+      ${login ? `
+        <div class="hint" style="margin-bottom:6px;">📧 ${escapeHtml(login.email)}</div>
+        <span class="tag ${login.ativo?'tag-95':'tag-noqual'}" style="margin-bottom:8px;display:inline-block;">${login.ativo?'● ATIVO':'● SUSPENSO'}</span>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <input type="text" id="senha_${prefixo}_${pessoa.id}" placeholder="Nova senha" style="flex:1;font-size:12.5px;padding:6px 9px;">
+          <button class="btn btn-sm" onclick="resetSenhaEquipe('${login.id}','${prefixo}_${pessoa.id}')">Salvar</button>
+        </div>
+        <button class="btn btn-sm btn-ghost" style="width:100%;margin-top:8px;" onclick="toggleAtivoEquipe('${login.id}',${login.ativo})">${login.ativo?'⛔ Suspender':'✅ Reativar'}</button>
+      ` : `
+        <div class="hint" style="margin-bottom:8px;">Sem login ainda.</div>
+        <input type="text" id="email_${prefixo}_${pessoa.id}" placeholder="E-mail de acesso" style="margin-bottom:6px;font-size:12.5px;padding:6px 9px;">
+        <input type="text" id="senha_nova_${prefixo}_${pessoa.id}" placeholder="Senha" style="margin-bottom:8px;font-size:12.5px;padding:6px 9px;">
+        <button class="btn btn-sm" style="width:100%;" onclick="criarLoginEquipe('${pessoa.id}','${escapeHtml(pessoa.nome).replace(/'/g,"\\'")}','${prefixo}')">Criar acesso</button>
+      `}
+    </div>`;
+}
+
+async function criarLoginEquipe(pessoaId, nome, prefixo){
+  const email = document.getElementById(`email_${prefixo}_${pessoaId}`).value.trim().toLowerCase();
+  const senha = document.getElementById(`senha_nova_${prefixo}_${pessoaId}`).value;
+  if(!email || !senha || senha.length<4){ showToast("Preencha e-mail e senha (mín. 4 caracteres)."); return; }
+  try{
+    const {data:existe} = await supabaseClient.from('gestores').select('id').eq('email', email);
+    if(existe && existe.length){ showToast("Já existe um acesso com esse e-mail."); return; }
+    const payload = {
+      id: crypto.randomUUID?crypto.randomUUID():'g_'+Date.now(),
+      nome, email, senha_hash: senha, academia_id: currentUser.academia_id,
+      role: prefixo==='c'?'consultor':'treinador', ativo:true,
+      modulos_ativos: ['experiencias'],
+      [prefixo==='c'?'consultora_id':'treinador_id']: pessoaId
+    };
+    await supabaseClient.from('gestores').insert(payload);
+    showToast("Acesso criado! Já pode entrar pelo módulo de Experiências.");
+    renderEquipeTab();
+  }catch(e){ console.error(e); showToast("Erro ao criar acesso."); }
+}
+
+async function resetSenhaEquipe(gestorId, key){
+  const nova = document.getElementById('senha_'+key).value.trim();
+  if(!nova){ showToast("Digite a nova senha."); return; }
+  try{
+    await supabaseClient.from('gestores').update({senha_hash:nova}).eq('id', gestorId);
+    showToast("Senha atualizada!");
+    renderEquipeTab();
+  }catch(e){ console.error(e); showToast("Erro ao atualizar senha."); }
+}
+
+async function toggleAtivoEquipe(gestorId, ativoAtual){
+  try{
+    await supabaseClient.from('gestores').update({ativo:!ativoAtual}).eq('id', gestorId);
+    showToast(!ativoAtual?"Acesso reativado!":"Acesso suspenso.");
+    renderEquipeTab();
+  }catch(e){ console.error(e); showToast("Erro ao atualizar acesso."); }
+}
+
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 function showToast(msg){
   const t = document.getElementById('toast');

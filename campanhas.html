@@ -569,9 +569,14 @@ async function doLogin(){
   if(!email||!senha){err.textContent='Preencha e-mail e senha.';err.classList.add('show');return;}
   const btn=document.getElementById('btn-login');btn.disabled=true;btn.textContent='Verificando...';
   try{
-    const res=await sbGet('gestores',`email=eq.${encodeURIComponent(email)}&senha_hash=eq.${encodeURIComponent(senha)}&ativo=eq.true&select=id,nome,email,academia_id,role,consultora_id`);
+    const res=await sbGet('gestores',`email=eq.${encodeURIComponent(email)}&senha_hash=eq.${encodeURIComponent(senha)}&ativo=eq.true&select=id,nome,email,academia_id,role,consultora_id,modulos_ativos`);
     if(!res||!res.length||!ROLES_PERMITIDOS.includes(res[0].role)){
       err.textContent='E-mail ou senha incorretos, ou acesso não autorizado.';err.classList.add('show');
+      btn.disabled=false;btn.textContent='Entrar';return;
+    }
+    // admin (master QG.90) sempre tem acesso; demais precisam ter 'campanhas' liberado
+    if(res[0].role!=='admin' && !(res[0].modulos_ativos||[]).includes('campanhas')){
+      err.textContent='Este módulo ainda não foi liberado para sua academia. Fale com o QG.90.';err.classList.add('show');
       btn.disabled=false;btn.textContent='Entrar';return;
     }
     sessionStorage.setItem('qg90_sessao',JSON.stringify(res[0]));
@@ -586,8 +591,8 @@ async function checkSession(){
   const uidAuto=params.get('uid');
   if(uidAuto){
     try{
-      const res=await sbGet('gestores',`id=eq.${encodeURIComponent(uidAuto)}&ativo=eq.true&select=id,nome,email,academia_id,role,consultora_id`);
-      if(res&&res.length&&ROLES_PERMITIDOS.includes(res[0].role)){
+      const res=await sbGet('gestores',`id=eq.${encodeURIComponent(uidAuto)}&ativo=eq.true&select=id,nome,email,academia_id,role,consultora_id,modulos_ativos`);
+      if(res&&res.length&&ROLES_PERMITIDOS.includes(res[0].role)&&(res[0].role==='admin'||(res[0].modulos_ativos||[]).includes('campanhas'))){
         sessionStorage.setItem('qg90_sessao',JSON.stringify(res[0]));
         iniciarApp(res[0]);return;
       }
@@ -597,8 +602,8 @@ async function checkSession(){
   if(!raw){mostrarTela('screen-login');return;}
   let s;try{s=JSON.parse(raw);}catch(e){mostrarTela('screen-login');return;}
   try{
-    const res=await sbGet('gestores',`id=eq.${encodeURIComponent(s.id)}&ativo=eq.true&select=id,nome,email,academia_id,role,consultora_id`);
-    if(!res||!res.length||!ROLES_PERMITIDOS.includes(res[0].role)){sessionStorage.removeItem('qg90_sessao');mostrarTela('screen-login');return;}
+    const res=await sbGet('gestores',`id=eq.${encodeURIComponent(s.id)}&ativo=eq.true&select=id,nome,email,academia_id,role,consultora_id,modulos_ativos`);
+    if(!res||!res.length||!ROLES_PERMITIDOS.includes(res[0].role)||(res[0].role!=='admin'&&!(res[0].modulos_ativos||[]).includes('campanhas'))){sessionStorage.removeItem('qg90_sessao');mostrarTela('screen-login');return;}
     iniciarApp(res[0]);
   }catch(e){console.error(e);mostrarTela('screen-login');}
 }
@@ -1471,6 +1476,14 @@ function renderCardModalBody(){
     </div>
   `;
 
+  const PROGRAMAS_QG90={emagrecimento_saude:'Emagrecimento c/ Saúde',imunidade_energia:'Imunidade e Energia',performance_esporte:'Performance e Esporte',cuidados_especiais:'Cuidados Especiais'};
+  const blocoPrograma=`
+    <div class="at-perfil-box">
+      <span class="at-perfil-lbl">Programa (pilar):</span>
+      ${Object.entries(PROGRAMAS_QG90).map(([k,l])=>`<button class="at-perfil-btn ${c.programa_pilar===k?'ativo p95':''}" onclick="salvarProgramaPilar('${k}')">${l}</button>`).join('')}
+    </div>
+  `;
+
   const blocoQualificacao=`
     <div class="at-qual-box">
       <div class="at-qual-tipo">📋 Qualificação — informações pra rapport e conexão</div>
@@ -1557,6 +1570,7 @@ function renderCardModalBody(){
 
   document.getElementById('cardModalBody').innerHTML=`
     ${blocoPerfil}
+    ${blocoPrograma}
     ${blocoQualificacao}
     ${blocoAtendimento}
     <div class="at-trava-msg" id="travaMsg">🔒 Confirme a próxima ação (registre o contato) ou envie para Perdas antes de fechar este card.</div>
@@ -1754,6 +1768,20 @@ async function salvarPerfilQualificacao(valor){
     renderKanbanBoard();
   }catch(e){console.error(e);toast('Erro ao salvar classificação',true);}
 }
+
+// Programa/pilar QG.90 — mesma lógica do perfil, salva na hora.
+// Usado depois para preencher automaticamente o card em Experiências ao agendar a experiência.
+async function salvarProgramaPilar(valor){
+  try{
+    await sbPatch('campanha_cards',cardAberto.id,{programa_pilar:valor,updated_at:Date.now()});
+    cardAberto.programa_pilar=valor;
+    toast('Programa definido!');
+    await carregarCardsKanban();
+    cardAberto=kbCards.find(x=>x.id===cardAberto.id)||cardAberto;
+    renderCardModalBody();
+    renderKanbanBoard();
+  }catch(e){console.error(e);toast('Erro ao salvar programa',true);}
+}
 // a ação. Só abrir e consultar o card (sem tocar em nada) sempre fecha livre.
 function tentarFecharCardModal(){
   if(formTocado&&!acaoConfirmadaNesteCard){
@@ -1855,10 +1883,52 @@ async function moverCardParaEtapa(cardId,novaEtapa,dataAgendamento,horaAgendamen
   try{
     await sbPatch('campanha_cards',cardId,patch);
     toast('Card atualizado!');
+    if(novaEtapa==='exp_agendada' && !card.experiencia_id){
+      await criarExperienciaVinculada(card);
+    }
     await carregarCardsKanban();
     renderKanbanBoard();
     renderKbSummary();
   }catch(e){console.error(e);toast('Erro ao mover card',true);}
+}
+
+// ══════════════════════════════════════════
+// INTEGRAÇÃO COM O MÓDULO EXPERIÊNCIAS
+// ══════════════════════════════════════════
+// Quando um card chega em "Experiência Agendada", cria automaticamente o card
+// espelho no módulo de Experiências — sem duplicar digitação. Vendas continua
+// trabalhando aqui (Campanhas); treinador passa a trabalhar lá (Experiências).
+// Ao fechar a experiência (convertida/não convertida), o módulo de Experiências
+// escreve de volta aqui, fechando o ciclo nos dois sistemas.
+async function criarExperienciaVinculada(card){
+  try{
+    const perfil = card.perfil_qualificacao==='95' ? '95' : card.perfil_qualificacao==='5' ? '5' : 'sem_qualificacao';
+    const duracao = perfil==='5' ? 4 : 12;
+    const novaExp = await sbPost('experiencias',{
+      id: (crypto.randomUUID?crypto.randomUUID():'exp_'+Date.now()+Math.random().toString(36).slice(2)),
+      academia_id: sessao.academia_id,
+      nome_lead: card.nome,
+      numero_cadastro: card.codigo_matricula||null,
+      contato: card.telefone||null,
+      data_inicio: card.data_agendamento || new Date().toISOString().slice(0,10),
+      consultor_responsavel: nomeConsultora(card.consultora_id),
+      perfil: perfil,
+      programa: card.programa_pilar || null,
+      duracao_dias: duracao,
+      objetivo_especifico: card.qualificacao || '',
+      status: 'agendada',
+      campanha_card_id: card.id,
+      campanha_id: card.campanha_id
+    });
+    const criada = Array.isArray(novaExp) ? novaExp[0] : novaExp;
+    if(criada && criada.id){
+      await sbPatch('campanha_cards',card.id,{experiencia_id:criada.id,updated_at:Date.now()});
+    }
+    toast('🎯 Card criado no módulo Experiências, já conectado!');
+  }catch(e){
+    console.error(e);
+    toast('Card movido, mas houve erro ao conectar com o módulo Experiências.',true);
+  }
 }
 
 const MOTIVOS_PERDA=[

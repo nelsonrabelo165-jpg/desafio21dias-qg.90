@@ -1762,7 +1762,7 @@ async function renderAdminPanel(){
   `;
   // carrega gestores
   try{
-    const gs=await sbGet('gestores','role=eq.gestor&select=id,nome,email,senha_hash,academia_id,ativo');
+    const gs=await sbGet('gestores','role=eq.gestor&select=id,nome,email,senha_hash,academia_id,ativo,modulos_ativos');
     gestoresDB={};
     gs.forEach(g=>{if(g.academia_id)gestoresDB[g.academia_id]=g});
   }catch(e){console.error(e)}
@@ -1840,6 +1840,11 @@ function openAcesso(acId2){
     <div class="divider"></div>
     <div style="font-size:12px;color:var(--td);margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Acesso ao sistema</div>
     <button class="btn-${ativo?'danger':'or'}" style="width:100%;margin-bottom:10px" onclick="toggleAtivoAcademia('${g.id}',${ativo})">${ativo?'⛔ Suspender acesso':'✅ Reativar acesso'}</button>
+
+    <div class="divider"></div>
+    <div style="font-size:12px;color:var(--td);margin-bottom:8px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px">Módulos liberados</div>
+    <div style="font-size:11px;color:var(--td);margin-bottom:10px;line-height:1.4">Cada módulo é independente — travar um não afeta o acesso aos outros.</div>
+    ${renderModulosCheckbox(g)}
     `:`<div style="color:var(--td);font-size:13px;margin-bottom:16px">Nenhum gestor cadastrado para esta academia.</div>`}
 
     <div class="divider"></div>
@@ -1871,6 +1876,49 @@ async function salvarUsuarioAcademia(gId){
     Object.values(gestoresDB).forEach(g=>{if(g.id===gId){g.nome=nome;g.email=email}});
     if(typeof renderAdminPanel==='function')renderAdminPanel();
   }catch(e){toast('Erro ao salvar',true);console.error(e)}
+}
+
+// ══ CONTROLE DE MÓDULOS POR ACADEMIA ══
+// Cada gestor tem um array `modulos_ativos` na tabela gestores (ex: ["roi21","campanhas","experiencias"]).
+// Um módulo travado NÃO afeta os outros — cada tela verifica só o seu próprio módulo no login.
+const MODULOS_QG90 = [
+  {key:'roi21', label:'📊 Desafio 21 Dias', desc:'Painel principal / CRM de vendas'},
+  {key:'campanhas', label:'📢 Campanhas', desc:'Kanban de leads e campanhas'},
+  {key:'scripts', label:'📚 Central de Scripts', desc:'Biblioteca de scripts e treinamento AQÚI'},
+  {key:'experiencias', label:'🎯 Experiências', desc:'Jornada de experiência conectada'}
+];
+
+function renderModulosCheckbox(g){
+  const ativos = g.modulos_ativos || [];
+  return `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+    ${MODULOS_QG90.map(m=>{
+      const ligado = ativos.includes(m.key);
+      return `<label style="display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;cursor:pointer">
+        <input type="checkbox" ${ligado?'checked':''} onchange="toggleModulo('${g.id}','${m.key}',this.checked)" style="width:17px;height:17px;accent-color:var(--or);flex-shrink:0">
+        <div style="flex:1">
+          <div style="font-size:13.5px;font-weight:600">${m.label}</div>
+          <div style="font-size:11px;color:var(--td)">${m.desc}</div>
+        </div>
+      </label>`;
+    }).join('')}
+  </div>`;
+}
+
+async function toggleModulo(gId, moduloKey, ligar){
+  const g = Object.values(gestoresDB).find(x=>x.id===gId);
+  if(!g){toast('Gestor não encontrado',true);return}
+  let atuais = g.modulos_ativos || [];
+  let novos;
+  if(ligar){
+    novos = atuais.includes(moduloKey) ? atuais : [...atuais, moduloKey];
+  } else {
+    novos = atuais.filter(m=>m!==moduloKey);
+  }
+  try{
+    await fetch(`${SB_URL}/rest/v1/gestores?id=eq.${gId}`,{method:'PATCH',headers:H,body:JSON.stringify({modulos_ativos:novos})});
+    g.modulos_ativos = novos;
+    toast(ligar?'Módulo liberado!':'Módulo bloqueado.');
+  }catch(e){toast('Erro ao atualizar módulo',true);console.error(e)}
 }
 
 // Suspender/reativar: usa o MESMO campo `ativo` da tabela gestores — bloqueia login
