@@ -285,6 +285,9 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
 <header class="top">
   <a href="index.html" class="logo">QG<span>.90</span></a>
   <a href="index.html" class="btn-back">← Desafio ROI</a>
+  <button class="btn-back" style="cursor:pointer;" onclick="abrirCentralScriptsCampanhas()">📚 Scripts</button>
+  <button class="btn-back" style="cursor:pointer;" onclick="abrirExperienciasCampanhas()">🎯 Experiências</button>
+  <button class="btn-back" style="cursor:pointer;" onclick="abrirAgendaExperienciasCampanhas()">📅 Agenda</button>
   <div class="badge">Módulo de Campanhas · Fase 1</div>
   <div class="user-chip">
     <div class="uinfo"><b id="userNome">—</b><span id="userAcademia">—</span></div>
@@ -585,6 +588,20 @@ async function doLogin(){
   btn.disabled=false;btn.textContent='Entrar';
 }
 function doLogout(){sessionStorage.removeItem('qg90_sessao');mostrarTela('screen-login');}
+
+// Atalhos rápidos — mesmo padrão de SSO via ?uid=, sem precisar voltar ao Desafio ROI
+function abrirExperienciasCampanhas(){
+  if(!sessao||!sessao.id){toast('Faça login primeiro.',true);return;}
+  window.location.href=`controle-experiencias.html?uid=${encodeURIComponent(sessao.id)}`;
+}
+function abrirAgendaExperienciasCampanhas(){
+  if(!sessao||!sessao.id){toast('Faça login primeiro.',true);return;}
+  window.location.href=`controle-experiencias.html?uid=${encodeURIComponent(sessao.id)}&tab=agenda`;
+}
+function abrirCentralScriptsCampanhas(){
+  if(!sessao||!sessao.id){toast('Faça login primeiro.',true);return;}
+  window.location.href=`central-scripts-aqui.html?uid=${encodeURIComponent(sessao.id)}`;
+}
 
 async function checkSession(){
   const params=new URLSearchParams(window.location.search);
