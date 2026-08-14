@@ -295,6 +295,25 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
   display:none;box-shadow:0 8px 24px rgba(0,0,0,.4);
 }
 .hint{font-size:12px;color:var(--grey-dim);margin-top:4px;line-height:1.4;}
+
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.cal-grid-head{margin-bottom:6px;}
+.cal-label{text-align:center;font-size:11px;color:var(--grey);font-weight:700;text-transform:uppercase;}
+.cal-cell{
+  aspect-ratio:1;border-radius:8px;background:var(--bg-elev);border:1px solid var(--border-soft);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;
+  font-size:13px;color:var(--grey);
+}
+.cal-cell.empty{background:transparent;border:none;}
+.cal-cell.has-tasks{cursor:pointer;border-color:var(--orange-dim);color:var(--white);}
+.cal-cell.has-tasks:hover{background:var(--bg-card-hover);}
+.cal-cell.is-today{border-color:var(--orange);border-width:2px;}
+.cal-cell.is-selected{background:var(--orange-glow);border-color:var(--orange);}
+.cal-daynum{font-weight:600;}
+.cal-badge{
+  position:absolute;bottom:3px;background:var(--orange);color:#0a0a0a;font-size:9.5px;font-weight:800;
+  border-radius:20px;padding:1px 5px;min-width:14px;text-align:center;
+}
 .locked-value{
   background:var(--bg-elev);border:1px dashed var(--border);padding:10px 13px;border-radius:8px;
   font-size:14px;color:var(--grey);
@@ -341,6 +360,7 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
       <a href="index.html" class="btn btn-ghost btn-sm" style="text-decoration:none;">← Desafio ROI</a>
       <button class="btn btn-ghost btn-sm" onclick="abrirCampanhasExp()">📢 Campanhas</button>
       <button class="btn btn-ghost btn-sm" onclick="abrirScriptsExp()">📚 Scripts</button>
+      <a href="roteiro-aula.html" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;">📖 Roteiro</a>
       <div class="tab-switch">
         <button class="active" id="tabKanbanBtn" onclick="switchTab('kanban')">Kanban</button>
         <button id="tabAgendaBtn" onclick="switchTab('agenda')">Agenda</button>
@@ -1014,16 +1034,16 @@ function renderDetail(){
 
     <div class="section-block">
       <h3><span class="dot" style="background:var(--orange);"></span>Tarefas — Vendas</h3>
-      ${taskItem(exp, 'tarefa_feedback_d1', 'a) Feedback do dia seguinte', 'vendas', scriptFeedbackD1(exp))}
-      ${taskItem(exp, 'tarefa_acompanhamento', 'b) Acompanhamento / agendar mapa de sintomas + consultoria', 'vendas', null)}
+      ${taskItem(exp, 'tarefa_feedback_d1', 'a) Feedback do dia seguinte', 'vendas', scriptFeedbackD1(exp), 'feedback_d1')}
+      ${taskItem(exp, 'tarefa_acompanhamento', 'b) Acompanhamento / agendar mapa de sintomas + consultoria', 'vendas', null, 'acompanhamento')}
       ${sextaTaskBlock(exp)}
-      ${taskItem(exp, 'tarefa_agendamento_final', 'd) Agendamento final da experiência', 'vendas', null)}
+      ${taskItem(exp, 'tarefa_agendamento_final', 'd) Agendamento final da experiência', 'vendas', null, 'agendamento_final')}
     </div>
 
     <div class="section-block">
       <h3><span class="dot" style="background:var(--green);"></span>Tarefas — Time Técnico</h3>
-      ${taskItem(exp, 'tarefa_audio_cuidado', 'Áudio de cuidado (dia seguinte ao Dia 1)', 'tecnico', scriptAudioCuidado(exp))}
-      ${taskItem(exp, 'tarefa_audio_consultoria', 'Áudio pós-consultoria (treino ajustado)', 'tecnico', scriptAudioConsultoria(exp))}
+      ${taskItem(exp, 'tarefa_audio_cuidado', 'Áudio de cuidado (dia seguinte ao Dia 1)', 'tecnico', scriptAudioCuidado(exp), 'audio_cuidado')}
+      ${taskItem(exp, 'tarefa_audio_consultoria', 'Áudio pós-consultoria (treino ajustado)', 'tecnico', scriptAudioConsultoria(exp), 'audio_consultoria')}
     </div>
     ` : `<div class="hint" style="padding:8px 4px;">Registre o Dia 1 (treinador responsável) para liberar checklist, pontos críticos, presenças e tarefas.</div>`}
   `;
@@ -1045,7 +1065,7 @@ function checklistDia1Html(exp){
   </div>`;
 }
 
-function taskItem(exp, field, label, role, script){
+function taskItem(exp, field, label, role, script, tipo){
   const t = exp[field];
   return `
     <div class="task-item ${t.feita?'done':''}">
@@ -1054,8 +1074,9 @@ function taskItem(exp, field, label, role, script){
         <span class="t-role role-${role}">${role==='vendas'?'Vendas':'Técnico'}</span>
       </div>
       ${script ? `<div class="task-script">${script}</div>` : ''}
+      ${!t.feita ? `<textarea id="obs_${field}" placeholder="O que foi conversado / registrado (opcional)" style="margin:6px 0;min-height:50px;">${escapeHtml(t.obs)||''}</textarea>` : ''}
       <div class="check-row" style="border:none;padding:4px 0;">
-        <input type="checkbox" ${t.feita?'checked':''} onchange="toggleTask('${field}', this.checked)">
+        <input type="checkbox" ${t.feita?'checked':''} onchange="toggleTask('${field}', this.checked, '${tipo}')">
         <label>Marcar como concluída</label>
       </div>
       ${t.feita ? `<div class="hint">Feita em ${fmtDate(t.data)}${t.obs?' · '+escapeHtml(t.obs):''}</div>` : ''}
@@ -1142,18 +1163,40 @@ async function addPresenca(){
   renderDetail(); renderKanban();
   showToast("Presença registrada.");
 }
-async function toggleTask(field, val){
+async function toggleTask(field, val, tipo){
   const exp = getExp();
-  exp[field] = {feita:val, data: val?today():null, obs:null};
+  const obsInput = document.getElementById('obs_'+field);
+  const obs = obsInput ? obsInput.value.trim() : null;
+  exp[field] = {feita:val, data: val?today():null, obs: val?(obs||null):null};
   await persist(exp);
+  if(val) await syncAgendaFromCard(exp.id, tipo, obs);
   renderDetail();
+  if(val) showToast("Registrado! A Agenda foi atualizada automaticamente.");
 }
 async function logSextaTask(tipo){
   const exp = getExp();
   exp.tarefas_sexta.push({data:today(), tipo});
   await persist(exp);
+  await syncAgendaFromCard(exp.id, 'sexta', tipo==='oportunidade'?'Ofereceu oportunidade exclusiva':'Fez reconexão');
   renderDetail();
-  showToast("Toque de sexta-feira registrado.");
+  showToast("Toque de sexta-feira registrado — Agenda atualizada.");
+}
+
+// Encontra a tarefa correspondente (mesma experiência + mesmo tipo, ainda pendente,
+// a mais próxima) na Agenda compartilhada e marca como concluída — evita ter dois
+// lugares desencontrados (card x Agenda) registrando a mesma ação.
+async function syncAgendaFromCard(experienciaId, tipo, obs){
+  const candidatas = agendaTarefas.filter(t=>t.experiencia_id===experienciaId && t.tipo===tipo && !t.feita);
+  if(!candidatas.length) return;
+  candidatas.sort((a,b)=>(a.data_prevista||'').localeCompare(b.data_prevista||''));
+  const alvo = candidatas[0];
+  alvo.feita = true;
+  alvo.feita_em = new Date().toISOString();
+  if(obs) alvo.obs = obs;
+  if(!DEMO_MODE && supabaseClient){
+    try{ await supabaseClient.from('agenda_tarefas').update({feita:true, feita_em:alvo.feita_em}).eq('id', alvo.id); }
+    catch(e){ console.error(e); }
+  }
 }
 async function setStatusManual(status){
   const exp = getExp();
@@ -1342,6 +1385,7 @@ async function criarTarefaAgenda(exp, tipo, titulo, responsavelId, responsavelNo
 // dentro do período da experiência.
 async function gerarTarefasDaJornada(exp){
   await criarTarefaAgenda(exp, 'feedback_d1', `Feedback do dia seguinte — ${exp.nome_lead}`, exp.consultor_id, exp.consultor_responsavel, 'vendas', addDays(exp.data_dia1,1));
+  await criarTarefaAgenda(exp, 'acompanhamento', `Acompanhamento — confirmar mapa de sintomas + consultoria — ${exp.nome_lead}`, exp.consultor_id, exp.consultor_responsavel, 'vendas', addDays(exp.data_dia1, Math.max(2,Math.floor(exp.duracao_dias/2))));
   await criarTarefaAgenda(exp, 'audio_cuidado', `Áudio de cuidado — ${exp.nome_lead}`, exp.treinador_id, exp.treinador_responsavel, 'tecnico', addDays(exp.data_dia1,1));
   await criarTarefaAgenda(exp, 'agendamento_final', `Agendamento final da experiência — ${exp.nome_lead}`, exp.consultor_id, exp.consultor_responsavel, 'vendas', addDays(exp.data_dia1, exp.duracao_dias));
   const sextas = proximasSextas(exp.data_dia1, exp.duracao_dias);
@@ -1365,27 +1409,22 @@ function podeMarcarTarefa(tarefa){
   return false;
 }
 
-async function toggleTarefaAgenda(id, feita){
-  const t = agendaTarefas.find(x=>x.id===id);
-  if(!t) return;
-  if(!podeMarcarTarefa(t)){ showToast("Só quem é responsável por essa tarefa pode marcá-la."); renderAgendaTab(); return; }
-  t.feita = feita;
-  t.feita_em = feita ? new Date().toISOString() : null;
-  if(!DEMO_MODE && supabaseClient){
-    try{ await supabaseClient.from('agenda_tarefas').update({feita:t.feita, feita_em:t.feita_em}).eq('id', id); }
-    catch(e){ console.error(e); }
-  }
-  renderAgendaTab();
-}
-
 let agendaFiltro = 'todos'; // 'todos' | 'meus'
-function setAgendaFiltro(f){ agendaFiltro = f; renderAgendaTab(); }
+let agendaVisao = 'lista'; // 'lista' | 'calendario'
+let agendaMesAtual = new Date(); // usado na visão calendário
+let agendaDiaSelecionado = null;
 
-const TIPO_LABEL = {
-  feedback_d1:'📞 Feedback do dia seguinte', audio_cuidado:'🎧 Áudio de cuidado',
-  agendamento_final:'📅 Agendamento final', sexta:'🎯 Dia da Oportunidade',
-  audio_consultoria:'🎧 Áudio pós-consultoria'
-};
+function setAgendaFiltro(f){ agendaFiltro = f; renderAgendaTab(); }
+function setAgendaVisao(v){ agendaVisao = v; agendaDiaSelecionado = null; renderAgendaTab(); }
+
+// Abre o card do lead direto na etapa certa — a conclusão da tarefa acontece
+// LÁ (com registro do que foi feito e próxima ação já programada), nunca
+// direto na Agenda. Isso evita ter dois lugares desencontrados.
+function abrirCardDaTarefa(experienciaId, tarefa){
+  if(!podeMarcarTarefa(tarefa)){ showToast("Só quem é responsável por essa tarefa pode registrá-la."); return; }
+  switchTab('kanban');
+  openDetail(experienciaId);
+}
 
 function isMinhaTarefa(t){
   if(!currentUser) return false;
@@ -1394,14 +1433,58 @@ function isMinhaTarefa(t){
   return false; // admin/gestor não têm "meus" individuais — usam Todos
 }
 
+function tarefasFiltradas(){
+  let tarefas = [...agendaTarefas];
+  if(agendaFiltro==='meus') tarefas = tarefas.filter(isMinhaTarefa);
+  return tarefas;
+}
+
 function renderAgendaTab(){
   const el = document.getElementById('viewAgenda');
-  let tarefas = [...agendaTarefas];
-  if(agendaFiltro==='meus'){
-    tarefas = tarefas.filter(isMinhaTarefa);
-  }
-  tarefas.sort((a,b)=> (a.data_prevista||'').localeCompare(b.data_prevista||'') || (a.feita - b.feita));
+  el.innerHTML = `
+    <div class="board-header">
+      <div>
+        <div class="board-title">Agenda da Equipe</div>
+        <div class="board-sub">Vendas e treinador, tarefas geradas automaticamente pela jornada — todos veem, cada um edita só o seu</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="tab-switch">
+          <button class="${agendaFiltro==='todos'?'active':''}" onclick="setAgendaFiltro('todos')">Todos</button>
+          <button class="${agendaFiltro==='meus'?'active':''}" onclick="setAgendaFiltro('meus')">Meus compromissos</button>
+        </div>
+        <div class="tab-switch">
+          <button class="${agendaVisao==='lista'?'active':''}" onclick="setAgendaVisao('lista')">☰ Lista</button>
+          <button class="${agendaVisao==='calendario'?'active':''}" onclick="setAgendaVisao('calendario')">📆 Calendário</button>
+        </div>
+      </div>
+    </div>
+    <div id="agendaConteudo"></div>
+  `;
+  if(agendaVisao==='lista') renderAgendaLista();
+  else renderAgendaCalendario();
+}
 
+function agendaTaskCard(t){
+  const posso = podeMarcarTarefa(t);
+  return `
+    <div class="task-item ${t.feita?'done':''}" style="cursor:${posso?'pointer':'default'};" ${posso?`onclick="abrirCardDaTarefa('${t.experiencia_id}', agendaTarefas.find(x=>x.id==='${t.id}'))"`:''}>
+      <div class="task-head">
+        <span class="t-name">${TIPO_LABEL[t.tipo]||t.titulo}</span>
+        <span class="t-role role-${t.papel}">${t.papel==='vendas'?'Vendas':'Técnico'}</span>
+      </div>
+      <div class="hint" style="margin-bottom:6px;">${escapeHtml(t.titulo)} · responsável: <strong style="color:var(--white);">${escapeHtml(t.responsavel_nome)||'—'}</strong></div>
+      ${t.feita
+        ? `<div class="hint" style="color:var(--green);">✓ Concluída${t.obs?' · '+escapeHtml(t.obs):''}</div>`
+        : posso
+          ? `<button class="btn btn-sm" onclick="event.stopPropagation();abrirCardDaTarefa('${t.experiencia_id}', agendaTarefas.find(x=>x.id==='${t.id}'))">Abrir card e registrar →</button>`
+          : `<div class="hint">Só ${escapeHtml(t.responsavel_nome||'o responsável')} pode registrar esta tarefa</div>`
+      }
+    </div>`;
+}
+
+function renderAgendaLista(){
+  const tarefas = tarefasFiltradas();
+  tarefas.sort((a,b)=> (a.data_prevista||'').localeCompare(b.data_prevista||'') || (a.feita - b.feita));
   const porDia = {};
   tarefas.forEach(t=>{
     const dia = t.data_prevista || 'sem-data';
@@ -1409,40 +1492,83 @@ function renderAgendaTab(){
     porDia[dia].push(t);
   });
   const dias = Object.keys(porDia).sort();
-
-  el.innerHTML = `
-    <div class="board-header">
-      <div>
-        <div class="board-title">Agenda da Equipe</div>
-        <div class="board-sub">Vendas e treinador, tarefas geradas automaticamente pela jornada — todos veem, cada um edita só o seu</div>
-      </div>
-      <div class="tab-switch">
-        <button class="${agendaFiltro==='todos'?'active':''}" onclick="setAgendaFiltro('todos')">Todos</button>
-        <button class="${agendaFiltro==='meus'?'active':''}" onclick="setAgendaFiltro('meus')">Meus compromissos</button>
-      </div>
-    </div>
-    ${dias.length ? dias.map(dia=>`
+  document.getElementById('agendaConteudo').innerHTML = dias.length ? dias.map(dia=>`
       <div class="section-block">
         <h3><span class="dot"></span>${fmtDateLong(dia)}</h3>
-        ${porDia[dia].map(t=>{
-          const posso = podeMarcarTarefa(t);
-          return `
-          <div class="task-item ${t.feita?'done':''}">
-            <div class="task-head">
-              <span class="t-name">${TIPO_LABEL[t.tipo]||t.titulo}</span>
-              <span class="t-role role-${t.papel}">${t.papel==='vendas'?'Vendas':'Técnico'}</span>
-            </div>
-            <div class="hint" style="margin-bottom:6px;">${escapeHtml(t.titulo)} · responsável: <strong style="color:var(--white);">${escapeHtml(t.responsavel_nome)||'—'}</strong></div>
-            <div class="check-row" style="border:none;padding:4px 0;">
-              <input type="checkbox" ${t.feita?'checked':''} ${posso?'':'disabled'} onchange="toggleTarefaAgenda('${t.id}', this.checked)">
-              <label style="${posso?'':'color:var(--grey-dim);'}">${posso?'Marcar como concluída':'Só '+escapeHtml(t.responsavel_nome||'o responsável')+' pode marcar'}</label>
-            </div>
-          </div>`;
-        }).join('')}
+        ${porDia[dia].map(agendaTaskCard).join('')}
       </div>
-    `).join('') : '<div class="hint" style="padding:20px;">Nenhuma tarefa agendada ainda — as tarefas aparecem aqui automaticamente quando o Dia 1 de uma experiência é registrado.</div>'}
+    `).join('') : '<div class="hint" style="padding:20px;">Nenhuma tarefa agendada ainda — as tarefas aparecem aqui automaticamente quando o Dia 1 de uma experiência é registrado.</div>';
+}
+
+function renderAgendaCalendario(){
+  const tarefas = tarefasFiltradas();
+  const ano = agendaMesAtual.getFullYear(), mes = agendaMesAtual.getMonth();
+  const primeiroDia = new Date(ano, mes, 1);
+  const ultimoDia = new Date(ano, mes+1, 0);
+  const offset = primeiroDia.getDay(); // 0=domingo
+  const nomesMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  const porDia = {};
+  tarefas.forEach(t=>{
+    if(!t.data_prevista) return;
+    if(!porDia[t.data_prevista]) porDia[t.data_prevista]=[];
+    porDia[t.data_prevista].push(t);
+  });
+
+  let celulas = '';
+  for(let i=0;i<offset;i++) celulas += `<div class="cal-cell empty"></div>`;
+  for(let d=1; d<=ultimoDia.getDate(); d++){
+    const dateStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const tds = porDia[dateStr] || [];
+    const pendentes = tds.filter(t=>!t.feita).length;
+    const isHoje = dateStr === today();
+    const isSelecionado = dateStr === agendaDiaSelecionado;
+    celulas += `
+      <div class="cal-cell ${tds.length?'has-tasks':''} ${isHoje?'is-today':''} ${isSelecionado?'is-selected':''}" onclick="${tds.length?`selecionarDiaAgenda('${dateStr}')`:''}">
+        <span class="cal-daynum">${d}</span>
+        ${tds.length ? `<span class="cal-badge">${pendentes>0?pendentes:'✓'}</span>` : ''}
+      </div>`;
+  }
+
+  const semanaLabels = ['D','S','T','Q','Q','S','S'];
+
+  document.getElementById('agendaConteudo').innerHTML = `
+    <div class="section-block">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <button class="btn btn-sm btn-ghost" onclick="mudarMesAgenda(-1)">←</button>
+        <h3 style="margin:0;">${nomesMes[mes]} ${ano}</h3>
+        <button class="btn btn-sm btn-ghost" onclick="mudarMesAgenda(1)">→</button>
+      </div>
+      <div class="cal-grid cal-grid-head">
+        ${semanaLabels.map(l=>`<div class="cal-label">${l}</div>`).join('')}
+      </div>
+      <div class="cal-grid">${celulas}</div>
+    </div>
+    ${agendaDiaSelecionado ? `
+      <div class="section-block">
+        <h3><span class="dot"></span>${fmtDateLong(agendaDiaSelecionado)}</h3>
+        ${(porDia[agendaDiaSelecionado]||[]).map(agendaTaskCard).join('') || '<div class="hint">Nenhuma tarefa neste dia.</div>'}
+      </div>
+    ` : '<div class="hint" style="padding:8px 4px;">Clique num dia com tarefas para ver os detalhes.</div>'}
   `;
 }
+
+function mudarMesAgenda(delta){
+  agendaMesAtual = new Date(agendaMesAtual.getFullYear(), agendaMesAtual.getMonth()+delta, 1);
+  agendaDiaSelecionado = null;
+  renderAgendaCalendario();
+}
+function selecionarDiaAgenda(dateStr){
+  agendaDiaSelecionado = dateStr;
+  renderAgendaCalendario();
+}
+
+const TIPO_LABEL = {
+  feedback_d1:'📞 Feedback do dia seguinte', audio_cuidado:'🎧 Áudio de cuidado',
+  agendamento_final:'📅 Agendamento final', sexta:'🎯 Dia da Oportunidade',
+  audio_consultoria:'🎧 Áudio pós-consultoria', acompanhamento:'📋 Acompanhamento / conferência'
+};
+
 function fmtDateLong(d){
   if(d==='sem-data') return 'Sem data definida';
   const [y,m,day] = d.split('-');
