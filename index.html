@@ -274,6 +274,7 @@ tbody tr:hover td{background:var(--s2)}
       <button class="btn-gh btn-sm" onclick="abrirCentralScripts()" title="Abre em nova aba, já logado">📚 Central de Scripts</button>
       <button class="btn-gh btn-sm" onclick="abrirCampanhas()" title="Abre em nova aba, já logado">📢 Campanhas</button>
       <button class="btn-gh btn-sm" onclick="abrirExperiencias()" title="Abre em nova aba, já logado">🎯 Experiências</button>
+      <a href="roteiro-aula.html" target="_blank" class="btn-gh btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;" title="Abre em nova aba, guia de consulta">📖 Roteiro</a>
       <button class="btn-logout" onclick="doLogout()">Sair</button>
     </div>
   </div>
@@ -885,11 +886,12 @@ const FUNIS=[
   {id:'f0',nome:'Leads Novos',cor:'#FF6B00',sub:'Mês anterior + vigente',planos:true},
   {id:'f1',nome:'Renovação',cor:'#3b82f6',sub:'Não renovados + a vencer',planos:true},
   {id:'f3',nome:'Rematrícula',cor:'#B57BEE',sub:'Ex-alunos',planos:true},
-  {id:'f2',nome:'Feedback + Indicação',cor:'#a855f7',sub:'Novos via indicação',planos:true}
+  {id:'f2',nome:'Feedback + Indicação',cor:'#a855f7',sub:'Novos via indicação',planos:true},
+  {id:'f4',nome:'Sucesso do Cliente',cor:'#3DBA7A',sub:'Retenção e acompanhamento pós-venda',planos:false}
 ];
 // Liga o funil do ROI ao perfil correspondente no módulo de Campanhas — usado pra
 // puxar os números automaticamente no Lançar Dia, quando a consultora tem cards lá.
-const FUNIL_PARA_PERFIL_CAMPANHA={f0:'leads',f1:'renovacao',f3:'rematricula',f2:null};
+const FUNIL_PARA_PERFIL_CAMPANHA={f0:'leads',f1:'renovacao',f3:'rematricula',f2:null,f4:'sucesso_cliente'};
 const PLANOS=[{k:'anual',lbl:'Anual'},{k:'mensal',lbl:'Mensal'},{k:'especial',lbl:'Especial'},{k:'recorrencia',lbl:'Recorr.'},{k:'outro',lbl:'Outro'}];
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
@@ -1049,7 +1051,7 @@ function renderFunilChecks(){
 }
 function toggleFC(fid){
   if(selFunis.includes(fid)){selFunis=selFunis.filter(x=>x!==fid)}
-  else{if(selFunis.length>=3){toast('Máximo 3 funis',true);return}selFunis.push(fid)}
+  else{if(selFunis.length>=4){toast('Máximo 4 funis',true);return}selFunis.push(fid)}
   FUNIS.forEach(f=>{
     const sel=selFunis.includes(f.id);
     const item=document.getElementById('fci-'+f.id),dot=document.getElementById('fcd-'+f.id);
@@ -1100,13 +1102,33 @@ function populateLancCons(){
   Object.entries(a.consultoras).forEach(([id,c])=>{const o=document.createElement('option');o.value=id;o.textContent=c.nome;sel.appendChild(o)});
 }
 
+// Cache simples pra não bater no banco toda hora — resetado a cada abertura do Lançar Dia
+let campanhasAtivasCache=null;
+async function getCampanhasAtivas(){
+  if(campanhasAtivasCache)return campanhasAtivasCache;
+  try{
+    campanhasAtivasCache=await sbGet('campanhas',`academia_id=eq.${acId}&status=eq.ativa&select=id,perfis`);
+  }catch(e){console.error(e);campanhasAtivasCache=[];}
+  return campanhasAtivasCache;
+}
+// IDs das campanhas ativas que atendem um perfil específico (leads/renovacao/rematricula)
+async function idsCampanhasAtivasPorPerfil(perfil){
+  if(!perfil)return[];
+  const camps=await getCampanhasAtivas();
+  return camps.filter(c=>(c.perfis||[]).includes(perfil)).map(c=>c.id);
+}
+
 // Busca os números de HOJE no módulo de Campanhas pra um funil+consultora — usado
 // pra auto-preencher o Lançar Dia sem a consultora digitar de novo o que já registrou
-// no Modo Atendimento. Retorna null se ela não tem nenhum card nesse perfil.
+// no Modo Atendimento. Retorna null se ela não tem nenhum card nesse perfil OU se
+// não existe campanha ATIVA desse perfil no momento (evita puxar dado de campanha
+// já encerrada/arquivada).
 async function buscarDadosCampanhaHoje(consultoraId,perfil){
   if(!perfil)return null;
+  const campIds=await idsCampanhasAtivasPorPerfil(perfil);
+  if(!campIds.length)return null; // sem campanha ativa desse perfil — cai pro modo manual
   try{
-    const cards=await sbGet('campanha_cards',`consultora_id=eq.${consultoraId}&perfil=eq.${perfil}&select=id,status,etapa_atual,created_at,updated_at`);
+    const cards=await sbGet('campanha_cards',`consultora_id=eq.${consultoraId}&perfil=eq.${perfil}&campanha_id=in.(${campIds.join(',')})&select=id,status,etapa_atual,created_at,updated_at`);
     if(!cards.length)return null;
     const hojeStr=new Date().toISOString().slice(0,10);
     const inicioHoje=new Date();inicioHoje.setHours(0,0,0,0);
@@ -1120,8 +1142,11 @@ async function buscarDadosCampanhaHoje(consultoraId,perfil){
     const tent_cadencia=interacoesHoje.filter(i=>i.tentativa_numero>1).length;
     const efetivos=interacoesHoje.filter(i=>(i.resultado||'').includes('contato_efetivo')).length;
     const novos_leads=cards.filter(c=>c.created_at&&emHoje(c.created_at)).length;
-    const ag_mat=cards.filter(c=>['agendada_matricula','feedback_matricula'].includes(c.etapa_atual)&&c.updated_at&&emHoje(c.updated_at)).length;
-    const ag_exp=cards.filter(c=>c.etapa_atual==='exp_agendada'&&c.updated_at&&emHoje(c.updated_at)).length;
+    // ag_mat/ag_exp usam nomes de etapa fixos (agendada_matricula, exp_agendada) — não fazem
+    // sentido pra funis de etapas customizadas (ex: Sucesso do Cliente), onde ficam zerados.
+    const temEtapasFixas=perfil!=='sucesso_cliente';
+    const ag_mat=temEtapasFixas?cards.filter(c=>['agendada_matricula','feedback_matricula'].includes(c.etapa_atual)&&c.updated_at&&emHoje(c.updated_at)).length:0;
+    const ag_exp=temEtapasFixas?cards.filter(c=>c.etapa_atual==='exp_agendada'&&c.updated_at&&emHoje(c.updated_at)).length:0;
     const convertidos=cards.filter(c=>c.status==='convertido'&&c.updated_at&&emHoje(c.updated_at)).length;
     const total_conv_lista=cards.filter(c=>c.status==='convertido').length;
     const lista_total=cards.length;
@@ -1138,6 +1163,7 @@ async function renderLancFunis(){
   const c=a.consultoras[cid];
   if(!c||!c.funis||!c.funis.length){el.innerHTML='<div style="color:var(--td);font-size:12px">Sem funis configurados.</div>';return}
   el.innerHTML='<div style="color:var(--td);font-size:12px">Carregando...</div>';
+  campanhasAtivasCache=null; // sempre revalida ao abrir, evita campanha encerrada há pouco continuar "colada"
 
   // calcula lista atual por funil (último valor registrado)
   const regs=consRegs(a,cid);
@@ -1147,13 +1173,29 @@ async function renderLancFunis(){
     listaAtual[fid]=ultimoComLista?ultimoComLista.funis[fid].lista_total:0;
   });
 
-  // busca dados automáticos do Campanhas em paralelo, um por funil
-  const dadosAuto={};
+  // Um funil só fica disponível pra lançamento se: (a) não depende do Campanhas (ex: Feedback+Indicação,
+  // que ainda não existe lá), OU (b) existe pelo menos 1 campanha ATIVA daquele perfil hoje.
+  const disponibilidade={};
   await Promise.all(c.funis.map(async fid=>{
+    const perfil=FUNIL_PARA_PERFIL_CAMPANHA[fid];
+    disponibilidade[fid]=!perfil || (await idsCampanhasAtivasPorPerfil(perfil)).length>0;
+  }));
+  const funisDisponiveis=c.funis.filter(fid=>disponibilidade[fid]);
+  const funisIndisponiveis=c.funis.filter(fid=>!disponibilidade[fid]);
+
+  // busca dados automáticos do Campanhas em paralelo, um por funil disponível
+  const dadosAuto={};
+  await Promise.all(funisDisponiveis.map(async fid=>{
     dadosAuto[fid]=await buscarDadosCampanhaHoje(cid,FUNIL_PARA_PERFIL_CAMPANHA[fid]);
   }));
 
-  el.innerHTML=c.funis.map(fid=>{
+  const avisoIndisponiveis=funisIndisponiveis.length?`
+    <div class="info-box" style="border-color:var(--td);color:var(--td);margin-bottom:12px">
+      ⏸ ${funisIndisponiveis.map(fid=>fInfo(fid)?.nome).join(', ')} — sem campanha ativa desse perfil no momento.
+      Crie ou reative uma campanha em <strong>Campanhas → Minhas Campanhas</strong> pra liberar o lançamento aqui.
+    </div>`:'';
+
+  el.innerHTML=avisoIndisponiveis+funisDisponiveis.map(fid=>{
     const f=fInfo(fid);if(!f)return'';
     const auto=dadosAuto[fid]; // null = sem cards no Campanhas, segue manual
     const laAtual=auto?auto.lista_total:listaAtual[fid];
@@ -1423,7 +1465,7 @@ async function abrirEdicaoInicioDesafio(){
   }catch(e){console.error(e);toast('Erro ao salvar',true);}
 }
 
-function renderPainelFunis(){
+async function renderPainelFunis(){
   const a=ac();
   const el=document.getElementById('painel-funis-grid');
   if(!a){el.innerHTML='';return}
@@ -1433,12 +1475,23 @@ function renderPainelFunis(){
   const funisTotais={};
   FUNIS.forEach(f=>{funisTotais[f.id]={lista:0,tent_novas:0,tent_cad:0,efetivos:0,ag_mat:0,ag_exp:0,convertidos:0,vendido:0,conv_ind:0,exp_ini:0,ind_cons:0,ativo:false}});
 
+  // Um funil "aparece" no painel principal se: tem campanha ATIVA daquele perfil em Campanhas
+  // (novo critério), OU — só pra funis sem equivalente lá ainda (ex: Feedback+Indicação) —
+  // se ao menos 1 consultor(a) está com ele atribuído manualmente.
+  campanhasAtivasCache=null;
+  await Promise.all(FUNIS.map(async f=>{
+    const perfil=FUNIL_PARA_PERFIL_CAMPANHA[f.id];
+    if(perfil){
+      funisTotais[f.id].ativo=(await idsCampanhasAtivasPorPerfil(perfil)).length>0;
+    }
+  }));
+
   Object.entries(a.consultoras).forEach(([cid,c])=>{
     if(filtCons&&cid!==filtCons)return;
     const regs=consRegs(a,cid);
     (c.funis||[]).forEach(fid=>{
       const ft=funisTotais[fid];if(!ft)return;
-      ft.ativo=true;
+      if(!FUNIL_PARA_PERFIL_CAMPANHA[fid])ft.ativo=true; // sem equivalente em Campanhas ainda (ex: f2) — segue regra antiga
       ft.lista=Math.max(ft.lista,listaAtualFunil(regs,fid));
       ft.tent_novas+=sumF(regs,fid,'tent_novas');
       ft.tent_cad+=sumF(regs,fid,'tent_cadencia');      ft.efetivos+=sumF(regs,fid,'efetivos');

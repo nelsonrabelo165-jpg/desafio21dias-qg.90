@@ -78,6 +78,7 @@ main{padding:28px 24px 80px;}
 .ptag-leads{background:rgba(242,140,15,.15);color:var(--laranja);}
 .ptag-rematricula{background:rgba(181,123,238,.15);color:var(--roxo);}
 .ptag-renovacao{background:rgba(74,159,224,.15);color:var(--azul);}
+.ptag-sucesso_cliente{background:rgba(61,186,122,.15);color:var(--verde);}
 .empty-state{text-align:center;padding:60px 20px;color:var(--texto2);}
 
 /* FORM */
@@ -351,6 +352,7 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
           <label class="chk-row"><input type="checkbox" id="w-perfil-leads" onchange="toggleRenovSub()"> Leads Novos</label>
           <label class="chk-row"><input type="checkbox" id="w-perfil-rematricula" onchange="toggleRenovSub()"> Rematrícula (Ex-Alunos)</label>
           <label class="chk-row"><input type="checkbox" id="w-perfil-renovacao" onchange="toggleRenovSub()"> Ciclo Renovação</label>
+          <label class="chk-row"><input type="checkbox" id="w-perfil-sucesso_cliente"> Sucesso do Cliente</label>
           <div class="chk-sub" id="renov-sub">
             <label class="chk-row"><input type="checkbox" checked disabled> Mês vigente (sempre incluso)</label>
             <label class="chk-row"><input type="checkbox" id="w-renov-anterior"> + Mês anterior (não renovados)</label>
@@ -414,6 +416,7 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
       <input class="kb-search" id="kbSearch" placeholder="🔍 Buscar por nome ou código..." oninput="renderKanbanBoard()" style="margin-bottom:0;flex:1;min-width:220px">
       <button class="btn-primary" onclick="abrirNovoCardManual()">+ Adicionar Card</button>
       <button class="btn-gh" onclick="abrirGerenciarTreinadores()">👥 Treinadores(as)</button>
+      <button class="btn-gh" id="btnJornadaSucesso" style="display:none;" onclick="abrirEditorJornadaSucesso()">🎯 Jornada</button>
     </div>
     <div class="kb-board" id="kbBoard"></div>
   </div>
@@ -496,6 +499,19 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
       <input class="fi" id="novoTreinadorNome" placeholder="Nome do(a) treinador(a)" style="flex:1">
       <button class="btn-primary" onclick="adicionarTreinador()">+ Adicionar</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-ov" id="m-jornada-sucesso">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hd"><h3>🎯 Jornada de Sucesso do Cliente</h3><button class="btn-x" onclick="closeM('m-jornada-sucesso')">×</button></div>
+    <p style="font-size:12.5px;color:var(--texto2);margin-bottom:14px">Etapas do Kanban desse funil — editável pra academia montar a própria jornada. Reordene, renomeie, adicione ou remova etapas.</p>
+    <div id="listaJornadaSucesso" style="margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input class="fi" id="novaEtapaJornadaNome" placeholder="Nome da nova etapa" style="flex:1">
+      <button class="btn-gh" onclick="adicionarEtapaJornada()">+ Adicionar</button>
+    </div>
+    <button class="btn-primary" style="width:100%" onclick="salvarJornadaSucesso()">Salvar Jornada</button>
   </div>
 </div>
 
@@ -658,6 +674,8 @@ async function iniciarApp(s){
   try{
     treinadores=s.academia_id?await sbGet('treinadores',`academia_id=eq.${s.academia_id}&ativo=eq.true&select=id,nome`):[];
   }catch(e){console.error(e);treinadores=[];}
+  if(s.academia_id)await carregarJornadaSucesso();
+  else ETAPAS.sucesso_cliente=JORNADA_SUCESSO_PADRAO;
   // Consultor(a) não cria campanha nem sobe listas — só trabalha o próprio Kanban
   if(s.role==='consultor'){
     const btnNova=document.querySelectorAll('.itab-btn')[3];
@@ -685,7 +703,7 @@ function abrirNovaCampanhaEmBranco(){
 // ══════════════════════════════════════════
 // LISTA DE CAMPANHAS
 // ══════════════════════════════════════════
-const PERFIL_LABEL={leads:'Leads Novos',rematricula:'Rematrícula',renovacao:'Renovação'};
+const PERFIL_LABEL={leads:'Leads Novos',rematricula:'Rematrícula',renovacao:'Renovação',sucesso_cliente:'Sucesso do Cliente'};
 let minhasCampanhas=[];
 let mostrarArquivadas=false;
 
@@ -748,6 +766,7 @@ function abrirEditarCampanha(id){
         <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-leads" ${perfis.includes('leads')?'checked':''}> Leads Novos</label>
         <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-rematricula" ${perfis.includes('rematricula')?'checked':''}> Rematrícula</label>
         <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-renovacao" onchange="document.getElementById('ed-renov-sub').style.display=this.checked?'block':'none'" ${perfis.includes('renovacao')?'checked':''}> Renovação</label>
+        <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-sucesso_cliente" ${perfis.includes('sucesso_cliente')?'checked':''}> Sucesso do Cliente</label>
         <div id="ed-renov-sub" style="display:${perfis.includes('renovacao')?'block':'none'};padding-left:20px;">
           <label style="display:block;margin-bottom:6px;font-size:13px;"><input type="checkbox" id="ed-renov-anterior" ${cfg.mes_anterior?'checked':''}> Incluir mês anterior</label>
           <label style="display:block;font-size:13px;"><input type="checkbox" id="ed-renov-seguinte" ${cfg.mes_seguinte?'checked':''}> Incluir mês seguinte</label>
@@ -769,6 +788,7 @@ async function salvarEdicaoCampanha(id){
   if(document.getElementById('ed-perfil-leads').checked)perfis.push('leads');
   if(document.getElementById('ed-perfil-rematricula').checked)perfis.push('rematricula');
   if(document.getElementById('ed-perfil-renovacao').checked)perfis.push('renovacao');
+  if(document.getElementById('ed-perfil-sucesso_cliente').checked)perfis.push('sucesso_cliente');
   if(!nome||!mes){toast('Preencha nome e mês de referência',true);return;}
   if(!perfis.length){toast('Selecione ao menos 1 perfil',true);return;}
   const configRenov={mes_atual:true,mes_anterior:document.getElementById('ed-renov-anterior').checked,mes_seguinte:document.getElementById('ed-renov-seguinte').checked};
@@ -852,8 +872,30 @@ const ETAPAS={
     {k:'feedback_matricula',l:'Agendada Feedback/Matrícula'},
     {k:'convertido',l:'Convertido',end:true},{k:'cadencia_futura',l:'Cadência Futura',end:true,wait:true}
   ]
+  // 'sucesso_cliente' é injetado dinamicamente em ETAPAS.sucesso_cliente ao carregar a
+  // academia (ver carregarJornadaSucesso) — as etapas são editáveis por academia, não fixas.
 };
-const PTAG_CLASS={leads:'ptag-leads',rematricula:'ptag-rematricula',renovacao:'ptag-renovacao'};
+const PTAG_CLASS={leads:'ptag-leads',rematricula:'ptag-rematricula',renovacao:'ptag-renovacao',sucesso_cliente:'ptag-sucesso_cliente'};
+
+// Jornada padrão sugerida — a academia pode editar livremente (renomear, reordenar,
+// adicionar, remover etapas) na tela "🎯 Jornada" dentro do funil Sucesso do Cliente.
+const JORNADA_SUCESSO_PADRAO=[
+  {k:'onboarding',l:'Onboarding'},
+  {k:'acompanhamento',l:'Acompanhamento Ativo'},
+  {k:'risco',l:'Sinal de Risco'},
+  {k:'estabilizado',l:'Estabilizado/Fidelizado',end:true,resultado:'sucesso'},
+  {k:'perdido',l:'Perdido',end:true,resultado:'perda'}
+];
+let jornadaSucessoAtual=null; // carregada por academia, cai no padrão se a academia não tiver customizado
+
+async function carregarJornadaSucesso(){
+  try{
+    const acs=await sbGet('academias',`id=eq.${sessao.academia_id}&select=jornada_sucesso`);
+    const custom=acs&&acs[0]&&acs[0].jornada_sucesso;
+    jornadaSucessoAtual=(custom&&custom.length)?custom:JORNADA_SUCESSO_PADRAO;
+  }catch(e){console.error(e);jornadaSucessoAtual=JORNADA_SUCESSO_PADRAO;}
+  ETAPAS.sucesso_cliente=jornadaSucessoAtual;
+}
 
 let kbCampanha=null,kbCards=[],kbPerfilAtivo=null;
 
@@ -1008,6 +1050,7 @@ const CATALOGO_FUNIS=[
   {p:'leads',label:'Leads Novos',cor:'#F28C0F',ativo:true},
   {p:'rematricula',label:'Rematrícula',cor:'#B57BEE',ativo:true},
   {p:'renovacao',label:'Ciclo de Renovação',cor:'#4A9FE0',ativo:true},
+  {p:'sucesso_cliente',label:'Sucesso do Cliente',cor:'#3DBA7A',ativo:true},
   {p:'planonovo',label:'Feedback Plano Novo + Indicação',cor:'#3DBA7A',ativo:false},
   {p:'outros',label:'Outros funis a desenvolver',cor:'#9A9488',ativo:false}
 ];
@@ -1225,6 +1268,71 @@ async function removerTreinador(id){
 }
 function nomeTreinador(id){const t=treinadores.find(x=>x.id===id);return t?t.nome:'—';}
 
+// ── Editor da Jornada de Sucesso do Cliente — etapas customizáveis por academia ──
+let jornadaEmEdicao=[];
+function abrirEditorJornadaSucesso(){
+  jornadaEmEdicao=(jornadaSucessoAtual||JORNADA_SUCESSO_PADRAO).map(e=>({...e}));
+  document.getElementById('novaEtapaJornadaNome').value='';
+  renderListaJornadaSucesso();
+  openM('m-jornada-sucesso');
+}
+function renderListaJornadaSucesso(){
+  const el=document.getElementById('listaJornadaSucesso');
+  el.innerHTML=jornadaEmEdicao.map((e,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--borda)">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <button class="btn-gh" style="padding:1px 6px;font-size:10px;" ${i===0?'disabled':''} onclick="moverEtapaJornada(${i},-1)">▲</button>
+        <button class="btn-gh" style="padding:1px 6px;font-size:10px;" ${i===jornadaEmEdicao.length-1?'disabled':''} onclick="moverEtapaJornada(${i},1)">▼</button>
+      </div>
+      <input class="fi" style="flex:1;padding:6px 9px;font-size:13px;" value="${e.l.replace(/"/g,'&quot;')}" onchange="renomearEtapaJornada(${i},this.value)">
+      <select class="fsel" style="padding:5px 7px;font-size:11px;width:auto;" onchange="setResultadoEtapaJornada(${i},this.value)">
+        <option value="" ${!e.resultado?'selected':''}>Etapa normal</option>
+        <option value="sucesso" ${e.resultado==='sucesso'?'selected':''}>Final: Sucesso</option>
+        <option value="perda" ${e.resultado==='perda'?'selected':''}>Final: Perda</option>
+      </select>
+      <button class="btn-gh" style="padding:3px 8px;font-size:11px;border-color:var(--vermelho);color:var(--vermelho)" onclick="removerEtapaJornada(${i})">✕</button>
+    </div>`).join('');
+}
+function setResultadoEtapaJornada(i,val){
+  jornadaEmEdicao[i].resultado=val||undefined;
+  jornadaEmEdicao[i].end=!!val;
+}
+function moverEtapaJornada(i,dir){
+  const j=i+dir;
+  if(j<0||j>=jornadaEmEdicao.length)return;
+  [jornadaEmEdicao[i],jornadaEmEdicao[j]]=[jornadaEmEdicao[j],jornadaEmEdicao[i]];
+  renderListaJornadaSucesso();
+}
+function renomearEtapaJornada(i,valor){jornadaEmEdicao[i].l=valor.trim()||jornadaEmEdicao[i].l;}
+function removerEtapaJornada(i){
+  if(jornadaEmEdicao.length<=1){toast('Precisa ter pelo menos 1 etapa',true);return;}
+  jornadaEmEdicao.splice(i,1);
+  renderListaJornadaSucesso();
+}
+function adicionarEtapaJornada(){
+  const nome=document.getElementById('novaEtapaJornadaNome').value.trim();
+  if(!nome){toast('Informe o nome da etapa',true);return;}
+  const key='etapa_'+Date.now().toString(36);
+  jornadaEmEdicao.push({k:key,l:nome});
+  document.getElementById('novaEtapaJornadaNome').value='';
+  renderListaJornadaSucesso();
+}
+async function salvarJornadaSucesso(){
+  if(!jornadaEmEdicao.length){toast('Adicione ao menos 1 etapa',true);return;}
+  try{
+    await fetch(`${SB_URL}/rest/v1/academias?id=eq.${sessao.academia_id}`,{method:'PATCH',headers:H,body:JSON.stringify({jornada_sucesso:jornadaEmEdicao})});
+    jornadaSucessoAtual=jornadaEmEdicao;
+    ETAPAS.sucesso_cliente=jornadaSucessoAtual;
+    toast('Jornada salva!');
+    closeM('m-jornada-sucesso');
+    if(kbPerfilAtivo==='sucesso_cliente'){
+      const tabsEl=document.getElementById('kbPerfilTabs');
+      tabsEl.innerHTML=(kbCampanha.perfis||[]).map(p=>`<button class="kb-ptab" id="kbtab-${p}" onclick="trocarPerfilKanban('${p}')">${PERFIL_LABEL[p]}</button>`).join('');
+      trocarPerfilKanban('sucesso_cliente');
+    }
+  }catch(e){console.error(e);toast('Erro ao salvar jornada',true);}
+}
+
 const ORIGEM_LEAD_LABEL={
   visita_pessoal:'Visita Pessoal', whatsapp_trafego:'WhatsApp Tráfego Pago',
   whatsapp_organico:'WhatsApp Orgânico', instagram_facebook_dm:'Instagram/Facebook DM',
@@ -1313,6 +1421,7 @@ function trocarPerfilKanban(perfil){
   document.querySelectorAll('.kb-ptab').forEach(b=>b.classList.remove('active'));
   const tabEl=document.getElementById('kbtab-'+perfil);
   if(tabEl)tabEl.classList.add('active');
+  document.getElementById('btnJornadaSucesso').style.display=perfil==='sucesso_cliente'?'inline-flex':'none';
   renderKanbanBoard();
   renderKbSummary();
 }
@@ -2102,13 +2211,15 @@ async function moverCardParaEtapa(cardId,novaEtapa,dataAgendamento,horaAgendamen
     if(idxNova>idxAtual)patch.etapa_maxima=novaEtapa;
   }
 
-  if(etapaInfo.k==='convertido'){
+  if(etapaInfo.k==='convertido'||etapaInfo.resultado==='sucesso'){
     patch.status='convertido';
   }else if(etapaInfo.k==='cadencia_futura'){
     patch.status='espera';
     const dias=30+Math.floor(Math.random()*16); // 30–45 dias
     const d=new Date();d.setDate(d.getDate()+dias);
     patch.proxima_acao_data=d.toISOString().slice(0,10);
+  }else if(etapaInfo.resultado==='perda'){
+    patch.status='perdido';
   }else{
     patch.status='ativo';
     if(card.etapa_atual==='lista'&&novaEtapa!=='lista')patch.cadencia_atual=1;
@@ -2259,6 +2370,7 @@ async function salvarCampanhaBase(){
   if(document.getElementById('w-perfil-leads').checked)perfis.push('leads');
   if(document.getElementById('w-perfil-rematricula').checked)perfis.push('rematricula');
   if(document.getElementById('w-perfil-renovacao').checked)perfis.push('renovacao');
+  if(document.getElementById('w-perfil-sucesso_cliente').checked)perfis.push('sucesso_cliente');
   if(!nome||!mes){toast('Preencha nome e mês de referência',true);return;}
   if(!perfis.length){toast('Selecione ao menos 1 perfil',true);return;}
   const configRenov={mes_atual:true,mes_anterior:document.getElementById('w-renov-anterior').checked,mes_seguinte:document.getElementById('w-renov-seguinte').checked};
