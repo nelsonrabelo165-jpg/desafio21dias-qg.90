@@ -70,6 +70,8 @@ main{padding:28px 24px 80px;}
 .camp-status{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;}
 .st-planejamento{background:rgba(154,148,136,.15);color:var(--texto2);}
 .st-ativa{background:rgba(61,186,122,.15);color:var(--verde);}
+.st-arquivada{background:rgba(154,148,136,.1);color:var(--texto2);border:1px solid var(--borda);}
+.st-encerrada{background:rgba(74,159,224,.15);color:var(--azul);}
 .st-encerrada{background:rgba(154,148,136,.1);color:var(--texto2);}
 .camp-perfis{display:flex;gap:6px;flex-wrap:wrap;}
 .ptag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px;}
@@ -288,6 +290,7 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
   <button class="btn-back" style="cursor:pointer;" onclick="abrirCentralScriptsCampanhas()">📚 Scripts</button>
   <button class="btn-back" style="cursor:pointer;" onclick="abrirExperienciasCampanhas()">🎯 Experiências</button>
   <button class="btn-back" style="cursor:pointer;" onclick="abrirAgendaExperienciasCampanhas()">📅 Agenda</button>
+  <a href="roteiro-aula.html" target="_blank" class="btn-back" style="text-decoration:none;">📖 Roteiro</a>
   <div class="badge">Módulo de Campanhas · Fase 1</div>
   <div class="user-chip">
     <div class="uinfo"><b id="userNome">—</b><span id="userAcademia">—</span></div>
@@ -668,22 +671,147 @@ function abrirNovaCampanhaEmBranco(){
 // ══════════════════════════════════════════
 const PERFIL_LABEL={leads:'Leads Novos',rematricula:'Rematrícula',renovacao:'Renovação'};
 let minhasCampanhas=[];
+let mostrarArquivadas=false;
+
+function toggleMostrarArquivadas(){
+  mostrarArquivadas=!mostrarArquivadas;
+  renderGridCampanhas();
+}
+
 async function carregarCampanhas(){
   if(!sessao.academia_id){document.getElementById('campGrid').innerHTML='<div class="empty-state">Sem academia vinculada a este usuário.</div>';return;}
   try{
     const camps=await sbGet('campanhas',`academia_id=eq.${sessao.academia_id}&order=created_at.desc`);
     minhasCampanhas=camps;
-    const grid=document.getElementById('campGrid');
-    if(!camps.length){grid.innerHTML='<div class="empty-state">Nenhuma campanha ainda. Clique em "+ Nova Campanha" pra começar.</div>';return;}
-    grid.innerHTML=camps.map(c=>`
-      <div class="camp-card" onclick="abrirCampanhaExistente('${c.id}')">
-        <span class="camp-status st-${c.status}">${c.status.toUpperCase()}</span>
-        <h4>${c.nome}</h4>
-        <div class="cmeta">${c.mes_referencia} · R$${(c.investimento_trafego||0).toLocaleString('pt-BR')} investido</div>
-        <div class="camp-perfis">${(c.perfis||[]).map(p=>`<span class="ptag ptag-${p}">${PERFIL_LABEL[p]||p}</span>`).join('')}</div>
-        ${c.status==='planejamento'?'<div style="margin-top:8px;font-size:12px;color:var(--laranja)">↻ Clique para continuar o upload</div>':''}
-      </div>`).join('');
+    renderGridCampanhas();
   }catch(e){console.error(e);toast('Erro ao carregar campanhas',true);}
+}
+
+function renderGridCampanhas(){
+  const grid=document.getElementById('campGrid');
+  const arquivadas=minhasCampanhas.filter(c=>c.status==='arquivada');
+  const visiveis=mostrarArquivadas?minhasCampanhas:minhasCampanhas.filter(c=>c.status!=='arquivada');
+
+  const toggleHtml=arquivadas.length?`<div style="grid-column:1/-1;margin-bottom:6px;">
+    <button class="btn-back" style="cursor:pointer;font-size:12.5px;" onclick="toggleMostrarArquivadas()">
+      ${mostrarArquivadas?'← Ocultar arquivadas':`🗄 Ver arquivadas (${arquivadas.length})`}
+    </button>
+  </div>`:'';
+
+  if(!visiveis.length){grid.innerHTML=toggleHtml+'<div class="empty-state">Nenhuma campanha ainda. Clique em "+ Nova Campanha" pra começar.</div>';return;}
+
+  grid.innerHTML=toggleHtml+visiveis.map(c=>`
+    <div class="camp-card" onclick="abrirCampanhaExistente('${c.id}')" style="position:relative;">
+      <div style="position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:2;" onclick="event.stopPropagation()">
+        <button title="Editar" onclick="abrirEditarCampanha('${c.id}')" style="background:var(--fundo3);border:1px solid var(--borda);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--texto2);font-size:13px;">✎</button>
+        <button title="${c.status==='arquivada'?'Reativar':'Arquivar'}" onclick="${c.status==='arquivada'?`reativarCampanha('${c.id}')`:`arquivarCampanha('${c.id}')`}" style="background:var(--fundo3);border:1px solid var(--borda);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--texto2);font-size:13px;">${c.status==='arquivada'?'↺':'🗄'}</button>
+        <button title="Excluir definitivamente" onclick="excluirCampanhaDefinitivo('${c.id}','${c.nome.replace(/'/g,"\\'")}')" style="background:rgba(224,82,82,.12);border:1px solid var(--vermelho);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--vermelho);font-size:13px;">🗑</button>
+      </div>
+      <span class="camp-status st-${c.status}">${c.status.toUpperCase()}</span>
+      <h4>${c.nome}</h4>
+      <div class="cmeta">${c.mes_referencia} · R$${(c.investimento_trafego||0).toLocaleString('pt-BR')} investido</div>
+      <div class="camp-perfis">${(c.perfis||[]).map(p=>`<span class="ptag ptag-${p}">${PERFIL_LABEL[p]||p}</span>`).join('')}</div>
+      ${c.status==='planejamento'?'<div style="margin-top:8px;font-size:12px;color:var(--laranja)">↻ Clique para continuar o upload</div>':''}
+    </div>`).join('');
+}
+
+// ── EDITAR ──
+function abrirEditarCampanha(id){
+  const c=minhasCampanhas.find(x=>x.id===id);
+  if(!c)return;
+  const perfis=c.perfis||[];
+  const cfg=c.config_renovacao||{};
+  const html=`
+    <div class="auth-box" style="max-width:440px;">
+      <h3 style="margin-bottom:16px;">Editar Campanha</h3>
+      <div class="auth-fg"><label class="auth-fl">Nome</label><input type="text" id="ed-nome" value="${c.nome.replace(/"/g,'&quot;')}"></div>
+      <div class="auth-fg"><label class="auth-fl">Mês de referência</label><input type="month" id="ed-mes" value="${c.mes_referencia||''}"></div>
+      <div class="auth-fg"><label class="auth-fl">Investimento em tráfego (R$)</label><input type="number" id="ed-invest" value="${c.investimento_trafego||0}"></div>
+      <div class="auth-fg">
+        <label class="auth-fl">Perfis</label>
+        <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-leads" ${perfis.includes('leads')?'checked':''}> Leads Novos</label>
+        <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-rematricula" ${perfis.includes('rematricula')?'checked':''}> Rematrícula</label>
+        <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-renovacao" onchange="document.getElementById('ed-renov-sub').style.display=this.checked?'block':'none'" ${perfis.includes('renovacao')?'checked':''}> Renovação</label>
+        <div id="ed-renov-sub" style="display:${perfis.includes('renovacao')?'block':'none'};padding-left:20px;">
+          <label style="display:block;margin-bottom:6px;font-size:13px;"><input type="checkbox" id="ed-renov-anterior" ${cfg.mes_anterior?'checked':''}> Incluir mês anterior</label>
+          <label style="display:block;font-size:13px;"><input type="checkbox" id="ed-renov-seguinte" ${cfg.mes_seguinte?'checked':''}> Incluir mês seguinte</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <button class="btn-back" style="flex:1;cursor:pointer;" onclick="fecharModalGenerico()">Cancelar</button>
+        <button class="btn-primary" style="flex:1;" onclick="salvarEdicaoCampanha('${id}')">Salvar</button>
+      </div>
+    </div>`;
+  abrirModalGenerico(html);
+}
+
+async function salvarEdicaoCampanha(id){
+  const nome=document.getElementById('ed-nome').value.trim();
+  const mes=document.getElementById('ed-mes').value;
+  const invest=parseFloat(document.getElementById('ed-invest').value)||0;
+  const perfis=[];
+  if(document.getElementById('ed-perfil-leads').checked)perfis.push('leads');
+  if(document.getElementById('ed-perfil-rematricula').checked)perfis.push('rematricula');
+  if(document.getElementById('ed-perfil-renovacao').checked)perfis.push('renovacao');
+  if(!nome||!mes){toast('Preencha nome e mês de referência',true);return;}
+  if(!perfis.length){toast('Selecione ao menos 1 perfil',true);return;}
+  const configRenov={mes_atual:true,mes_anterior:document.getElementById('ed-renov-anterior').checked,mes_seguinte:document.getElementById('ed-renov-seguinte').checked};
+  try{
+    await sbPatch('campanhas',id,{nome,mes_referencia:mes,investimento_trafego:invest,perfis,config_renovacao:configRenov,updated_at:Date.now()});
+    toast('Campanha atualizada!');
+    fecharModalGenerico();
+    await carregarCampanhas();
+  }catch(e){console.error(e);toast('Erro ao salvar edição',true);}
+}
+
+// ── ARQUIVAR / REATIVAR ──
+async function arquivarCampanha(id){
+  if(!confirm('Arquivar esta campanha? Ela some da lista principal, mas os dados continuam salvos — dá pra reativar depois.'))return;
+  try{
+    await sbPatch('campanhas',id,{status_anterior_arquivamento:(minhasCampanhas.find(c=>c.id===id)||{}).status||'ativa',status:'arquivada',updated_at:Date.now()});
+    toast('Campanha arquivada.');
+    await carregarCampanhas();
+  }catch(e){console.error(e);toast('Erro ao arquivar',true);}
+}
+async function reativarCampanha(id){
+  const c=minhasCampanhas.find(x=>x.id===id);
+  const statusVolta=c?.status_anterior_arquivamento||'ativa';
+  try{
+    await sbPatch('campanhas',id,{status:statusVolta,updated_at:Date.now()});
+    toast('Campanha reativada!');
+    await carregarCampanhas();
+  }catch(e){console.error(e);toast('Erro ao reativar',true);}
+}
+
+// ── EXCLUIR DEFINITIVO ──
+async function excluirCampanhaDefinitivo(id,nome){
+  const digitado=prompt(`Isso vai apagar a campanha "${nome}" e TODOS os cards de leads ligados a ela, sem volta.\n\nPra confirmar, digite o nome exato da campanha:`);
+  if(digitado===null)return;
+  if(digitado.trim()!==nome){toast('Nome não confere — nada foi excluído.',true);return;}
+  try{
+    await fetch(`${SB_URL}/rest/v1/campanha_cards?campanha_id=eq.${id}`,{method:'DELETE',headers:H});
+    await fetch(`${SB_URL}/rest/v1/campanhas?id=eq.${id}`,{method:'DELETE',headers:H});
+    toast('Campanha excluída definitivamente.');
+    await carregarCampanhas();
+  }catch(e){console.error(e);toast('Erro ao excluir campanha',true);}
+}
+
+// ── MODAL GENÉRICO (reaproveita o padrão visual auth-screen) ──
+function abrirModalGenerico(innerHtml){
+  let overlay=document.getElementById('modalGenerico');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='modalGenerico';
+    overlay.style.cssText='display:flex;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+    overlay.onclick=(e)=>{if(e.target===overlay)fecharModalGenerico();};
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML=innerHtml;
+  overlay.style.display='flex';
+}
+function fecharModalGenerico(){
+  const overlay=document.getElementById('modalGenerico');
+  if(overlay)overlay.style.display='none';
 }
 
 // ══════════════════════════════════════════
