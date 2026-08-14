@@ -450,6 +450,22 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
       <div class="fg"><label>Idade</label><input class="fi" type="number" id="nc-idade"></div>
     </div>
     <div class="form-row">
+      <div class="fg"><label>Data do lead</label><input class="fi" type="date" id="nc-data-lead" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="fg">
+        <label>Origem do lead</label>
+        <select class="fsel" id="nc-origem" onchange="document.getElementById('nc-origem-outro').style.display=this.value==='outro'?'block':'none'">
+          <option value="visita_pessoal">Visita Pessoal</option>
+          <option value="whatsapp_trafego">WhatsApp Tráfego Pago</option>
+          <option value="whatsapp_organico">WhatsApp Orgânico</option>
+          <option value="instagram_facebook_dm">Instagram/Facebook DM</option>
+          <option value="telefone_receptivo">Telefone Receptivo</option>
+          <option value="indicacao">Indicação (Feedback Aluno)</option>
+          <option value="outro">Outra origem...</option>
+        </select>
+        <input class="fi" id="nc-origem-outro" placeholder="Descreva a origem" style="display:none;margin-top:6px;">
+      </div>
+    </div>
+    <div class="form-row">
       <div class="fg"><label>Plano atual</label><input class="fi" id="nc-plano"></div>
       <div class="fg"><label>Ticket médio (R$)</label><input class="fi" type="number" id="nc-ticket"></div>
     </div>
@@ -1030,11 +1046,15 @@ function renderAgendaCalendario(cards){
   for(let i=0;i<7;i++){const d=new Date(inicioSemana);d.setDate(inicioSemana.getDate()+i);dias.push(d);}
 
   // Eventos: retornos de cadência (proxima_acao_data) + agendamentos com data (data_agendamento)
+  // Cards já em "Experiência Iniciada" NÃO usam mais data_agendamento (é a data do compromisso
+  // original, que fica parada no passado/futuro sem sentido) — usam a tarefa real pendente,
+  // vinda do módulo Experiências.
   function eventosDoDia(d){
     const iso=d.toISOString().slice(0,10);
     const retornos=cards.filter(c=>c.status==='espera'&&c.proxima_acao_data===iso).map(c=>({c,tipo:'Retorno'}));
-    const agendados=cards.filter(c=>c.status==='ativo'&&c.data_agendamento===iso).map(c=>({c,tipo:(ETAPAS[c.perfil]||[]).find(e=>e.k===c.etapa_atual)?.l||'Agendamento'}));
-    return[...retornos,...agendados];
+    const agendados=cards.filter(c=>c.status==='ativo'&&c.etapa_atual!=='exp_iniciada'&&c.data_agendamento===iso).map(c=>({c,tipo:(ETAPAS[c.perfil]||[]).find(e=>e.k===c.etapa_atual)?.l||'Agendamento'}));
+    const emAndamento=cards.filter(c=>c.status==='ativo'&&c.etapa_atual==='exp_iniciada'&&tarefaExperienciaPorCard[c.id]?.data_prevista===iso).map(c=>({c,tipo:TIPO_LABEL_AGENDA[tarefaExperienciaPorCard[c.id].tipo]||'Experiência em andamento'}));
+    return[...retornos,...agendados,...emAndamento];
   }
 
   const labelSemana=`${inicioSemana.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} — ${dias[6].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}`;
@@ -1052,7 +1072,7 @@ function renderAgendaCalendario(cards){
         const evs=eventosDoDia(d);
         return`<div class="ag-cal-day ${isToday?'is-today':''}">
           <h5>${d.toLocaleDateString('pt-BR',{weekday:'short'})} ${d.getDate()}</h5>
-          ${evs.map(ev=>`<div class="ag-cal-event ce-${ev.c.perfil}" onclick="abrirCardPelaAgenda('${ev.c.id}')" title="${ev.c.nome} — ${ev.tipo}">${ev.c.nome.split(' ')[0]} · ${ev.tipo}</div>`).join('')}
+          ${evs.map(ev=>`<div class="ag-cal-event ce-${ev.c.perfil}" onclick="${ev.c.etapa_atual==='exp_iniciada'&&ev.c.experiencia_id?`abrirExperienciaPelaAgenda('${ev.c.experiencia_id}')`:`abrirCardPelaAgenda('${ev.c.id}')`}" title="${ev.c.nome} — ${ev.tipo}">${ev.c.nome.split(' ')[0]} · ${ev.tipo}</div>`).join('')}
         </div>`;
       }).join('')}
     </div>
@@ -1205,6 +1225,12 @@ async function removerTreinador(id){
 }
 function nomeTreinador(id){const t=treinadores.find(x=>x.id===id);return t?t.nome:'—';}
 
+const ORIGEM_LEAD_LABEL={
+  visita_pessoal:'Visita Pessoal', whatsapp_trafego:'WhatsApp Tráfego Pago',
+  whatsapp_organico:'WhatsApp Orgânico', instagram_facebook_dm:'Instagram/Facebook DM',
+  telefone_receptivo:'Telefone Receptivo', indicacao:'Indicação (Feedback Aluno)'
+};
+
 function abrirNovoCardManual(){
   document.getElementById('nc-nome').value='';
   document.getElementById('nc-telefone').value='';
@@ -1212,6 +1238,10 @@ function abrirNovoCardManual(){
   document.getElementById('nc-idade').value='';
   document.getElementById('nc-plano').value='';
   document.getElementById('nc-ticket').value='';
+  document.getElementById('nc-data-lead').value=new Date().toISOString().slice(0,10);
+  document.getElementById('nc-origem').value='visita_pessoal';
+  document.getElementById('nc-origem-outro').value='';
+  document.getElementById('nc-origem-outro').style.display='none';
   const selCons=document.getElementById('nc-consultora');
   selCons.innerHTML=consultoras.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')||'<option value="">Nenhuma cadastrada</option>';
   const etapas=ETAPAS[kbPerfilAtivo]||[];
@@ -1225,6 +1255,9 @@ async function salvarNovoCardManual(){
   const etapaInicial=document.getElementById('nc-etapa').value;
   const etapas=ETAPAS[kbPerfilAtivo]||[];
   const idxEtapa=etapas.findIndex(e=>e.k===etapaInicial);
+  const origemSel=document.getElementById('nc-origem').value;
+  const origemLead=origemSel==='outro'?(document.getElementById('nc-origem-outro').value.trim()||'Outro'):ORIGEM_LEAD_LABEL[origemSel];
+  const dataLead=document.getElementById('nc-data-lead').value||new Date().toISOString().slice(0,10);
   try{
     await sbPost('campanha_cards',{
       campanha_id:kbCampanha.id,onda_id:null,perfil:kbPerfilAtivo,
@@ -1233,6 +1266,7 @@ async function salvarNovoCardManual(){
       idade:parseInt(document.getElementById('nc-idade').value)||null,
       plano_atual:document.getElementById('nc-plano').value.trim(),
       ticket_medio:parseFloat(document.getElementById('nc-ticket').value)||0,
+      data_lead:dataLead, origem_lead:origemLead,
       etapa_atual:etapaInicial,etapa_maxima:etapaInicial,
       consultora_id:document.getElementById('nc-consultora').value||null,
       cadencia_atual:idxEtapa>0?1:0, // se já entra numa etapa além de "lista", assume que já teve 1ª tentativa
@@ -1674,6 +1708,14 @@ function renderCardModalBody(){
     </div>
   `;
 
+  const blocoOrigemData = (c.origem_lead||c.data_lead) ? `
+    <div class="at-perfil-box" style="opacity:.85;">
+      <span class="at-perfil-lbl">Origem/data do lead:</span>
+      <span style="font-size:12.5px;color:var(--texto2);">${c.origem_lead||'—'}${c.data_lead?' · '+new Date(c.data_lead+'T00:00:00').toLocaleDateString('pt-BR'):''}</span>
+    </div>
+  ` : '';
+
+
   const blocoQualificacao=`
     <div class="at-qual-box">
       <div class="at-qual-tipo">📋 Qualificação — informações pra rapport e conexão</div>
@@ -1761,6 +1803,7 @@ function renderCardModalBody(){
   document.getElementById('cardModalBody').innerHTML=`
     ${blocoPerfil}
     ${blocoPrograma}
+    ${blocoOrigemData}
     ${blocoQualificacao}
     ${blocoAtendimento}
     <div class="at-trava-msg" id="travaMsg">🔒 Confirme a próxima ação (registre o contato) ou envie para Perdas antes de fechar este card.</div>
