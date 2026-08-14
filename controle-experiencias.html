@@ -508,6 +508,25 @@ let currentCardId = null;
 let novaPerfil = "95";
 let equipeConsultoras = [];
 let equipeTreinadores = [];
+let editandoQualificacao = false;
+
+function toggleEdicaoQualificacao(){
+  editandoQualificacao = !editandoQualificacao;
+  renderDetail();
+}
+
+async function salvarEdicaoQualificacao(){
+  const exp = getExp();
+  exp.perfil = document.getElementById('edit_perfil').value;
+  exp.programa = document.getElementById('edit_programa').value || null;
+  exp.duracao_dias = parseInt(document.getElementById('edit_duracao').value) || exp.duracao_dias;
+  exp.objetivo_especifico = document.getElementById('edit_objetivo').value.trim();
+  await persist(exp);
+  editandoQualificacao = false;
+  renderDetail();
+  renderKanban();
+  showToast("Qualificação atualizada.");
+}
 
 const PROGRAMAS = {
   emagrecimento_saude: "Emagrecimento com Saúde",
@@ -901,6 +920,7 @@ async function salvarNovaExperiencia(){
 /* ================= DETALHE DO CARD ================= */
 function openDetail(id){
   currentCardId = id;
+  editandoQualificacao = false;
   renderDetail();
   document.getElementById('detailModalOverlay').classList.add('open');
 }
@@ -954,14 +974,42 @@ function renderDetail(){
     <div class="section-block">
       <h3><span class="dot"></span>Qualificação
         <span class="tag ${perfilTagClass(exp.perfil)}" style="margin-left:auto;">${perfilLabel(exp.perfil)}</span>
+        <button class="btn btn-sm btn-ghost" style="margin-left:8px;" onclick="toggleEdicaoQualificacao()">${editandoQualificacao?'✕':'✎'}</button>
       </h3>
       ${exp.campanha_card_id ? `<div class="hint" style="margin-bottom:8px;">🔗 Vinculado ao card de origem no Campanhas — fechamentos aqui são sincronizados lá automaticamente.</div>` : ''}
-      <div class="grid2" style="font-size:13.5px;color:var(--grey);">
-        <div><strong style="color:var(--white);">Programa:</strong> ${PROGRAMAS[exp.programa]||'Não definido'}</div>
-        <div><strong style="color:var(--white);">Duração:</strong> ${exp.duracao_dias} dias</div>
-      </div>
-      ${exp.numero_cadastro ? `<div style="margin-top:8px;font-size:13.5px;color:var(--grey);"><strong style="color:var(--white);">Nº Cadastro:</strong> ${escapeHtml(exp.numero_cadastro)}</div>` : ''}
-      <div style="margin-top:8px;font-size:13.5px;color:var(--grey);"><strong style="color:var(--white);">Objetivo:</strong> ${escapeHtml(exp.objetivo_especifico)||'—'}</div>
+      ${editandoQualificacao ? `
+        <div class="field">
+          <label>Perfil</label>
+          <select id="edit_perfil">
+            <option value="95" ${exp.perfil==='95'?'selected':''}>95% · Precisa de orientação</option>
+            <option value="5" ${exp.perfil==='5'?'selected':''}>5% · Autônomo / já treina</option>
+            <option value="sem_qualificacao" ${exp.perfil==='sem_qualificacao'?'selected':''}>Sem Qualificação</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Programa (pilar)</label>
+          <select id="edit_programa">
+            <option value="">— Não definido —</option>
+            ${Object.entries(PROGRAMAS).map(([k,l])=>`<option value="${k}" ${exp.programa===k?'selected':''}>${l}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Duração (dias)</label>
+          <input type="number" id="edit_duracao" value="${exp.duracao_dias}" min="1" max="30">
+        </div>
+        <div class="field">
+          <label>Objetivo específico</label>
+          <textarea id="edit_objetivo">${escapeHtml(exp.objetivo_especifico)||''}</textarea>
+        </div>
+        <button class="btn btn-sm" onclick="salvarEdicaoQualificacao()">Salvar</button>
+      ` : `
+        <div class="grid2" style="font-size:13.5px;color:var(--grey);">
+          <div><strong style="color:var(--white);">Programa:</strong> ${PROGRAMAS[exp.programa]||'Não definido'}</div>
+          <div><strong style="color:var(--white);">Duração:</strong> ${exp.duracao_dias} dias</div>
+        </div>
+        ${exp.numero_cadastro ? `<div style="margin-top:8px;font-size:13.5px;color:var(--grey);"><strong style="color:var(--white);">Nº Cadastro:</strong> ${escapeHtml(exp.numero_cadastro)}</div>` : ''}
+        <div style="margin-top:8px;font-size:13.5px;color:var(--grey);"><strong style="color:var(--white);">Objetivo:</strong> ${escapeHtml(exp.objetivo_especifico)||'—'}</div>
+      `}
     </div>
 
     <div class="section-block">
@@ -1008,6 +1056,7 @@ function renderDetail(){
         <div class="freq-bar-track"><div class="freq-bar-fill" style="width:${freq.pct}%"></div></div>
         <div class="freq-label">${freq.presentes}/${freq.totalDias||exp.duracao_dias} dias</div>
       </div>
+      <div class="hint" style="margin-top:4px;">O Dia 1 (${fmtDate(exp.data_dia1)}) já conta como a primeira presença automaticamente — registre aqui só os dias seguintes.</div>
       <div class="presence-list" style="margin-top:12px;">
         ${exp.presencas.map(p=>`
           <div class="presence-row">
@@ -1018,7 +1067,7 @@ function renderDetail(){
           </div>`).join('') || '<div class="hint">Nenhum registro ainda.</div>'}
       </div>
       <div class="grid2" style="margin-top:10px;">
-        <input type="date" id="pres_data" value="${today()}">
+        <input type="date" id="pres_data" value="${proximoDiaLivre(exp)}">
         <input type="text" id="pres_treinador" placeholder="Treinador que atendeu">
       </div>
       <div class="grid2" style="margin-top:8px;">
@@ -1222,9 +1271,18 @@ async function toggleConsultoria(val){
   if(val) await gerarTarefaAudioConsultoria(exp);
   renderDetail();
 }
+function proximoDiaLivre(exp){
+  let ultimo = exp.data_dia1 || today();
+  exp.presencas.forEach(p=>{ if(p.data > ultimo) ultimo = p.data; });
+  return addDays(ultimo, 1);
+}
 async function addPresenca(){
   const exp = getExp();
   const data = document.getElementById('pres_data').value || today();
+  if(data === exp.data_dia1 || exp.presencas.some(p=>p.data===data)){
+    showToast("Esse dia já tem registro (o Dia 1 conta automaticamente) — escolha outra data.");
+    return;
+  }
   const treinador = document.getElementById('pres_treinador').value.trim() || '—';
   const presente = document.getElementById('pres_presente').value === 'true';
   const temp = document.getElementById('pres_temp').value;
