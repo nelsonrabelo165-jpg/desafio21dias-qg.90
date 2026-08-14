@@ -652,10 +652,14 @@ async function tentarLoginAutomatico(){
     }
 
     currentUser = data;
-    startApp();
+    await startApp();
     const tabParam = params.get('tab');
-    if(tabParam && ['kanban','agenda','dashboard','equipe'].includes(tabParam)){
-      setTimeout(()=>switchTab(tabParam), 50);
+    const openExpParam = params.get('openExp');
+    if(openExpParam){
+      switchTab('kanban');
+      openDetail(openExpParam);
+    } else if(tabParam && ['kanban','agenda','dashboard','equipe'].includes(tabParam)){
+      switchTab(tabParam);
     }
     return true;
   }catch(e){
@@ -922,7 +926,7 @@ function renderDetail(){
   const exp = getExp();
   if(!exp) return;
   document.getElementById('d_nome').textContent = exp.nome_lead;
-  document.getElementById('d_sub').textContent = `${PROGRAMAS[exp.programa]} · Início ${fmtDate(exp.data_inicio)} · Consultor(a): ${exp.consultor_responsavel||'—'}`;
+  document.getElementById('d_sub').textContent = `${PROGRAMAS[exp.programa]||'Programa não definido'} · Início ${fmtDate(exp.data_inicio)} · Consultor(a): ${exp.consultor_responsavel||'—'}`;
 
   const freq = calcFrequencia(exp);
   const alerta = isAlerta(exp);
@@ -953,7 +957,7 @@ function renderDetail(){
       </h3>
       ${exp.campanha_card_id ? `<div class="hint" style="margin-bottom:8px;">🔗 Vinculado ao card de origem no Campanhas — fechamentos aqui são sincronizados lá automaticamente.</div>` : ''}
       <div class="grid2" style="font-size:13.5px;color:var(--grey);">
-        <div><strong style="color:var(--white);">Programa:</strong> ${PROGRAMAS[exp.programa]}</div>
+        <div><strong style="color:var(--white);">Programa:</strong> ${PROGRAMAS[exp.programa]||'Não definido'}</div>
         <div><strong style="color:var(--white);">Duração:</strong> ${exp.duracao_dias} dias</div>
       </div>
       ${exp.numero_cadastro ? `<div style="margin-top:8px;font-size:13.5px;color:var(--grey);"><strong style="color:var(--white);">Nº Cadastro:</strong> ${escapeHtml(exp.numero_cadastro)}</div>` : ''}

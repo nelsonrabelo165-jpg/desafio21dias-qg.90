@@ -964,9 +964,27 @@ async function carregarAgenda(){
     agendaCampanhaPorCard={};
     todosCards.forEach(c=>{agendaCampanhaPorCard[c.id]=campsAtivas.find(camp=>camp.id===c.campanha_id);});
     ultimosCardsAgenda=todosCards;
+
+    // Puxa as tarefas pendentes do módulo Experiências pros cards que já viraram experiência
+    // (etapa exp_iniciada em diante) — assim a Minha Agenda continua mostrando o card,
+    // agora com a tarefa real que está pendente lá (feedback D+1, sexta, etc.)
+    tarefaExperienciaPorCard={};
+    const comExperiencia=todosCards.filter(c=>c.experiencia_id);
+    if(comExperiencia.length){
+      const expIds=comExperiencia.map(c=>`"${c.experiencia_id}"`).join(',');
+      try{
+        const tarefas=await sbGet('agenda_tarefas',`experiencia_id=in.(${expIds})&feita=eq.false&order=data_prevista.asc`);
+        comExperiencia.forEach(c=>{
+          const pendente=tarefas.find(t=>t.experiencia_id===c.experiencia_id);
+          if(pendente)tarefaExperienciaPorCard[c.id]=pendente;
+        });
+      }catch(e){console.warn('Não foi possível carregar tarefas do módulo Experiências:',e);}
+    }
+
     renderAgendaShell();
   }catch(e){console.error(e);wrap.innerHTML='<div class="ag-empty">Erro ao carregar a agenda. Veja o console.</div>';}
 }
+let tarefaExperienciaPorCard={};
 
 // Casca fixa (toggle de visão + carteira ativa) + conteúdo trocável (lista OU calendário)
 // Catálogo completo de funis — inclui os já construídos e os planejados (roadmap visível).
@@ -1051,7 +1069,8 @@ function renderAgenda(cards){
   const semana=comData.filter(c=>{const d=new Date(c.proxima_acao_data+'T00:00:00');return d>hoje&&d<=em7dias;});
   const agExperiencia=cards.filter(c=>c.status==='ativo'&&ETAPAS_AG_EXPERIENCIA.includes(c.etapa_atual));
   const agVisita=cards.filter(c=>c.status==='ativo'&&ETAPAS_AG_VISITA.includes(c.etapa_atual));
-  const emCadenciaAtiva=cards.filter(c=>c.status==='ativo'&&!ETAPAS_AGENDADAS.includes(c.etapa_atual));
+  const agEmAndamento=cards.filter(c=>c.status==='ativo'&&c.etapa_atual==='exp_iniciada'&&c.experiencia_id);
+  const emCadenciaAtiva=cards.filter(c=>c.status==='ativo'&&!ETAPAS_AGENDADAS.includes(c.etapa_atual)&&c.etapa_atual!=='exp_iniciada');
 
   const wrap=document.getElementById('agendaConteudo');
   wrap.innerHTML=`
@@ -1066,6 +1085,11 @@ function renderAgenda(cards){
       <h3>🎯 Agendamento Experiência <span class="cnt">${agExperiencia.length}</span></h3>
       <p style="font-size:12px;color:var(--texto2);margin-bottom:10px">Controle = registrar/agendar o início (1º dia) da experiência, independente de quantos dias ela dure.</p>
       ${agExperiencia.length?agExperiencia.map(c=>renderAgItem(c)).join(''):'<div class="ag-empty">Nenhuma experiência aguardando início.</div>'}
+    </div>
+    <div class="ag-section">
+      <h3>🏃 Experiência em Andamento <span class="cnt">${agEmAndamento.length}</span></h3>
+      <p style="font-size:12px;color:var(--texto2);margin-bottom:10px">O treinador já registrou o Dia 1 — a partir daqui, a jornada é acompanhada no módulo Experiências. Aqui aparece só a próxima tarefa pendente, com link direto.</p>
+      ${agEmAndamento.length?agEmAndamento.map(c=>renderAgItemExperiencia(c)).join(''):'<div class="ag-empty">Nenhuma experiência em andamento no momento.</div>'}
     </div>
     <div class="ag-section">
       <h3>🤝 Agendamento Visita/Matrícula <span class="cnt">${agVisita.length}</span></h3>
@@ -1112,6 +1136,27 @@ function renderAgItem(c,urgClass){
       </div>
       ${c.proxima_acao_data?`<div class="agd">${new Date(c.proxima_acao_data+'T00:00:00').toLocaleDateString('pt-BR')}</div>`:''}
     </div>`;
+}
+const TIPO_LABEL_AGENDA={
+  feedback_d1:'📞 Feedback do dia seguinte', audio_cuidado:'🎧 Áudio de cuidado',
+  agendamento_final:'📅 Agendamento final', sexta:'🎯 Dia da Oportunidade',
+  audio_consultoria:'🎧 Áudio pós-consultoria', acompanhamento:'📋 Acompanhamento / conferência'
+};
+function renderAgItemExperiencia(c){
+  const camp=agendaCampanhaPorCard[c.id];
+  const tarefa=tarefaExperienciaPorCard[c.id];
+  return`
+    <div class="ag-item" onclick="abrirExperienciaPelaAgenda('${c.experiencia_id}')">
+      <div>
+        <div class="agn">${c.nome} <span class="ptag ${PTAG_CLASS[c.perfil]}" style="margin-left:6px">${PERFIL_LABEL[c.perfil]}</span></div>
+        <div class="agm">${camp?camp.nome:''} · ${nomeConsultora(c.consultora_id)}${tarefa?` · Próxima tarefa: ${TIPO_LABEL_AGENDA[tarefa.tipo]||tarefa.titulo}`:' · Sem tarefa pendente no momento'}</div>
+      </div>
+      ${tarefa&&tarefa.data_prevista?`<div class="agd">${new Date(tarefa.data_prevista+'T00:00:00').toLocaleDateString('pt-BR')}</div>`:''}
+    </div>`;
+}
+function abrirExperienciaPelaAgenda(experienciaId){
+  if(!sessao||!sessao.id){toast('Faça login primeiro.',true);return;}
+  window.location.href=`controle-experiencias.html?uid=${encodeURIComponent(sessao.id)}&openExp=${encodeURIComponent(experienciaId)}`;
 }
 async function abrirCardPelaAgenda(cardId){
   const camp=agendaCampanhaPorCard[cardId];
