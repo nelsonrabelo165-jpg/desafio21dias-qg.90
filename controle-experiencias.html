@@ -1034,16 +1034,12 @@ function renderDetail(){
 
     <div class="section-block">
       <h3><span class="dot" style="background:var(--orange);"></span>Tarefas — Vendas</h3>
-      ${taskItem(exp, 'tarefa_feedback_d1', 'a) Feedback do dia seguinte', 'vendas', scriptFeedbackD1(exp), 'feedback_d1')}
-      ${taskItem(exp, 'tarefa_acompanhamento', 'b) Acompanhamento / agendar mapa de sintomas + consultoria', 'vendas', null, 'acompanhamento')}
-      ${sextaTaskBlock(exp)}
-      ${taskItem(exp, 'tarefa_agendamento_final', 'd) Agendamento final da experiência', 'vendas', null, 'agendamento_final')}
+      ${renderFilaTarefas(exp, 'vendas')}
     </div>
 
     <div class="section-block">
       <h3><span class="dot" style="background:var(--green);"></span>Tarefas — Time Técnico</h3>
-      ${taskItem(exp, 'tarefa_audio_cuidado', 'Áudio de cuidado (dia seguinte ao Dia 1)', 'tecnico', scriptAudioCuidado(exp), 'audio_cuidado')}
-      ${taskItem(exp, 'tarefa_audio_consultoria', 'Áudio pós-consultoria (treino ajustado)', 'tecnico', scriptAudioConsultoria(exp), 'audio_consultoria')}
+      ${renderFilaTarefas(exp, 'tecnico')}
     </div>
     ` : `<div class="hint" style="padding:8px 4px;">Registre o Dia 1 (treinador responsável) para liberar checklist, pontos críticos, presenças e tarefas.</div>`}
   `;
@@ -1063,6 +1059,77 @@ function checklistDia1Html(exp){
         <label>${label}</label>
       </div>`).join('')}
   </div>`;
+}
+
+// ══ FILA DE TAREFAS — mostra só a "tarefa da vez" com detalhe completo,
+// o resto vira lista compacta. Ao concluir, a próxima assume o destaque
+// sozinha (é só reordenar por: não feita primeiro, depois por data mais próxima).
+function proximaDataTarefa(exp, tipo){
+  const candidatas = agendaTarefas.filter(t=>t.experiencia_id===exp.id && t.tipo===tipo && !t.feita);
+  if(!candidatas.length) return null;
+  candidatas.sort((a,b)=>(a.data_prevista||'').localeCompare(b.data_prevista||''));
+  return candidatas[0].data_prevista;
+}
+
+function renderFilaTarefas(exp, role){
+  const defs = role==='vendas' ? [
+    {tipo:'feedback_d1', field:'tarefa_feedback_d1', label:'a) Feedback do dia seguinte', script:scriptFeedbackD1(exp)},
+    {tipo:'acompanhamento', field:'tarefa_acompanhamento', label:'b) Acompanhamento / mapa de sintomas + consultoria', script:null},
+    {tipo:'sexta', especial:'sexta', label:'c) Dia da Oportunidade'},
+    {tipo:'agendamento_final', field:'tarefa_agendamento_final', label:'d) Agendamento final da experiência', script:null}
+  ] : [
+    {tipo:'audio_cuidado', field:'tarefa_audio_cuidado', label:'Áudio de cuidado (dia seguinte ao Dia 1)', script:scriptAudioCuidado(exp)},
+    {tipo:'audio_consultoria', field:'tarefa_audio_consultoria', label:'Áudio pós-consultoria (treino ajustado)', script:scriptAudioConsultoria(exp)}
+  ];
+
+  // Separa concluídas x pendentes. 'sexta' é tratada como pendente sempre que
+  // existir uma ocorrência semanal ainda não registrada.
+  const pendentes = [];
+  const concluidas = [];
+  defs.forEach(d=>{
+    if(d.especial==='sexta'){
+      const dataProxima = proximaDataTarefa(exp, 'sexta');
+      if(dataProxima) pendentes.push({...d, data: dataProxima});
+      // sexta concluída de vezes anteriores não vira item de lista — já fica no histórico do próprio bloco
+      return;
+    }
+    const t = exp[d.field];
+    if(t.feita){ concluidas.push(d); }
+    else { pendentes.push({...d, data: proximaDataTarefa(exp, d.tipo)}); }
+  });
+  pendentes.sort((a,b)=>(a.data||'9999').localeCompare(b.data||'9999'));
+
+  if(!pendentes.length){
+    return `<div class="hint" style="padding:6px 0;">Todas as tarefas dessa frente já foram concluídas. 🎉</div>` + renderConcluidasCompacto(concluidas);
+  }
+
+  const atual = pendentes[0];
+  const fila = pendentes.slice(1);
+
+  let html = '';
+  if(atual.especial==='sexta'){
+    html += sextaTaskBlock(exp);
+  } else {
+    html += taskItem(exp, atual.field, atual.label, role, atual.script, atual.tipo);
+  }
+
+  if(fila.length){
+    html += `<div style="margin-top:10px;">
+      <div class="hint" style="margin-bottom:6px;">Em seguida na fila:</div>
+      ${fila.map(f=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:var(--bg-elev);border:1px solid var(--border-soft);border-radius:8px;margin-bottom:6px;font-size:13px;color:var(--grey);">
+          <span>${f.label}</span>
+          <span>${f.data?fmtDate(f.data):''}</span>
+        </div>`).join('')}
+    </div>`;
+  }
+  html += renderConcluidasCompacto(concluidas);
+  return html;
+}
+
+function renderConcluidasCompacto(concluidas){
+  if(!concluidas.length) return '';
+  return `<div class="hint" style="margin-top:10px;">✓ Concluídas: ${concluidas.map(c=>c.label.replace(/^[a-d]\)\s*/,'')).join(' · ')}</div>`;
 }
 
 function taskItem(exp, field, label, role, script, tipo){
@@ -1530,7 +1597,7 @@ function renderAgendaCalendario(){
       </div>`;
   }
 
-  const semanaLabels = ['D','S','T','Q','Q','S','S'];
+  const semanaLabels = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
   document.getElementById('agendaConteudo').innerHTML = `
     <div class="section-block">
