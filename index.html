@@ -1597,25 +1597,25 @@ async function renderPainelFunis(){
   el.innerHTML=cards.length?cards.join(''):'<div style="color:var(--td);font-size:13px">Nenhum funil ativo ainda. Adicione consultores(as) e lance os primeiros dias.</div>';
 }
 
-function renderFunis(){
+async function renderFunis(){
   const a=ac();const el=document.getElementById('funis-body');
   if(!a){el.innerHTML='<div style="color:var(--td);font-size:13px;padding:20px 0">Selecione uma academia.</div>';return}
   const filtCons=document.getElementById('funil-cons-filter').value;
   const entries=Object.entries(a.consultoras).filter(([id])=>!filtCons||id===filtCons);
   if(!entries.length){el.innerHTML='<div style="color:var(--td);font-size:13px;padding:20px 0">Nenhum(a) consultor(a).</div>';return}
+
+  // Um funil só aparece aqui se: tem campanha ATIVA agora daquele perfil, OU já tem
+  // algum dado histórico lançado (preserva o acumulado mesmo depois da campanha encerrar).
+  // Sem isso, funil "atribuído" mas nunca usado ficava poluindo a tela zerado.
+  campanhasAtivasCache=null;
+  const camps=await getCampanhasAtivas();
+  const perfisAtivos=new Set(camps.flatMap(c=>c.perfis||[]));
+
   let html='';
   entries.forEach(([cid,c])=>{
     const regs=consRegs(a,cid);const funis=c.funis||[];if(!funis.length)return;
     const metaStr=c.meta_tipo==='treino'?'Treinamento':c.meta_tipo==='rs'?`Meta R$ ${c.meta.toLocaleString('pt-BR')}`:`Meta ${c.meta} planos`;
-    html+=`<div style="margin-bottom:22px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <div class="avatar">${initials(c.nome)}</div>
-        <div>
-          <div style="font-weight:600;font-size:14px">${c.nome}</div>
-          <div style="font-size:11px;color:var(--td)">${metaStr} · ${c.horas}h/dia</div>
-        </div>
-      </div>
-      <div class="funil-grid">`;
+    let corpoFunis='';
     funis.forEach(fid=>{
       const f=fInfo(fid);if(!f)return;
       const isF2=fid==='f2';
@@ -1635,6 +1635,14 @@ function renderFunis(){
       const novasPct=listaAtual>0?Math.round(tNovas/listaAtual*100):0;
       const efetPct=tTotal>0?Math.round(efet/tTotal*100):0;
       const convPct=efet>0?Math.round(conv/efet*100):0;
+
+      // Só mostra o card se: tem campanha ativa AGORA daquele perfil, OU já existe algum
+      // dado histórico lançado (não esconde acumulado real por causa da campanha ter fechado).
+      const perfilCampanha=FUNIL_PARA_PERFIL_CAMPANHA[fid];
+      const temCampanhaAtiva=perfilCampanha&&perfisAtivos.has(perfilCampanha);
+      const temHistorico=listaAtual>0||tTotal>0||efet>0||conv>0||vend>0||novasAcum>0;
+      if(!temCampanhaAtiva&&!temHistorico)return;
+
       const pl=PLANOS.map(p=>`<div class="plano-m"><span class="plano-m-lbl">${p.lbl}</span><span class="plano-m-val">${sumP(regs,fid,p.k)}</span></div>`).join('');
       // labels específicos f2
       const lblLista=isF2?'🗂️ Planos para Feedback':'📋 Total Lista Atual';
@@ -1644,7 +1652,7 @@ function renderFunis(){
       const lblAgTotal=isF2?'📊 Total Feedb.+Indicações':'📊 Total Agendamentos';
       const lblConv=isF2?'🎯 Experiências Iniciadas':'🏆 Convertidos';
       const lblVend=isF2?'🏆 Indicações Convertidas (mat.)':'💰 Total Vendido';
-      html+=`<div class="funil-card">
+      corpoFunis+=`<div class="funil-card">
         <div class="funil-header"><div class="funil-dot" style="background:${f.cor}"></div><div class="funil-nm" style="color:${f.cor}">${f.nome}</div><div style="font-size:10px;color:var(--td);margin-left:auto">${f.sub}</div></div>
         <div class="funil-body">
           <div class="fi-row"><span class="fi-lbl">${lblLista}</span><span class="fi-val">${listaAtual}</span></div>
@@ -1665,9 +1673,19 @@ function renderFunis(){
         </div>
       </div>`;
     });
-    html+='</div></div>';
+    if(!corpoFunis)return; // esse(a) consultor(a) não tem nenhum funil com campanha ativa ou histórico — não mostra bloco vazio
+    html+=`<div style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div class="avatar">${initials(c.nome)}</div>
+        <div>
+          <div style="font-weight:600;font-size:14px">${c.nome}</div>
+          <div style="font-size:11px;color:var(--td)">${metaStr} · ${c.horas}h/dia</div>
+        </div>
+      </div>
+      <div class="funil-grid">${corpoFunis}</div>
+    </div>`;
   });
-  el.innerHTML=html||'<div style="color:var(--td);font-size:13px;padding:20px 0">Nenhum dado ainda.</div>';
+  el.innerHTML=html||'<div style="color:var(--td);font-size:13px;padding:20px 0">Nenhum funil ativo (com campanha ou histórico) no momento.</div>';
 }
 
 // ══ CONSULTORES GRID ══
