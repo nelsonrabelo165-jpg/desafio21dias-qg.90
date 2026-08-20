@@ -365,11 +365,17 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
           <label class="chk-row"><input type="checkbox" id="w-perfil-leads" onchange="toggleRenovSub()"> Leads Novos</label>
           <label class="chk-row"><input type="checkbox" id="w-perfil-rematricula" onchange="toggleRenovSub()"> Rematrícula (Ex-Alunos)</label>
           <label class="chk-row"><input type="checkbox" id="w-perfil-renovacao" onchange="toggleRenovSub()"> Ciclo Renovação</label>
-          <label class="chk-row"><input type="checkbox" id="w-perfil-sucesso_cliente"> Sucesso do Cliente</label>
           <div class="chk-sub" id="renov-sub">
             <label class="chk-row"><input type="checkbox" checked disabled> Mês vigente (sempre incluso)</label>
             <label class="chk-row"><input type="checkbox" id="w-renov-anterior"> + Mês anterior (não renovados)</label>
             <label class="chk-row"><input type="checkbox" id="w-renov-seguinte"> + Mês seguinte (antecipação)</label>
+          </div>
+          <label class="chk-row"><input type="checkbox" id="w-perfil-sucesso_cliente" onchange="toggleSucessoSub()"> Sucesso do Cliente</label>
+          <div class="chk-sub" id="sucesso-sub">
+            <label class="chk-row"><input type="checkbox" id="w-sucesso-onboarding"> Onboarding Cliente Novo</label>
+            <label class="chk-row"><input type="checkbox" id="w-sucesso-programas"> Programas Exclusivos (8, 10, 12 semanas ou 100 dias)</label>
+            <label class="chk-row"><input type="checkbox" id="w-sucesso-desconectados"> Clientes Desconectados/Ausentes</label>
+            <label class="chk-row"><input type="checkbox" id="w-sucesso-upgrade"> Up-Grade de Agregadores (ex: TotalPass, etc.)</label>
           </div>
         </div>
         <button class="btn-primary" onclick="salvarCampanhaBase()">Continuar →</button>
@@ -770,6 +776,7 @@ function abrirEditarCampanha(id){
   if(!c)return;
   const perfis=c.perfis||[];
   const cfg=c.config_renovacao||{};
+  const cfgS=c.config_sucesso||{};
   const html=`
     <div class="auth-box" style="max-width:440px;">
       <h3 style="margin-bottom:16px;">Editar Campanha</h3>
@@ -781,10 +788,16 @@ function abrirEditarCampanha(id){
         <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-leads" ${perfis.includes('leads')?'checked':''}> Leads Novos</label>
         <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-rematricula" ${perfis.includes('rematricula')?'checked':''}> Rematrícula</label>
         <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-renovacao" onchange="document.getElementById('ed-renov-sub').style.display=this.checked?'block':'none'" ${perfis.includes('renovacao')?'checked':''}> Renovação</label>
-        <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-sucesso_cliente" ${perfis.includes('sucesso_cliente')?'checked':''}> Sucesso do Cliente</label>
         <div id="ed-renov-sub" style="display:${perfis.includes('renovacao')?'block':'none'};padding-left:20px;">
           <label style="display:block;margin-bottom:6px;font-size:13px;"><input type="checkbox" id="ed-renov-anterior" ${cfg.mes_anterior?'checked':''}> Incluir mês anterior</label>
           <label style="display:block;font-size:13px;"><input type="checkbox" id="ed-renov-seguinte" ${cfg.mes_seguinte?'checked':''}> Incluir mês seguinte</label>
+        </div>
+        <label style="display:block;margin-bottom:6px;"><input type="checkbox" id="ed-perfil-sucesso_cliente" onchange="document.getElementById('ed-sucesso-sub').style.display=this.checked?'block':'none'" ${perfis.includes('sucesso_cliente')?'checked':''}> Sucesso do Cliente</label>
+        <div id="ed-sucesso-sub" style="display:${perfis.includes('sucesso_cliente')?'block':'none'};padding-left:20px;">
+          <label style="display:block;margin-bottom:6px;font-size:13px;"><input type="checkbox" id="ed-sucesso-onboarding" ${cfgS.onboarding?'checked':''}> Onboarding Cliente Novo</label>
+          <label style="display:block;margin-bottom:6px;font-size:13px;"><input type="checkbox" id="ed-sucesso-programas" ${cfgS.programas_exclusivos?'checked':''}> Programas Exclusivos (8, 10, 12 semanas ou 100 dias)</label>
+          <label style="display:block;margin-bottom:6px;font-size:13px;"><input type="checkbox" id="ed-sucesso-desconectados" ${cfgS.desconectados?'checked':''}> Clientes Desconectados/Ausentes</label>
+          <label style="display:block;font-size:13px;"><input type="checkbox" id="ed-sucesso-upgrade" ${cfgS.upgrade_agregadores?'checked':''}> Up-Grade de Agregadores</label>
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:18px;">
@@ -812,8 +825,14 @@ async function salvarEdicaoCampanha(id){
   if(!nome||!mes){toast('Preencha nome e mês de referência',true);return;}
   if(!perfis.length){toast('Selecione ao menos 1 perfil',true);return;}
   const configRenov={mes_atual:true,mes_anterior:document.getElementById('ed-renov-anterior').checked,mes_seguinte:document.getElementById('ed-renov-seguinte').checked};
+  const configSucesso={
+    onboarding:document.getElementById('ed-sucesso-onboarding').checked,
+    programas_exclusivos:document.getElementById('ed-sucesso-programas').checked,
+    desconectados:document.getElementById('ed-sucesso-desconectados').checked,
+    upgrade_agregadores:document.getElementById('ed-sucesso-upgrade').checked
+  };
   try{
-    await sbPatch('campanhas',id,{nome,mes_referencia:mes,investimento_trafego:invest,perfis,config_renovacao:configRenov,updated_at:Date.now()});
+    await sbPatch('campanhas',id,{nome,mes_referencia:mes,investimento_trafego:invest,perfis,config_renovacao:configRenov,config_sucesso:configSucesso,updated_at:Date.now()});
     toast('Campanha atualizada!');
     fecharModalGenerico();
     await carregarCampanhas();
@@ -2510,12 +2529,16 @@ function resetWizard(){
   document.getElementById('w-nome').value='';
   document.getElementById('w-mes').value='';
   document.getElementById('w-invest').value='';
-  ['w-perfil-leads','w-perfil-rematricula','w-perfil-renovacao','w-renov-anterior','w-renov-seguinte'].forEach(id=>document.getElementById(id).checked=false);
+  ['w-perfil-leads','w-perfil-rematricula','w-perfil-renovacao','w-renov-anterior','w-renov-seguinte','w-perfil-sucesso_cliente','w-sucesso-onboarding','w-sucesso-programas','w-sucesso-desconectados','w-sucesso-upgrade'].forEach(id=>document.getElementById(id).checked=false);
   document.getElementById('renov-sub').classList.remove('show');
+  document.getElementById('sucesso-sub').classList.remove('show');
   irParaStep(1);
 }
 function toggleRenovSub(){
   document.getElementById('renov-sub').classList.toggle('show',document.getElementById('w-perfil-renovacao').checked);
+}
+function toggleSucessoSub(){
+  document.getElementById('sucesso-sub').classList.toggle('show',document.getElementById('w-perfil-sucesso_cliente').checked);
 }
 function irParaStep(n){
   [1,2,3].forEach(i=>{
@@ -2540,8 +2563,14 @@ async function salvarCampanhaBase(){
   if(!nome||!mes){toast('Preencha nome e mês de referência',true);return;}
   if(!perfis.length){toast('Selecione ao menos 1 perfil',true);return;}
   const configRenov={mes_atual:true,mes_anterior:document.getElementById('w-renov-anterior').checked,mes_seguinte:document.getElementById('w-renov-seguinte').checked};
+  const configSucesso={
+    onboarding:document.getElementById('w-sucesso-onboarding').checked,
+    programas_exclusivos:document.getElementById('w-sucesso-programas').checked,
+    desconectados:document.getElementById('w-sucesso-desconectados').checked,
+    upgrade_agregadores:document.getElementById('w-sucesso-upgrade').checked
+  };
   try{
-    const res=await sbPost('campanhas',{academia_id:sessao.academia_id,nome,mes_referencia:mes,status:'planejamento',perfis,config_renovacao:configRenov,investimento_trafego:invest,created_at:Date.now(),updated_at:Date.now()});
+    const res=await sbPost('campanhas',{academia_id:sessao.academia_id,nome,mes_referencia:mes,status:'planejamento',perfis,config_renovacao:configRenov,config_sucesso:configSucesso,investimento_trafego:invest,created_at:Date.now(),updated_at:Date.now()});
     wiz.campanhaId=res[0].id;
     wiz.perfisFila=[...perfis];
     prepararProximoUpload();
