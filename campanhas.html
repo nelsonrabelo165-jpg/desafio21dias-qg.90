@@ -472,7 +472,7 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
       <div class="fg"><label>Plano atual</label><input class="fi" id="nc-plano"></div>
       <div class="fg"><label>Ticket médio (R$)</label><input class="fi" type="number" id="nc-ticket"></div>
     </div>
-    <div class="fg" style="margin-bottom:10px"><label>Consultora responsável</label><select class="fsel" id="nc-consultora"></select></div>
+    <div class="fg" style="margin-bottom:10px"><label>Consultor(a) responsável</label><select class="fsel" id="nc-consultora"></select></div>
     <div class="fg" style="margin-bottom:16px"><label>Etapa inicial no Kanban</label><select class="fsel" id="nc-etapa"></select></div>
     <button class="btn-primary" style="width:100%" onclick="salvarNovoCardManual()">Adicionar ao Kanban</button>
   </div>
@@ -776,6 +776,11 @@ function abrirEditarCampanha(id){
         <button class="btn-back" style="flex:1;cursor:pointer;" onclick="fecharModalGenerico()">Cancelar</button>
         <button class="btn-primary" style="flex:1;" onclick="salvarEdicaoCampanha('${id}')">Salvar</button>
       </div>
+      ${c.status==='ativa'?`
+      <div style="border-top:1px solid var(--borda);margin-top:16px;padding-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-gh" style="flex:1;font-size:12.5px;" onclick="abrirAdicionarNomes('${id}')">📤 Adicionar mais nomes</button>
+        <button class="btn-gh" style="flex:1;font-size:12.5px;" onclick="abrirRedistribuir('${id}')">🔀 Redistribuir carteira</button>
+      </div>`:''}
     </div>`;
   abrirModalGenerico(html);
 }
@@ -798,6 +803,82 @@ async function salvarEdicaoCampanha(id){
     fecharModalGenerico();
     await carregarCampanhas();
   }catch(e){console.error(e);toast('Erro ao salvar edição',true);}
+}
+
+// ── Adicionar mais nomes a uma campanha já ativa — reaproveita o wizard de upload
+// (steps 2 e 3), só pulando o step 1 (a campanha já existe). Duplicidade é resolvida
+// automaticamente em rodarCrossCheckPerdas (mantém o(a) consultor(a) já responsável).
+function abrirAdicionarNomes(campanhaId){
+  const camp=minhasCampanhas.find(c=>c.id===campanhaId);
+  if(!camp)return;
+  fecharModalGenerico();
+  wiz.campanhaId=campanhaId;
+  if((camp.perfis||[]).length>1){
+    const opts=camp.perfis.map(p=>`<option value="${p}">${PERFIL_LABEL[p]}</option>`).join('');
+    abrirModalGenerico(`<div class="auth-box" style="max-width:380px;">
+      <h3 style="margin-bottom:14px;">Adicionar nomes — qual funil?</h3>
+      <select class="fsel" id="add-nomes-perfil" style="margin-bottom:14px;">${opts}</select>
+      <button class="btn-primary" style="width:100%" onclick="confirmarPerfilAdicaoNomes()">Continuar</button>
+    </div>`);
+  }else{
+    wiz.perfisFila=[camp.perfis[0]];
+    switchITab('nova');
+    prepararProximoUpload();
+    irParaStep(2);
+  }
+}
+function confirmarPerfilAdicaoNomes(){
+  const p=document.getElementById('add-nomes-perfil').value;
+  fecharModalGenerico();
+  wiz.perfisFila=[p];
+  switchITab('nova');
+  prepararProximoUpload();
+  irParaStep(2);
+}
+
+// ── Redistribuir carteira — gestor(a) transfere cards de um(a) consultor(a) pra outro(a),
+// dentro de um perfil desta campanha. Só cards ainda ATIVOS (não convertidos/perdidos).
+async function abrirRedistribuir(campanhaId){
+  const camp=minhasCampanhas.find(c=>c.id===campanhaId);
+  if(!camp)return;
+  if(sessao.role==='consultor'){toast('Só gestor(a) pode redistribuir carteira.',true);return;}
+  fecharModalGenerico();
+  const optsPerfil=camp.perfis.map(p=>`<option value="${p}">${PERFIL_LABEL[p]}</option>`).join('');
+  const optsCons=consultoras.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  abrirModalGenerico(`<div class="auth-box" style="max-width:420px;">
+    <h3 style="margin-bottom:14px;">🔀 Redistribuir Carteira</h3>
+    <p style="font-size:12.5px;color:var(--texto2);margin-bottom:14px">Move os cards ativos de um(a) consultor(a) para outro(a), dentro de um funil desta campanha.</p>
+    <div class="auth-fg"><label class="auth-fl">Funil</label><select class="fsel" id="rd-perfil">${optsPerfil}</select></div>
+    <div class="auth-fg"><label class="auth-fl">De (consultor(a) atual)</label><select class="fsel" id="rd-de">${optsCons}</select></div>
+    <div class="auth-fg"><label class="auth-fl">Para (novo(a) responsável)</label><select class="fsel" id="rd-para">${optsCons}</select></div>
+    <div id="rd-contagem" style="font-size:12.5px;color:var(--texto2);margin:10px 0;"></div>
+    <button class="btn-gh" style="width:100%;margin-bottom:8px;" onclick="contarCardsRedistribuir('${campanhaId}')">Ver quantos cards seriam movidos</button>
+    <button class="btn-primary" style="width:100%" onclick="confirmarRedistribuir('${campanhaId}')">Transferir</button>
+  </div>`);
+}
+async function contarCardsRedistribuir(campanhaId){
+  const perfil=document.getElementById('rd-perfil').value;
+  const de=document.getElementById('rd-de').value;
+  try{
+    const cards=await sbGet('campanha_cards',`campanha_id=eq.${campanhaId}&perfil=eq.${perfil}&consultora_id=eq.${de}&status=eq.ativo&select=id`);
+    document.getElementById('rd-contagem').textContent=`${cards.length} card(s) ativo(s) serão transferidos.`;
+  }catch(e){console.error(e);}
+}
+async function confirmarRedistribuir(campanhaId){
+  const perfil=document.getElementById('rd-perfil').value;
+  const de=document.getElementById('rd-de').value;
+  const para=document.getElementById('rd-para').value;
+  if(de===para){toast('Escolha consultores(as) diferentes.',true);return;}
+  try{
+    const cards=await sbGet('campanha_cards',`campanha_id=eq.${campanhaId}&perfil=eq.${perfil}&consultora_id=eq.${de}&status=eq.ativo&select=id`);
+    if(!cards.length){toast('Nenhum card ativo pra transferir.',true);return;}
+    if(!confirm(`Transferir ${cards.length} card(s) de carteira?`))return;
+    for(const c of cards){
+      await sbPatch('campanha_cards',c.id,{consultora_id:para,updated_at:Date.now()});
+    }
+    toast(`${cards.length} card(s) transferido(s)!`);
+    fecharModalGenerico();
+  }catch(e){console.error(e);toast('Erro ao transferir',true);}
 }
 
 // ── ARQUIVAR / REATIVAR ──
@@ -962,7 +1043,7 @@ function renderLivroVendas(){
   const cards=Object.keys(porConsultora).map(cid=>{
     const dados=porConsultora[cid];
     const cons=consultoras.find(c=>c.id===cid);
-    const nome=cons?cons.nome:'Sem consultora atribuída';
+    const nome=cons?cons.nome:'Sem consultor(a) atribuído(a)';
     let pctMeta=null;
     if(cons&&cons.meta>0){
       const base=cons.meta_tipo==='planos'?dados.qtd:dados.total;
@@ -1156,7 +1237,7 @@ function renderAgenda(cards){
     </div>
     <div class="ag-section">
       <h3>🤝 Agendamento Visita/Matrícula <span class="cnt">${agVisita.length}</span></h3>
-      <p style="font-size:12px;color:var(--texto2);margin-bottom:10px">Conhecer a academia, café, feedback com a consultora, renovação, upgrade de plano.</p>
+      <p style="font-size:12px;color:var(--texto2);margin-bottom:10px">Conhecer a academia, café, feedback com o(a) consultor(a), renovação, upgrade de plano.</p>
       ${agVisita.length?agVisita.map(c=>renderAgItem(c)).join(''):'<div class="ag-empty">Nenhuma visita/matrícula agendada.</div>'}
     </div>
 
@@ -1472,7 +1553,7 @@ function renderKbSummary(){
       <div>Total Vendido: <b style="color:var(--verde)">R$${receitaConvertidos.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></div>
       <div>Início/Ativação: <b>${inicio}</b></div>
       <div>Finalização: <b>${fim}</b></div>
-      <div>Visão: <b>${sessao.role==='consultor'?'Meus cards ('+ (sessao.nome||'') +')':'Todas as consultoras (gestor)'}</b></div>
+      <div>Visão: <b>${sessao.role==='consultor'?'Meus cards ('+ (sessao.nome||'') +')':'Todos(as) os(as) consultores(as) (gestor)'}</b></div>
     </div>
   `;
 }
@@ -1926,7 +2007,7 @@ function renderCardModalBody(){
         <b style="color:var(--texto)">Plano atual:</b> ${c.plano_atual||'—'}<br>
         <b style="color:var(--texto)">Vencimento:</b> ${c.plano_termino||'—'}<br>
         <b style="color:var(--texto)">Ticket médio:</b> R$${(c.ticket_medio||0).toLocaleString('pt-BR')}<br>
-        <b style="color:var(--texto)">Consultora:</b> ${nomeConsultora(c.consultora_id)}
+        <b style="color:var(--texto)">Consultor(a):</b> ${nomeConsultora(c.consultora_id)}
         ${c.tag_extra?`<br><b style="color:var(--texto)">Tag:</b> ${c.tag_extra}`:''}
       </div>
       <label style="display:block;font-size:12.5px;color:var(--texto2);font-weight:600;margin-bottom:6px;">Mover para etapa (manual)</label>
@@ -2535,7 +2616,7 @@ function normalizarData(str){
   return null;
 }
 
-// ── Cruzamento automático com Perdas ──
+// ── Cruzamento automático com Perdas + duplicidade (nomes que já estão nesta campanha) ──
 async function rodarCrossCheckPerdas(cards){
   const telefones=cards.map(c=>c.telefone).filter(Boolean);
   let bloquear=new Set(),alertar=new Map();
@@ -2549,7 +2630,27 @@ async function rodarCrossCheckPerdas(cards){
       });
     }catch(e){console.error(e);}
   }
-  const cardsLiberados=cards.filter(c=>!bloquear.has(c.telefone));
+  let cardsLiberados=cards.filter(c=>!bloquear.has(c.telefone));
+
+  // Duplicidade dentro da própria campanha (ex: subindo uma lista adicional em cima de
+  // uma campanha já ativa) — quem já está cadastrado nesse funil NÃO vira card novo,
+  // mantém o(a) consultor(a) responsável que já tinha. Casa por telefone (mais confiável)
+  // e, na falta dele, por nome (normalizado).
+  wiz.jaExistentesQtd=0;
+  if(wiz.campanhaId){
+    try{
+      const existentes=await sbGet('campanha_cards',`campanha_id=eq.${wiz.campanhaId}&perfil=eq.${wiz.perfilAtual}&select=nome,telefone`);
+      const telExistentes=new Set(existentes.map(e=>e.telefone).filter(Boolean));
+      const nomesExistentes=new Set(existentes.map(e=>(e.nome||'').trim().toLowerCase()));
+      const antesDedup=cardsLiberados.length;
+      cardsLiberados=cardsLiberados.filter(c=>{
+        const jaTem=(c.telefone&&telExistentes.has(c.telefone))||nomesExistentes.has((c.nome||'').trim().toLowerCase());
+        return !jaTem;
+      });
+      wiz.jaExistentesQtd=antesDedup-cardsLiberados.length;
+    }catch(e){console.error(e);}
+  }
+
   wiz.cardsProntos=cardsLiberados;
   wiz.bloqueados=bloquear.size;
   wiz.alertas=cardsLiberados.filter(c=>alertar.has(c.telefone)).map(c=>({nome:c.nome,motivo:alertar.get(c.telefone)}));
@@ -2558,10 +2659,16 @@ async function rodarCrossCheckPerdas(cards){
   el.style.display='block';
   el.innerHTML=`
     ${wiz.bloqueados>0?`<div class="alert-box">🚫 <b>${wiz.bloqueados}</b> pessoa(s) removida(s) automaticamente por já terem pedido não-contato.</div>`:''}
+    ${wiz.jaExistentesQtd>0?`<div class="warn-box" style="border-color:var(--azul);color:var(--azul)">🔗 <b>${wiz.jaExistentesQtd}</b> pessoa(s) já estavam nesta campanha — não viram card duplicado, o(a) consultor(a) responsável de cada uma foi mantido.</div>`:''}
     ${wiz.alertas.length>0?`<div class="warn-box">⚠️ <b>${wiz.alertas.length}</b> pessoa(s) já tiveram um card de Perdas antes (motivo diferente) — foram mantidas na lista, revise se quiser remover alguma manualmente depois.</div>`:''}
-    <p style="font-size:14px;margin-bottom:14px"><b>${wiz.cardsProntos.length}</b> pessoas prontas para entrar na campanha (perfil: ${PERFIL_LABEL[wiz.perfilAtual]}).</p>
-    <button class="btn-primary" onclick="irParaStep(3);renderOndaConfig();">Continuar para divisão em ciclos →</button>
+    <p style="font-size:14px;margin-bottom:14px"><b>${wiz.cardsProntos.length}</b> pessoas novas, prontas para entrar na campanha (perfil: ${PERFIL_LABEL[wiz.perfilAtual]}).</p>
+    ${wiz.cardsProntos.length===0?`<button class="btn-gh" onclick="finalizarSemNovos()">Nenhuma novidade — voltar</button>`:`<button class="btn-primary" onclick="irParaStep(3);renderOndaConfig();">Continuar para divisão em ciclos →</button>`}
   `;
+}
+function finalizarSemNovos(){
+  fecharModalGenerico();
+  switchITab('lista');
+  carregarCampanhas();
 }
 
 // ── STEP 3 → divisão em ondas ──
@@ -2569,11 +2676,11 @@ function renderOndaConfig(){
   const el=document.getElementById('ondaConfigArea');
   el.innerHTML=`
     <div class="form-row">
-      <div class="fg"><label>Capacidade semanal por consultora</label><input class="fi" type="number" id="w-capacidade" value="85" min="1"></div>
+      <div class="fg"><label>Capacidade semanal por consultor(a)</label><input class="fi" type="number" id="w-capacidade" value="85" min="1"></div>
       <div class="fg"><label>Total nesta lista</label><input class="fi" value="${wiz.cardsProntos.length}" disabled></div>
     </div>
-    <label style="display:block;font-size:12.5px;color:var(--texto2);font-weight:600;margin:10px 0 6px;">Consultoras responsáveis por este perfil</label>
-    <div id="consChecks">${consultoras.map(c=>`<label class="chk-row"><input type="checkbox" class="cons-chk" value="${c.id}" data-nome="${c.nome}" checked> ${c.nome}</label>`).join('')||'<p style="color:var(--texto2);font-size:13px">Nenhuma consultora cadastrada nesta academia.</p>'}</div>
+    <label style="display:block;font-size:12.5px;color:var(--texto2);font-weight:600;margin:10px 0 6px;">Consultores(as) responsáveis por este perfil</label>
+    <div id="consChecks">${consultoras.map(c=>`<label class="chk-row"><input type="checkbox" class="cons-chk" value="${c.id}" data-nome="${c.nome}" checked> ${c.nome}</label>`).join('')||'<p style="color:var(--texto2);font-size:13px">Nenhum(a) consultor(a) cadastrado(a) nesta academia.</p>'}</div>
     <button class="btn-gh" style="margin-top:14px" onclick="calcularOndas()">Calcular divisão sugerida</button>
     <div id="ondasPreview" style="margin-top:18px"></div>
   `;
@@ -2583,7 +2690,7 @@ let ondasCalc=[];
 function calcularOndas(){
   const capacidade=parseInt(document.getElementById('w-capacidade').value)||85;
   const consSel=[...document.querySelectorAll('.cons-chk:checked')].map(el=>({id:el.value,nome:el.dataset.nome}));
-  if(!consSel.length){toast('Selecione ao menos 1 consultora',true);return;}
+  if(!consSel.length){toast('Selecione ao menos 1 consultor(a)',true);return;}
   const total=wiz.cardsProntos.length;
   const capacidadeSemanal=consSel.length*capacidade;
   const numOndas=Math.max(1,Math.ceil(total/capacidadeSemanal));

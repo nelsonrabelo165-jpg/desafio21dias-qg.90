@@ -194,6 +194,8 @@ tbody tr:hover td{background:var(--s2)}
 /* LANÇAMENTO */
 .lanc-funil-sec{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px}
 .lanc-funil-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.modo-lanc-btn{background:var(--s1);border:1px solid var(--bd);color:var(--td);font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;cursor:pointer;text-transform:none;letter-spacing:0;font-family:'Barlow',sans-serif;}
+.modo-lanc-btn.active{background:var(--or);color:#0a0a0a;border-color:var(--or);}
 .lanc-funil-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .planos-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(75px,1fr));gap:5px;margin-top:7px}
 /* INFO BOX */
@@ -546,7 +548,7 @@ tbody tr:hover td{background:var(--s2)}
         <div class="fg"><label class="fl">Data</label><input class="fi" type="date" id="lanc-data"></div>
       </div>
       <div style="margin-bottom:12px">
-        <button class="btn-gh" style="width:100%;padding:9px;border-color:var(--bdo);color:var(--or)" onclick="renderLancFunis()">▶ Carregar campos do funil para esta consultora</button>
+        <button class="btn-gh" style="width:100%;padding:9px;border-color:var(--bdo);color:var(--or)" onclick="renderLancFunis()">▶ Carregar campos do funil para este(a) consultor(a)</button>
       </div>
 
       <!-- CICLOS E MODO DO DIA -->
@@ -707,7 +709,7 @@ tbody tr:hover td{background:var(--s2)}
             </div>
             <div style="display:flex;gap:10px;align-items:flex-start">
               <span style="color:var(--or);font-weight:700;min-width:20px">▸</span>
-              <div><span style="color:var(--tx);font-weight:600">Funis (1 a 3)</span> <span style="color:var(--td);font-size:13px">— selecione quais funis esta consultora vai trabalhar no desafio</span></div>
+              <div><span style="color:var(--tx);font-weight:600">Funis (1 a 4)</span> <span style="color:var(--td);font-size:13px">— selecione quais funis este(a) consultor(a) vai trabalhar no desafio</span></div>
             </div>
           </div>
         </div>
@@ -793,7 +795,7 @@ tbody tr:hover td{background:var(--s2)}
             <div style="height:1px;background:var(--bd)"></div>
             <div>
               <div style="font-weight:600;font-size:14px;margin-bottom:3px">O que são "1ª Tentativas" x "Cadência"?</div>
-              <div style="font-size:13px;color:var(--td)">1ª Tentativa = primeira vez que a consultora tenta contato com aquela pessoa da lista. Cadência = retorno para pessoas já tentadas antes. Uma pessoa = uma tentativa, independente de quantas ligações foram feitas.</div>
+              <div style="font-size:13px;color:var(--td)">1ª Tentativa = primeira vez que o(a) consultor(a) tenta contato com aquela pessoa da lista. Cadência = retorno para pessoas já tentadas antes. Uma pessoa = uma tentativa, independente de quantas ligações foram feitas.</div>
             </div>
             <div style="height:1px;background:var(--bd)"></div>
             <div>
@@ -1155,6 +1157,18 @@ async function buscarDadosCampanhaHoje(consultoraId,perfil){
   }catch(e){console.error(e);return null;}
 }
 
+// Config por academia: cada funil (com equivalente em Campanhas) pode ser travado como
+// sempre-automático ou sempre-manual no Lançar Dia, independente de ter dado disponível.
+async function setModoLancamento(fid,modo){
+  const a=ac();if(!a||!acId)return;
+  const atual=a.modo_lancamento||{};
+  atual[fid]=modo;
+  a.modo_lancamento=atual;
+  try{
+    await fetch(`${SB_URL}/rest/v1/academias?id=eq.${acId}`,{method:'PATCH',headers:H,body:JSON.stringify({modo_lancamento:atual})});
+  }catch(e){console.error(e);}
+  renderLancFunis();
+}
 async function renderLancFunis(){
   const a=ac();if(!a)return;
   const cid=document.getElementById('lanc-cons').value;
@@ -1183,10 +1197,13 @@ async function renderLancFunis(){
   const funisDisponiveis=c.funis.filter(fid=>disponibilidade[fid]);
   const funisIndisponiveis=c.funis.filter(fid=>!disponibilidade[fid]);
 
-  // busca dados automáticos do Campanhas em paralelo, um por funil disponível
+  // busca dados automáticos do Campanhas em paralelo, um por funil disponível —
+  // só quando o modo desse funil está como "automático" (config do gestor, padrão).
+  const modoLanc=a.modo_lancamento||{};
   const dadosAuto={};
   await Promise.all(funisDisponiveis.map(async fid=>{
-    dadosAuto[fid]=await buscarDadosCampanhaHoje(cid,FUNIL_PARA_PERFIL_CAMPANHA[fid]);
+    const modo=modoLanc[fid]||'auto';
+    dadosAuto[fid]=modo==='auto'?await buscarDadosCampanhaHoje(cid,FUNIL_PARA_PERFIL_CAMPANHA[fid]):null;
   }));
 
   const avisoIndisponiveis=funisIndisponiveis.length?`
@@ -1223,6 +1240,11 @@ async function renderLancFunis(){
         <div class="lanc-funil-dot" style="background:${f.cor}"></div>
         <span style="color:${f.cor}">${f.nome}</span>
         <span style="color:var(--td);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px">${f.sub}</span>
+        ${FUNIL_PARA_PERFIL_CAMPANHA[fid]?`
+        <span style="margin-left:auto;display:inline-flex;gap:4px;">
+          <button class="modo-lanc-btn ${(modoLanc[fid]||'auto')==='auto'?'active':''}" onclick="setModoLancamento('${fid}','auto')" title="Puxar automaticamente do Campanhas">🔗 Auto</button>
+          <button class="modo-lanc-btn ${(modoLanc[fid]||'auto')==='manual'?'active':''}" onclick="setModoLancamento('${fid}','manual')" title="Sempre digitar manualmente">✎ Manual</button>
+        </span>`:''}
       </div>
       <div class="info-box" style="${auto?'border-color:var(--gr);color:var(--gr)':''}">📋 ${infoLista}</div>
       <div class="form-row">
@@ -2026,7 +2048,7 @@ async function abrirDetalheConsultora(consultoraId,consultoraNome){
   try{
     const cards=await sbGet('campanha_cards',`consultora_id=eq.${consultoraId}&select=id,perfil,status,onda_id,campanha_id`);
     if(!cards.length){
-      body.innerHTML='<div style="color:var(--td);font-size:13.5px;padding:10px 0">Esta consultora ainda não tem cards em nenhuma campanha do módulo de Campanhas.</div>';
+      body.innerHTML='<div style="color:var(--td);font-size:13.5px;padding:10px 0">Este(a) consultor(a) ainda não tem cards em nenhuma campanha do módulo de Campanhas.</div>';
       return;
     }
     const ondaIds=[...new Set(cards.map(c=>c.onda_id).filter(Boolean))];
@@ -2124,7 +2146,7 @@ async function criarAcessoConsultora(consultoraId,consultoraNome){
       nome:consultoraNome,email,senha_hash:senha,academia_id:acId,
       role:'consultor',ativo:true,consultora_id:consultoraId
     })});
-    toast('Acesso criado! A consultora já pode entrar pela Central de Campanhas.');
+    toast('Acesso criado! O(a) consultor(a) já pode entrar pela Central de Campanhas.');
     closeM('m-acesso');
   }catch(e){console.error(e);toast('Erro ao criar acesso',true);}
 }
