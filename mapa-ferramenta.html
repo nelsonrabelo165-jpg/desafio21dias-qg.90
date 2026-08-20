@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QG.90 | Mapa da Ferramenta</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fundo:#0E0E0E;--fundo2:#161616;--fundo3:#1E1E1E;
+  --laranja:#F28C0F;--texto:#E8E4DC;--texto2:#9A9488;
+  --verde:#3DBA7A;--vermelho:#E05252;--azul:#4A9FE0;--roxo:#B57BEE;
+  --borda:rgba(232,228,220,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--fundo);color:var(--texto);font-family:'Barlow',sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,h4,button{font-family:'Barlow Condensed',sans-serif;letter-spacing:.01em;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:var(--borda);border-radius:4px;}
+
+#shell{display:flex;min-height:100vh;}
+#sidebar{
+  width:300px;flex-shrink:0;background:var(--fundo2);border-right:1px solid var(--borda);
+  padding:22px 16px;overflow-y:auto;position:sticky;top:0;height:100vh;
+}
+.side-logo{font-weight:800;font-size:26px;color:var(--laranja);letter-spacing:1px;margin-bottom:2px;}
+.side-sub{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--texto2);margin-bottom:16px;}
+.side-search{
+  width:100%;background:var(--fundo3);border:1px solid var(--borda);border-radius:8px;
+  padding:9px 12px;color:var(--texto);font-size:13px;margin-bottom:16px;font-family:'Barlow',sans-serif;
+}
+.side-search::placeholder{color:var(--texto2);}
+.side-group-label{
+  font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--texto2);
+  margin:16px 0 6px 10px;font-weight:700;
+}
+.side-group-label:first-of-type{margin-top:0;}
+.step-nav-item{
+  display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;
+  margin-bottom:2px;transition:background .15s;
+}
+.step-nav-item:hover{background:var(--fundo3);}
+.step-nav-item.active{background:rgba(242,140,15,.12);}
+.step-nav-item.hidden{display:none;}
+.step-num{
+  width:22px;height:22px;border-radius:6px;background:var(--fundo3);color:var(--texto2);
+  display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;
+  border:1px solid var(--borda);
+}
+.step-nav-item.active .step-num{background:var(--laranja);color:#0E0E0E;border-color:var(--laranja);}
+.step-nav-label{font-size:13.5px;color:var(--texto2);padding-top:2px;line-height:1.3;}
+.step-nav-item.active .step-nav-label{color:var(--texto);font-weight:600;}
+
+#main{flex:1;padding:36px 48px;max-width:900px;overflow-y:auto;}
+.step-eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--laranja);font-weight:700;margin-bottom:8px;}
+.step-title{font-size:34px;font-weight:700;margin-bottom:6px;line-height:1.1;}
+.step-sub{color:var(--texto2);font-size:15px;margin-bottom:28px;}
+
+.block{background:var(--fundo2);border:1px solid var(--borda);border-radius:14px;padding:20px 24px;margin-bottom:16px;}
+.block h4{font-size:16px;color:var(--laranja);margin-bottom:12px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+.block.expect h4{color:var(--verde);}
+.block.warn{border-color:rgba(224,82,82,.4);background:rgba(224,82,82,.06);}
+.block.warn h4{color:var(--vermelho);}
+.block.tip{border-color:rgba(74,159,224,.4);background:rgba(74,159,224,.06);}
+.block.tip h4{color:var(--azul);}
+
+.click-list{list-style:none;counter-reset:click;}
+.click-list li{counter-increment:click;position:relative;padding:8px 0 8px 34px;font-size:15px;border-bottom:1px solid var(--borda);}
+.click-list li:last-child{border-bottom:none;}
+.click-list li::before{
+  content:counter(click);position:absolute;left:0;top:8px;
+  width:22px;height:22px;background:var(--fundo3);border:1px solid var(--laranja);color:var(--laranja);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+  font-family:'Barlow Condensed',sans-serif;
+}
+.click-list strong{color:var(--texto);}
+.plain-list{list-style:none;padding-left:0;}
+.plain-list li{padding:6px 0 6px 20px;font-size:14.5px;border-bottom:1px solid var(--borda);position:relative;}
+.plain-list li:last-child{border-bottom:none;}
+.plain-list li::before{content:'•';position:absolute;left:0;color:var(--laranja);}
+code{background:var(--fundo3);border:1px solid var(--borda);border-radius:5px;padding:2px 7px;font-family:monospace;font-size:13.5px;color:var(--laranja);}
+.fill-table{width:100%;border-collapse:collapse;margin-top:4px;}
+.fill-table td{padding:8px 0;font-size:14.5px;border-bottom:1px solid var(--borda);}
+.fill-table td:first-child{color:var(--texto2);width:38%;}
+.fill-table tr:last-child td{border-bottom:none;}
+.quote-line{font-style:italic;color:var(--texto2);border-left:2px solid var(--laranja);padding:8px 14px;margin-top:10px;font-size:14px;}
+
+.step-footer{display:flex;justify-content:space-between;margin-top:30px;padding-bottom:60px;}
+.nav-btn{background:var(--fundo3);border:1px solid var(--borda);color:var(--texto);padding:12px 22px;border-radius:9px;font-family:'Barlow',sans-serif;font-weight:600;font-size:14.5px;cursor:pointer;transition:.15s;}
+.nav-btn:hover{border-color:var(--laranja);}
+.nav-btn.primary{background:var(--laranja);color:#0E0E0E;border-color:var(--laranja);}
+.nav-btn.primary:hover{background:#ff9d2e;}
+.nav-btn:disabled{opacity:.3;cursor:default;}
+
+.ref-table{width:100%;border-collapse:collapse;margin-top:8px;}
+.ref-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--texto2);padding:8px 10px;border-bottom:1px solid var(--borda);font-weight:700;}
+.ref-table td{padding:11px 10px;border-bottom:1px solid var(--borda);font-size:14px;}
+
+.mod-badge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+.mod-roi{background:rgba(255,107,0,.15);color:var(--laranja);}
+.mod-camp{background:rgba(181,123,238,.15);color:var(--roxo);}
+.mod-exp{background:rgba(74,159,224,.15);color:var(--azul);}
+.mod-scripts{background:rgba(61,186,122,.15);color:var(--verde);}
+.mod-geral{background:rgba(154,148,136,.15);color:var(--texto2);}
+
+@media(max-width:860px){
+  #shell{flex-direction:column;}
+  #sidebar{width:100%;height:auto;position:relative;max-height:none;}
+  #main{padding:24px 18px;}
+  .step-title{font-size:26px;}
+}
+</style>
+</head>
+<body>
+
+<div id="shell">
+  <nav id="sidebar">
+    <div class="side-logo">QG<span style="color:var(--texto)">.90</span></div>
+    <div class="side-sub">Mapa da Ferramenta</div>
+    <input class="side-search" id="sideSearch" placeholder="🔍 Buscar um tema..." oninput="filtrarNav(this.value)">
+    <div id="stepNavList"></div>
+  </nav>
+
+  <main id="main"></main>
+</div>
+
+<script>
+const steps = [
+{
+  grupo:"Visão Geral",
+  eyebrow:"Comece por aqui",
+  title:"Como o sistema é organizado",
+  sub:"4 módulos conectados, um login, várias telas",
+  badge:"mod-geral",
+  blocks:[
+    {type:'expect', title:'Os 4 módulos', text:'<strong>Desafio ROI 21 Dias</strong> — painel principal, lançamento diário de produtividade e indicadores da academia. <strong>Campanhas</strong> — CRM de vendas: funis, Kanban, agenda comercial, carteiras. <strong>Experiências</strong> — jornada operacional do aluno em experiência, do Dia 1 à conversão. <strong>Central de Scripts</strong> — biblioteca de scripts prontos, método AQÚI.'},
+    {type:'tip', title:'Um login só', text:'Você entra uma vez pelo Desafio ROI 21 Dias e navega entre os outros módulos sem digitar senha de novo, contanto que continue na mesma aba do navegador.'},
+    {type:'expect', title:'Como eles se conectam', text:'Quando um lead no Campanhas chega em "Experiência Agendada", o sistema cria automaticamente o card correspondente no módulo Experiências — sem digitar duas vezes. Quando a experiência é concluída (convertida ou não), o card volta pra atualizar o Campanhas sozinho.'}
+  ]
+},
+{
+  grupo:"Desafio ROI 21 Dias",
+  eyebrow:"Painel Principal",
+  title:"Funis & Indicadores",
+  sub:"A tela que abre ao logar",
+  badge:"mod-roi",
+  blocks:[
+    {type:'expect', title:'O que mostra', text:'Matrículas acumuladas, 1ªs tentativas, cadências, efetivos, taxa de conversão e total vendido — consolidado ou filtrado por consultor(a).'},
+    {type:'expect', title:'Situação por Funil', text:'Um card por funil ativo (Leads Novos, Renovação, Rematrícula, Sucesso do Cliente...). Só aparece aqui o funil que tiver campanha ativa correspondente no módulo Campanhas.'},
+    {type:'tip', title:'Matrículas por dia', text:'O gráfico embaixo mostra a evolução dia a dia do desafio — útil pra ver se o ritmo está acelerando ou caindo no meio do mês.'}
+  ]
+},
+{
+  grupo:"Desafio ROI 21 Dias",
+  eyebrow:"Rotina diária",
+  title:"Lançar Dia",
+  sub:"Onde cada consultor(a) registra a produtividade do dia",
+  badge:"mod-roi",
+  blocks:[
+    {type:'click', title:'Como usar', items:[
+      'Clique em <strong>"LANÇAR DIA"</strong> no topo',
+      'Selecione o(a) consultor(a)',
+      'Clique em "▶ Carregar campos do funil"'
+    ]},
+    {type:'expect', title:'Modo Automático vs Manual', text:'Cada funil tem dois botões no cabeçalho: <strong>🔗 Auto</strong> (puxa os números direto do módulo Campanhas) e <strong>✎ Manual</strong> (você digita tudo). O gestor escolhe qual modo cada funil usa — fica salvo, não precisa escolher toda vez.'},
+    {type:'warn', title:'Funil sem campanha ativa', text:'Se não existir campanha ativa daquele perfil, o funil não aparece pra lançamento — some da tela com um aviso pra criar/reativar a campanha primeiro.'}
+  ]
+},
+{
+  grupo:"Desafio ROI 21 Dias",
+  eyebrow:"Equipe",
+  title:"Consultores(as)",
+  sub:"Cadastro, metas, funis atribuídos e acesso individual",
+  badge:"mod-roi",
+  blocks:[
+    {type:'click', title:'Cadastrar novo(a) consultor(a)', items:[
+      'Aba <strong>"Consultores(as)"</strong> → "+ Consultor(a)"',
+      'Nome, meta (planos, R$ ou treino), horas de trabalho',
+      'Escolha até 4 funis que essa pessoa vai trabalhar'
+    ]},
+    {type:'expect', title:'🔑 Acesso individual', text:'Clique nesse botão no card do(a) consultor(a) pra criar um login próprio (e-mail + senha) — assim ela entra direto no módulo de Campanhas sem depender do login geral da academia.'}
+  ]
+},
+{
+  grupo:"Desafio ROI 21 Dias",
+  eyebrow:"Análise",
+  title:"Relatório e Ranking",
+  sub:"Histórico e comparação entre consultores(as)",
+  badge:"mod-roi",
+  blocks:[
+    {type:'expect', title:'Relatório', text:'Filtra por funil e período, mostra o histórico de lançamentos dia a dia — útil pra auditar o que foi registrado.'},
+    {type:'expect', title:'Ranking', text:'Compara matrículas e % de meta batida entre todos(as) os(as) consultores(as) da academia.'}
+  ]
+},
+{
+  grupo:"Campanhas",
+  eyebrow:"Início",
+  title:"Minhas Campanhas",
+  sub:"Lista de campanhas por mês, criar/editar/arquivar",
+  badge:"mod-camp",
+  blocks:[
+    {type:'click', title:'Criar uma campanha nova', items:[
+      '"+ Nova Campanha" → nome, mês de referência, investimento',
+      'Marque os perfis (Leads, Rematrícula, Renovação, Sucesso do Cliente)',
+      'Suba a planilha CSV (nome é o único campo obrigatório)',
+      'Confira o mapeamento de colunas e a prévia',
+      'Divida a lista em ciclos semanais por consultor(a)'
+    ]},
+    {type:'expect', title:'Ícones em cada card', text:'✎ Editar (tudo: nome, investimento, perfis, datas) · 🗄 Arquivar (some da lista, mantém os dados, dá pra reativar) · 🗑 Excluir definitivamente (pede confirmação digitando o nome).'},
+    {type:'tip', title:'Adicionar mais nomes depois', text:'Numa campanha já ativa, clique em Editar → "📤 Adicionar mais nomes" — sobe uma lista extra sem duplicar quem já está na campanha (mantém o(a) consultor(a) responsável de quem já existia).'}
+  ]
+},
+{
+  grupo:"Campanhas",
+  eyebrow:"Trabalho diário",
+  title:"Kanban do Funil",
+  sub:"Onde cada lead é trabalhado, card por card",
+  badge:"mod-camp",
+  blocks:[
+    {type:'expect', title:'Etapas padrão (Leads/Rematrícula)', text:'Lista/Iniciar Cadência → 1ª Tentativa → Iniciou Atendimento → Experiência Agendada → Experiência Iniciada → Agendada Visita/Matrícula → Convertido / Cadência Futura.'},
+    {type:'expect', title:'Etapas padrão (Renovação)', text:'Lista/Iniciar Cadência → 1ª Tentativa → Iniciou Atendimento → Consultoria/Avaliação Agendada → Agendada Feedback/Matrícula → Convertido / Cadência Futura.'},
+    {type:'click', title:'Dentro de um card', items:[
+      'Classificação de perfil (5%/95%) e Programa (pilar)',
+      'Script sugerido pra etapa e canal atual',
+      'Registrar interação (o que foi conversado)',
+      'Mover pra próxima etapa (ou marcar Perda, com motivo)'
+    ]},
+    {type:'tip', title:'+ Adicionar Card', text:'Cadastra manualmente um lead que chegou fora da planilha — inclui campos de Origem do Lead (Indicação, WhatsApp, Instagram, etc.) e Data do Lead (pode ser retroativa).'}
+  ]
+},
+{
+  grupo:"Campanhas",
+  eyebrow:"Retenção",
+  title:"Sucesso do Cliente",
+  sub:"O único funil com etapas editáveis pela própria academia",
+  badge:"mod-camp",
+  blocks:[
+    {type:'expect', title:'Jornada padrão sugerida', text:'Onboarding → Acompanhamento Ativo → Sinal de Risco → Estabilizado/Fidelizado (Sucesso) → Perdido (Perda). Serve só de ponto de partida.'},
+    {type:'click', title:'Editar a jornada', items:[
+      'Dentro do Kanban desse funil, clique em <strong>"🎯 Jornada"</strong>',
+      'Reordene com as setas, renomeie, adicione ou remova etapas',
+      'Marque qual etapa é "Final: Sucesso" e qual é "Final: Perda"'
+    ]},
+    {type:'warn', title:'Por que marcar Sucesso/Perda', text:'É isso que faz o card contar como convertido (ou perdido) nos relatórios — sem essa marcação, mover o card pra uma etapa final não teria efeito nos números.'}
+  ]
+},
+{
+  grupo:"Campanhas",
+  eyebrow:"Comercial",
+  title:"Minha Agenda",
+  sub:"Compromissos agendados, retornos, e a experiência em andamento",
+  badge:"mod-camp",
+  blocks:[
+    {type:'expect', title:'As seções', text:'🎯 Agendamento Experiência (data marcada do Dia 1) · 🏃 Experiência em Andamento (mostra a tarefa real pendente lá no módulo Experiências, com link direto) · 🤝 Agendamento Visita/Matrícula · 🔴 Retornos Atrasados / 🟠 Retornos Hoje (cadência).'},
+    {type:'tip', title:'Duas visões', text:'Alterne entre "📄 Lista" e "📆 Semana" (calendário) no topo da agenda.'}
+  ]
+},
+{
+  grupo:"Campanhas",
+  eyebrow:"Gestão de equipe",
+  title:"Carteiras",
+  sub:"Visão consolidada: quem está cuidando do quê",
+  badge:"mod-camp",
+  blocks:[
+    {type:'expect', title:'A matriz', text:'Uma linha por consultor(a), uma coluna por funil ativo — mostra quantos cards ativos (e convertidos) cada um tem. Só existe pra gestor(a)/admin.'},
+    {type:'click', title:'Redistribuir carteira', items:[
+      'Clique em qualquer número clicável da matriz',
+      'Escolha "Para" quem vai receber',
+      'Informe uma quantidade (ou deixe vazio pra mover todos)',
+      'Confirme a transferência'
+    ]}
+  ]
+},
+{
+  grupo:"Campanhas",
+  eyebrow:"Financeiro",
+  title:"Vendas",
+  sub:"Livro de vendas por consultor(a) e período",
+  badge:"mod-camp",
+  blocks:[
+    {type:'expect', title:'O que registra', text:'Toda venda confirmada ao mover um card pra "Convertido" gera uma linha aqui automaticamente — nome do cliente, valor, tipo de plano, quem atendeu e quem lançou.'}
+  ]
+},
+{
+  grupo:"Experiências",
+  eyebrow:"A jornada operacional",
+  title:"Kanban de Experiências",
+  sub:"Do cadastro à conversão, técnico + vendas juntos",
+  badge:"mod-exp",
+  blocks:[
+    {type:'expect', title:'As 4 etapas', text:'Experiência Agendada → Experiência Iniciada → Experiência Convertida / Não Convertida.'},
+    {type:'click', title:'Dia 1 (o momento mais importante)', items:[
+      'Abra o card, selecione o(a) treinador(a) responsável — trava depois de confirmado',
+      'Marque o checklist: app baixado, mapeamento de sintomas, consultoria agendada, apresentação do programa'
+    ]},
+    {type:'tip', title:'Qualificação editável', text:'O botão ✎ ao lado de "Qualificação" permite corrigir perfil (95%/5%/Sem Qualificação), programa e objetivo a qualquer momento — útil quando o lead chegou sem qualificação completa do time de vendas.'},
+    {type:'warn', title:'Presença sem duplicar', text:'O Dia 1 já conta como a primeira presença automaticamente. O sistema bloqueia se você tentar registrar presença de novo na mesma data.'}
+  ]
+},
+{
+  grupo:"Experiências",
+  eyebrow:"Rotina da equipe",
+  title:"Agenda",
+  sub:"Tarefas automáticas — vendas e técnico",
+  badge:"mod-exp",
+  blocks:[
+    {type:'expect', title:'Geradas sozinhas no Dia 1', text:'Feedback do dia seguinte, Acompanhamento/conferência, Dia da Oportunidade (toda sexta), Agendamento final (vendas) · Áudio de cuidado, Áudio pós-consultoria (técnico).'},
+    {type:'expect', title:'Tarefa da vez', text:'Dentro do card, só a tarefa mais próxima aparece com detalhe completo (script + campo de observação). O resto fica numa fila compacta — ao concluir uma, a próxima assume o destaque sozinha.'},
+    {type:'click', title:'Concluir uma tarefa pela Agenda', items:[
+      'Clique em "Abrir card e registrar →" na tarefa',
+      'Escreva a observação (opcional) e marque como concluída dentro do card',
+      'A Agenda atualiza sozinha — não marca direto por lá'
+    ]},
+    {type:'tip', title:'Visões', text:'☰ Lista ou 📆 Calendário, e filtro "Todos" / "Meus compromissos".'}
+  ]
+},
+{
+  grupo:"Experiências",
+  eyebrow:"Administração",
+  title:"Equipe",
+  sub:"Login individual pra consultor(a) e treinador(a)",
+  badge:"mod-exp",
+  blocks:[
+    {type:'expect', title:'Só gestor(a)/admin vê essa aba', text:'Lista todos os consultores(as) e treinadores(as) da academia — cria acesso (e-mail + senha) pra quem ainda não tem.'},
+    {type:'warn', title:'Por que isso importa', text:'Com login individual, a responsabilidade por cada tarefa é rastreável de verdade — sem depender de nome digitado certo, e cada um só edita o que é seu.'}
+  ]
+},
+{
+  grupo:"Experiências",
+  eyebrow:"Resultados",
+  title:"Indicadores",
+  sub:"Números automáticos, sem depender de anotação manual",
+  badge:"mod-exp",
+  blocks:[
+    {type:'expect', title:'O que mostra', text:'Frequência média (geral e por perfil), % de mapeamento de sintomas concluído, % de consultoria realizada, taxa de conversão por treinador(a) responsável e por perfil (95%/5%).'}
+  ]
+},
+{
+  grupo:"Central de Scripts",
+  eyebrow:"Biblioteca",
+  title:"Scripts e Método AQÚI",
+  sub:"Onde ficam os roteiros prontos de abordagem",
+  badge:"mod-scripts",
+  blocks:[
+    {type:'expect', title:'O que encontra aqui', text:'Scripts organizados por etapa e canal (WhatsApp, ligação, presencial), seguindo o método AQÚI — Acolher/Atenção, Qualificar, Única Coisa, Incentivar.'}
+  ]
+},
+{
+  grupo:"Referência Rápida",
+  eyebrow:"Consulta",
+  title:"Navegação entre módulos",
+  sub:"Atalhos disponíveis em cada tela",
+  badge:"mod-geral",
+  blocks:[
+    {type:'reftable', title:'De onde pra onde', headers:['Estando em','Vá para','Botão'], rows:[
+      ['Painel principal','Campanhas','📢 Campanhas'],
+      ['Painel principal','Experiências','🎯 Experiências'],
+      ['Painel principal','Central de Scripts','📚 Scripts'],
+      ['Campanhas','Experiências','🎯 Experiências (topo)'],
+      ['Campanhas','Agenda do Experiências (direto)','📅 Agenda (topo)'],
+      ['Campanhas','Central de Scripts','📚 Scripts (topo)'],
+      ['Experiências','Campanhas','📢 Campanhas (topo)'],
+      ['Experiências','Central de Scripts','📚 Scripts (topo)'],
+      ['Qualquer módulo','Painel principal','← Desafio ROI'],
+      ['Qualquer módulo','Este mapa','📖 Mapa da Ferramenta']
+    ]}
+  ]
+},
+{
+  grupo:"Referência Rápida",
+  eyebrow:"Dúvidas comuns",
+  title:"Perguntas Frequentes",
+  sub:"O que fazer quando algo não aparece do jeito esperado",
+  badge:"mod-geral",
+  blocks:[
+    {type:'warn', title:'"Meu funil sumiu do Lançar Dia"', text:'Provavelmente não existe campanha ativa desse perfil no momento. Crie ou reative uma em Campanhas → Minhas Campanhas.'},
+    {type:'warn', title:'"O card sumiu da Minha Agenda do Campanhas"', text:'Normal — assim que o Dia 1 é registrado no Experiências, o card sai da seção "Agendamento Experiência" e passa pra "🏃 Experiência em Andamento", com a tarefa real pendente.'},
+    {type:'warn', title:'"Não consigo marcar uma tarefa da Agenda"', text:'Só quem é o(a) responsável (por login, não por nome digitado) pode concluir. Gestor(a)/admin sempre podem, como exceção.'},
+    {type:'tip', title:'Ainda com dúvida?', text:'Fale com o gestor(a) da sua academia ou com o suporte QG.90.'}
+  ]
+}
+];
+
+let current = 0;
+let filtro = '';
+
+function renderSidebar(){
+  const el = document.getElementById('stepNavList');
+  let html = '';
+  let grupoAtual = null;
+  steps.forEach((s,i)=>{
+    const bate = !filtro || (s.title+' '+s.sub+' '+s.grupo).toLowerCase().includes(filtro);
+    if(s.grupo!==grupoAtual){
+      grupoAtual=s.grupo;
+      html += `<div class="side-group-label">${grupoAtual}</div>`;
+    }
+    html += `<div class="step-nav-item ${i===current?'active':''} ${bate?'':'hidden'}" onclick="goTo(${i})">
+      <div class="step-num">${s.eyebrow==='Comece por aqui'?'★':'·'}</div>
+      <div class="step-nav-label">${s.title}</div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+function filtrarNav(v){ filtro = v.trim().toLowerCase(); renderSidebar(); }
+
+function blockHtml(b){
+  if(b.type==='click'){
+    return `<div class="block"><h4>▸ ${b.title}</h4><ul class="click-list">${b.items.map(i=>`<li>${i}</li>`).join('')}</ul></div>`;
+  }
+  if(b.type==='expect'){
+    return `<div class="block expect"><h4>✓ ${b.title}</h4><div>${b.text}</div></div>`;
+  }
+  if(b.type==='warn'){
+    return `<div class="block warn"><h4>⚠ ${b.title}</h4><div>${b.text}</div></div>`;
+  }
+  if(b.type==='tip'){
+    return `<div class="block tip"><h4>💡 ${b.title}</h4><div class="quote-line">${b.text}</div></div>`;
+  }
+  if(b.type==='fill'){
+    return `<div class="block"><h4>✎ ${b.title}</h4><table class="fill-table">${b.rows.map(r=>`<tr><td>${r[0]}</td><td><strong>${r[1]}</strong></td></tr>`).join('')}</table></div>`;
+  }
+  if(b.type==='reftable'){
+    return `<div class="block"><h4>${b.title}</h4><table class="ref-table"><tr>${b.headers.map(h=>`<th>${h}</th>`).join('')}</tr>${b.rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table></div>`;
+  }
+  return '';
+}
+
+function renderMain(){
+  const s = steps[current];
+  const el = document.getElementById('main');
+  el.innerHTML = `
+    <span class="mod-badge ${s.badge}">${s.grupo}</span>
+    <div class="step-eyebrow">${s.eyebrow}</div>
+    <div class="step-title">${s.title}</div>
+    <div class="step-sub">${s.sub}</div>
+    ${s.blocks.map(blockHtml).join('')}
+    <div class="step-footer">
+      <button class="nav-btn" onclick="goTo(${current-1})" ${current===0?'disabled':''}>← Anterior</button>
+      <button class="nav-btn primary" onclick="goTo(${current+1})" ${current===steps.length-1?'disabled':''}>Próximo →</button>
+    </div>
+  `;
+  window.scrollTo(0,0);
+  el.scrollTop = 0;
+}
+
+function goTo(i){
+  if(i<0||i>=steps.length) return;
+  current = i;
+  renderSidebar();
+  renderMain();
+}
+
+renderSidebar();
+renderMain();
+
+document.addEventListener('keydown', e=>{
+  if(document.activeElement===document.getElementById('sideSearch'))return;
+  if(e.key==='ArrowRight') goTo(current+1);
+  if(e.key==='ArrowLeft') goTo(current-1);
+});
+</script>
+</body>
+</html>

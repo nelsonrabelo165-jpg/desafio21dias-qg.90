@@ -145,6 +145,13 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
 .ag-day-group{margin-bottom:14px;}
 .ag-day-group h4{font-size:13px;color:var(--texto2);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;}
 .ag-empty{color:var(--texto2);font-size:13.5px;padding:14px 0;}
+.carteiras-table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px;}
+.carteiras-table th{text-align:left;padding:9px 12px;border-bottom:2px solid var(--borda);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--texto2);}
+.carteiras-table td{padding:9px 12px;border-bottom:1px solid var(--borda);}
+.carteiras-table tfoot td{border-top:2px solid var(--borda);border-bottom:none;padding-top:12px;}
+.carteira-cell{display:inline-block;min-width:22px;text-align:center;padding:2px 6px;border-radius:6px;}
+.carteira-cell.clicavel{cursor:pointer;font-weight:700;}
+.carteira-cell.clicavel:hover{background:var(--fundo3);color:var(--laranja);}
 .vd-filtros{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:22px;}
 .vd-filtros .fg{margin-bottom:0;}
 .vd-cons-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:26px;}
@@ -291,7 +298,7 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
   <button class="btn-back" style="cursor:pointer;" onclick="abrirCentralScriptsCampanhas()">📚 Scripts</button>
   <button class="btn-back" style="cursor:pointer;" onclick="abrirExperienciasCampanhas()">🎯 Experiências</button>
   <button class="btn-back" style="cursor:pointer;" onclick="abrirAgendaExperienciasCampanhas()">📅 Agenda</button>
-  <a href="roteiro-aula.html" target="_blank" class="btn-back" style="text-decoration:none;">📖 Roteiro</a>
+  <a href="mapa-ferramenta.html" target="_blank" class="btn-back" style="text-decoration:none;">🗺️ Mapa</a>
   <div class="badge">Módulo de Campanhas · Fase 1</div>
   <div class="user-chip">
     <div class="uinfo"><b id="userNome">—</b><span id="userAcademia">—</span></div>
@@ -311,11 +318,17 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
     <button class="itab-btn" onclick="switchITab('agenda');carregarAgenda()">📅 Minha Agenda</button>
     <button class="itab-btn" onclick="switchITab('vendas');carregarLivroVendas()">💰 Vendas</button>
     <button class="itab-btn" onclick="abrirNovaCampanhaEmBranco()">+ Nova Campanha</button>
+    <button class="itab-btn" onclick="switchITab('carteiras');carregarCarteiras()">📊 Carteiras</button>
   </div>
 
   <!-- ===================== ABA: LISTA DE CAMPANHAS ===================== -->
   <div class="ipane active" id="itab-lista">
     <div class="camp-grid" id="campGrid"></div>
+  </div>
+
+  <!-- ===================== ABA: CARTEIRAS (visão consolidada por consultor(a) x funil) ===================== -->
+  <div class="ipane" id="itab-carteiras">
+    <div id="carteirasWrap"></div>
   </div>
 
   <!-- ===================== ABA: AGENDA ===================== -->
@@ -676,10 +689,12 @@ async function iniciarApp(s){
   }catch(e){console.error(e);treinadores=[];}
   if(s.academia_id)await carregarJornadaSucesso();
   else ETAPAS.sucesso_cliente=JORNADA_SUCESSO_PADRAO;
-  // Consultor(a) não cria campanha nem sobe listas — só trabalha o próprio Kanban
+  // Consultor(a) não cria campanha, não sobe listas, nem redistribui carteira alheia
   if(s.role==='consultor'){
     const btnNova=document.querySelectorAll('.itab-btn')[3];
     if(btnNova)btnNova.style.display='none';
+    const btnCarteiras=document.querySelectorAll('.itab-btn')[4];
+    if(btnCarteiras)btnCarteiras.style.display='none';
   }
   await carregarCampanhas();
 }
@@ -688,7 +703,7 @@ checkSession();
 // ══════════════════════════════════════════
 // TABS INTERNAS
 // ══════════════════════════════════════════
-const ITAB_INDEX={lista:0,agenda:1,vendas:2,nova:3};
+const ITAB_INDEX={lista:0,agenda:1,vendas:2,nova:3,carteiras:4};
 function switchITab(tab){
   document.querySelectorAll('.ipane').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.itab-btn').forEach(b=>b.classList.remove('active'));
@@ -838,23 +853,24 @@ function confirmarPerfilAdicaoNomes(){
 
 // ── Redistribuir carteira — gestor(a) transfere cards de um(a) consultor(a) pra outro(a),
 // dentro de um perfil desta campanha. Só cards ainda ATIVOS (não convertidos/perdidos).
-async function abrirRedistribuir(campanhaId){
-  const camp=minhasCampanhas.find(c=>c.id===campanhaId);
+async function abrirRedistribuir(campanhaId,perfilInicial,deInicial){
+  const camp=minhasCampanhas.find(c=>c.id===campanhaId)||await(async()=>{const r=await sbGet('campanhas',`id=eq.${campanhaId}`);return r[0];})();
   if(!camp)return;
   if(sessao.role==='consultor'){toast('Só gestor(a) pode redistribuir carteira.',true);return;}
   fecharModalGenerico();
-  const optsPerfil=camp.perfis.map(p=>`<option value="${p}">${PERFIL_LABEL[p]}</option>`).join('');
-  const optsCons=consultoras.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  const optsPerfil=camp.perfis.map(p=>`<option value="${p}" ${p===perfilInicial?'selected':''}>${PERFIL_LABEL[p]}</option>`).join('');
+  const optsCons=consultoras.map(c=>`<option value="${c.id}" ${c.id===deInicial?'selected':''}>${c.nome}</option>`).join('');
   abrirModalGenerico(`<div class="auth-box" style="max-width:420px;">
     <h3 style="margin-bottom:14px;">🔀 Redistribuir Carteira</h3>
-    <p style="font-size:12.5px;color:var(--texto2);margin-bottom:14px">Move os cards ativos de um(a) consultor(a) para outro(a), dentro de um funil desta campanha.</p>
-    <div class="auth-fg"><label class="auth-fl">Funil</label><select class="fsel" id="rd-perfil">${optsPerfil}</select></div>
-    <div class="auth-fg"><label class="auth-fl">De (consultor(a) atual)</label><select class="fsel" id="rd-de">${optsCons}</select></div>
+    <p style="font-size:12.5px;color:var(--texto2);margin-bottom:14px">Move cards ativos de um(a) consultor(a) para outro(a), dentro de um funil desta campanha.</p>
+    <div class="auth-fg"><label class="auth-fl">Funil</label><select class="fsel" id="rd-perfil" onchange="contarCardsRedistribuir('${campanhaId}')">${optsPerfil}</select></div>
+    <div class="auth-fg"><label class="auth-fl">De (consultor(a) atual)</label><select class="fsel" id="rd-de" onchange="contarCardsRedistribuir('${campanhaId}')">${optsCons}</select></div>
     <div class="auth-fg"><label class="auth-fl">Para (novo(a) responsável)</label><select class="fsel" id="rd-para">${optsCons}</select></div>
+    <div class="auth-fg"><label class="auth-fl">Quantidade (deixe vazio pra mover todos)</label><input class="fi" type="number" id="rd-qtd" min="1" placeholder="Ex: 10"></div>
     <div id="rd-contagem" style="font-size:12.5px;color:var(--texto2);margin:10px 0;"></div>
-    <button class="btn-gh" style="width:100%;margin-bottom:8px;" onclick="contarCardsRedistribuir('${campanhaId}')">Ver quantos cards seriam movidos</button>
     <button class="btn-primary" style="width:100%" onclick="confirmarRedistribuir('${campanhaId}')">Transferir</button>
   </div>`);
+  contarCardsRedistribuir(campanhaId);
 }
 async function contarCardsRedistribuir(campanhaId){
   const perfil=document.getElementById('rd-perfil').value;
@@ -868,20 +884,89 @@ async function confirmarRedistribuir(campanhaId){
   const perfil=document.getElementById('rd-perfil').value;
   const de=document.getElementById('rd-de').value;
   const para=document.getElementById('rd-para').value;
+  const qtdInformada=parseInt(document.getElementById('rd-qtd').value)||null;
   if(de===para){toast('Escolha consultores(as) diferentes.',true);return;}
   try{
-    const cards=await sbGet('campanha_cards',`campanha_id=eq.${campanhaId}&perfil=eq.${perfil}&consultora_id=eq.${de}&status=eq.ativo&select=id`);
+    let cards=await sbGet('campanha_cards',`campanha_id=eq.${campanhaId}&perfil=eq.${perfil}&consultora_id=eq.${de}&status=eq.ativo&select=id`);
     if(!cards.length){toast('Nenhum card ativo pra transferir.',true);return;}
+    if(qtdInformada&&qtdInformada<cards.length)cards=cards.slice(0,qtdInformada);
     if(!confirm(`Transferir ${cards.length} card(s) de carteira?`))return;
     for(const c of cards){
       await sbPatch('campanha_cards',c.id,{consultora_id:para,updated_at:Date.now()});
     }
     toast(`${cards.length} card(s) transferido(s)!`);
     fecharModalGenerico();
+    if(document.getElementById('itab-carteiras')?.classList.contains('active'))carregarCarteiras();
   }catch(e){console.error(e);toast('Erro ao transferir',true);}
 }
 
-// ── ARQUIVAR / REATIVAR ──
+// ── CARTEIRAS — visão consolidada: consultor(a) x funil, só campanhas ativas ──
+async function carregarCarteiras(){
+  const wrap=document.getElementById('carteirasWrap');
+  wrap.innerHTML='<div class="ag-empty">Carregando carteiras...</div>';
+  const campsAtivas=minhasCampanhas.filter(c=>c.status==='ativa');
+  if(!campsAtivas.length){wrap.innerHTML='<div class="ag-empty">Nenhuma campanha ativa no momento.</div>';return;}
+  if(!consultoras.length){wrap.innerHTML='<div class="ag-empty">Nenhum(a) consultor(a) cadastrado(a) nesta academia ainda.</div>';return;}
+  try{
+    const idsStr=campsAtivas.map(c=>c.id).join(',');
+    const cards=await sbGet('campanha_cards',`campanha_id=in.(${idsStr})&select=perfil,status,consultora_id,campanha_id`);
+    const perfisAtivos=[...new Set(campsAtivas.flatMap(c=>c.perfis||[]))];
+
+    // matriz[consultoraId][perfil] = {ativos, convertidos}
+    const matriz={};
+    consultoras.forEach(c=>{matriz[c.id]={};perfisAtivos.forEach(p=>matriz[c.id][p]={ativos:0,convertidos:0});});
+    cards.forEach(c=>{
+      if(!matriz[c.consultora_id]||!matriz[c.consultora_id][c.perfil])return;
+      if(c.status==='ativo')matriz[c.consultora_id][c.perfil].ativos++;
+      else if(c.status==='convertido')matriz[c.consultora_id][c.perfil].convertidos++;
+    });
+
+    const totalPorPerfil={};
+    perfisAtivos.forEach(p=>{totalPorPerfil[p]=consultoras.reduce((s,c)=>s+matriz[c.id][p].ativos,0);});
+
+    wrap.innerHTML=`
+      <p style="font-size:12.5px;color:var(--texto2);margin-bottom:14px">Carteira ativa de cada consultor(a), por funil — só considera campanhas ativas. Clique num número pra redistribuir.</p>
+      <div style="overflow-x:auto;">
+      <table class="carteiras-table">
+        <thead><tr>
+          <th>Consultor(a)</th>
+          ${perfisAtivos.map(p=>`<th style="color:${PTAG_COR[p]||'var(--texto)'}">${PERFIL_LABEL[p]}</th>`).join('')}
+          <th>Total Ativo</th>
+        </tr></thead>
+        <tbody>
+          ${consultoras.map(c=>{
+            const totalCons=perfisAtivos.reduce((s,p)=>s+matriz[c.id][p].ativos,0);
+            return `<tr>
+              <td style="font-weight:600;">${c.nome}</td>
+              ${perfisAtivos.map(p=>{
+                const d=matriz[c.id][p];
+                return `<td>
+                  <span class="carteira-cell ${d.ativos>0?'clicavel':''}" ${d.ativos>0?`onclick="abrirRedistribuirDaMatriz('${p}','${c.id}',${JSON.stringify(campsAtivas.filter(cp=>(cp.perfis||[]).includes(p)).map(cp=>cp.id))})"`:''}>
+                    ${d.ativos}
+                  </span>
+                  ${d.convertidos>0?`<span style="color:var(--verde);font-size:11px;"> · ${d.convertidos} conv.</span>`:''}
+                </td>`;
+              }).join('')}
+              <td style="font-weight:700;">${totalCons}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td style="font-weight:700;color:var(--texto2);">Total do funil</td>
+          ${perfisAtivos.map(p=>`<td style="font-weight:700;color:var(--texto2);">${totalPorPerfil[p]}</td>`).join('')}
+          <td></td>
+        </tr></tfoot>
+      </table>
+      </div>`;
+  }catch(e){console.error(e);wrap.innerHTML='<div class="ag-empty">Erro ao carregar carteiras. Veja o console.</div>';}
+}
+const PTAG_COR={leads:'var(--laranja)',rematricula:'var(--roxo)',renovacao:'var(--azul)',sucesso_cliente:'var(--verde)'};
+function abrirRedistribuirDaMatriz(perfil,consultoraId,campanhaIdsDoPerfil){
+  // pega a primeira campanha ativa desse perfil pra abrir o redistribuidor com contexto pronto
+  const campId=campanhaIdsDoPerfil[0];
+  if(!campId){toast('Nenhuma campanha ativa encontrada pra esse funil.',true);return;}
+  abrirRedistribuir(campId,perfil,consultoraId);
+}
 async function arquivarCampanha(id){
   if(!confirm('Arquivar esta campanha? Ela some da lista principal, mas os dados continuam salvos — dá pra reativar depois.'))return;
   try{
