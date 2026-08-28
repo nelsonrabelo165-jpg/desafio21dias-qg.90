@@ -6,6 +6,7 @@
 <title>Campanhas · QG.90</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --fundo:#0E0E0E;--fundo2:#161616;--fundo3:#1E1E1E;
@@ -397,9 +398,9 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
 
           <div id="uploadArea">
             <div class="upload-drop" onclick="document.getElementById('fileInput').click()" ondrop="handleDrop(event)" ondragover="event.preventDefault()">
-              <input type="file" id="fileInput" accept=".csv" onchange="handleFile(this.files[0])">
-              <div style="font-size:15px;font-weight:700;margin-bottom:6px">📄 Clique ou arraste o arquivo CSV aqui</div>
-              <div style="font-size:12.5px;color:var(--texto2)">Exporte do seu sistema de gestão como CSV (separado por vírgula ou ponto e vírgula)</div>
+              <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" onchange="handleFile(this.files[0])">
+              <div style="font-size:15px;font-weight:700;margin-bottom:6px">📄 Clique ou arraste a planilha aqui</div>
+              <div style="font-size:12.5px;color:var(--texto2)">Aceita Excel (.xlsx, .xls) direto do seu sistema de gestão (SCA, Pacto, EVO, Next Fit...) ou CSV</div>
             </div>
             <p style="text-align:center;margin-top:12px;font-size:12.5px;color:var(--texto2)">Ainda não tem lista pronta? <a onclick="pularUploadPerfil()" style="color:var(--laranja);cursor:pointer;text-decoration:underline">Ativar este funil vazio</a> e adicione cards manualmente pelo Kanban quando surgirem.</p>
           </div>
@@ -2740,6 +2741,29 @@ function handleDrop(ev){
 }
 function handleFile(file){
   if(!file)return;
+  const nome=(file.name||'').toLowerCase();
+  const isExcel=nome.endsWith('.xlsx')||nome.endsWith('.xls');
+
+  if(isExcel){
+    if(typeof XLSX==='undefined'){toast('Não foi possível carregar o leitor de Excel — tente novamente ou use um arquivo CSV.',true);return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const primeiraAba=wb.SheetNames[0];
+        const linhas=XLSX.utils.sheet_to_json(wb.Sheets[primeiraAba],{header:1,defval:'',raw:false});
+        const linhasLimpas=linhas.map(r=>r.map(c=>String(c==null?'':c).trim())).filter(r=>r.some(c=>c!==''));
+        if(!linhasLimpas.length){toast('Planilha vazia ou não foi possível ler as linhas.',true);return;}
+        wiz.csvHeaders=linhasLimpas[0].map(h=>h.trim());
+        wiz.csvRows=linhasLimpas.slice(1);
+        renderMapeamento();
+      }catch(err){console.error(err);toast('Erro ao ler o arquivo Excel — confira se não está corrompido ou protegido por senha.',true);}
+    };
+    reader.readAsArrayBuffer(file);
+    return;
+  }
+
+  // CSV (padrão anterior)
   const reader=new FileReader();
   reader.onload=e=>{
     const text=e.target.result;
