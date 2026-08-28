@@ -162,6 +162,18 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
 .vd-filtros .fg{margin-bottom:0;}
 .vd-cons-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:26px;}
 .vd-cons-card{background:var(--fundo2);border:1px solid var(--borda);border-radius:12px;padding:16px;}
+.desemp-funil-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.desemp-funil-lbl{width:190px;flex-shrink:0;font-size:12.5px;color:var(--texto2);}
+.desemp-funil-bar-track{flex:1;height:10px;background:var(--fundo3);border-radius:6px;overflow:hidden;}
+.desemp-funil-bar-fill{height:100%;background:var(--laranja);border-radius:6px;transition:width .3s;}
+.desemp-funil-bar-fill.destaque{background:var(--verde);}
+.desemp-funil-val{width:78px;flex-shrink:0;text-align:right;font-size:13px;font-weight:700;}
+.desemp-funil-pct{font-weight:400;color:var(--texto2);font-size:11.5px;}
+.desemp-kpi{flex:1;background:var(--fundo3);border-radius:10px;padding:12px;text-align:center;}
+.desemp-kpi .n{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--laranja);}
+.desemp-kpi .l{font-size:11px;color:var(--texto2);text-transform:uppercase;letter-spacing:.5px;}
+.desemp-meta-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.desemp-meta-lbl{width:190px;flex-shrink:0;font-size:12.5px;font-weight:600;}
 .vd-cons-card h4{font-size:15px;margin-bottom:8px;}
 .vd-cons-card .vtot{font-size:24px;font-weight:800;color:var(--verde);}
 .vd-cons-card .vbar{height:6px;background:var(--fundo3);border-radius:4px;margin:8px 0;overflow:hidden;}
@@ -439,10 +451,12 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
     <div class="kb-summary" id="kbSummary"></div>
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
       <input class="kb-search" id="kbSearch" placeholder="🔍 Buscar por nome ou código..." oninput="renderKanbanBoard()" style="margin-bottom:0;flex:1;min-width:220px">
+      <select class="fsel" id="kbFiltroConsultorSel" style="display:none;width:auto;min-width:180px;" onchange="mudarFiltroConsultorKanban(this.value)"><option value="">👥 Todos(as) os(as) consultores(as)</option></select>
       <button class="btn-primary" onclick="abrirNovoCardManual()">+ Adicionar Card</button>
       <button class="btn-gh" onclick="abrirGerenciarTreinadores()">👥 Treinadores(as)</button>
       <button class="btn-gh" id="btnJornadaSucesso" style="display:none;" onclick="abrirEditorJornada(kbPerfilAtivo)">🎯 Jornada</button>
       <button class="btn-gh" id="btnAtribuirCarteira" style="display:none;" onclick="abrirAtribuirCarteira()">📋 Atribuir Carteira</button>
+      <button class="btn-gh" onclick="abrirMeuDesempenho()">📊 Desempenho</button>
     </div>
     <div class="kb-board" id="kbBoard"></div>
   </div>
@@ -695,7 +709,7 @@ async function iniciarApp(s){
   document.getElementById('userAcademia').textContent=s.role==='admin'?'QG.90 · Master':(s.role==='consultor'?'Consultor(a)':'Gestor(a)');
   mostrarTela('appWrap');
   try{
-    consultoras=s.academia_id?await sbGet('consultoras',`academia_id=eq.${s.academia_id}&select=id,nome,meta,meta_tipo`):[];
+    consultoras=s.academia_id?await sbGet('consultoras',`academia_id=eq.${s.academia_id}&select=id,nome,meta,meta_tipo,metas`):[];
   }catch(e){console.error(e);consultoras=[];}
   try{
     treinadores=s.academia_id?await sbGet('treinadores',`academia_id=eq.${s.academia_id}&ativo=eq.true&select=id,nome`):[];
@@ -789,6 +803,123 @@ function renderGridCampanhas(){
       <div class="camp-perfis">${(c.perfis||[]).map(p=>`<span class="ptag ptag-${p}">${PERFIL_LABEL[p]||p}</span>`).join('')}</div>
       ${c.status==='planejamento'?'<div style="margin-top:8px;font-size:12px;color:var(--laranja)">↻ Clique para continuar o upload</div>':''}
     </div>`).join('');
+}
+
+// ══════════════════════════════════════════
+// MEU DESEMPENHO — funil de conversão individual + vendas + metas
+// ══════════════════════════════════════════
+const ETAPA_KEY_INICIO_ATENDIMENTO='atendimento';
+async function abrirMeuDesempenho(){
+  let targetId, targetNome;
+  if(sessao.role==='consultor'){
+    targetId=sessao.consultora_id; targetNome=sessao.nome||'Você';
+    if(!targetId){toast('Sua conta não está vinculada a um(a) consultor(a) cadastrado(a).',true);return;}
+  }else{
+    if(!kbFiltroConsultor){toast('Selecione um(a) consultor(a) no filtro do Kanban primeiro.',true);return;}
+    targetId=kbFiltroConsultor;
+    targetNome=(consultoras.find(c=>c.id===targetId)||{}).nome||'—';
+  }
+
+  const etapas=ETAPAS[kbPerfilAtivo]||[];
+  const cardsAlvo=kbCards.filter(c=>c.perfil===kbPerfilAtivo&&c.consultora_id===targetId);
+  const idxDe=k=>etapas.findIndex(e=>e.k===k);
+  const alcancou=k=>{
+    const idxAlvo=idxDe(k); if(idxAlvo<0)return 0;
+    return cardsAlvo.filter(c=>{
+      const idxCard=idxDe(c.etapa_maxima||c.etapa_atual);
+      return idxCard>=idxAlvo;
+    }).length;
+  };
+
+  const totalLeads=cardsAlvo.length;
+  const atendimentoIniciado=idxDe(ETAPA_KEY_INICIO_ATENDIMENTO)>=0?alcancou(ETAPA_KEY_INICIO_ATENDIMENTO):totalLeads;
+  const expAgendada=idxDe('exp_agendada')>=0?alcancou('exp_agendada'):null;
+  const expIniciada=idxDe('exp_iniciada')>=0?alcancou('exp_iniciada'):null;
+  const chaveAgVisita=idxDe('agendada_matricula')>=0?'agendada_matricula':(idxDe('feedback_matricula')>=0?'feedback_matricula':null);
+  const agVisitaMatricula=chaveAgVisita?alcancou(chaveAgVisita):null;
+  const comparecido=cardsAlvo.filter(c=>c.compareceu).length;
+
+  // Vendas — busca fresca, escopada nesta campanha + este(a) consultor(a), pra separar
+  // Agendado x Espontâneo com precisão (a fonte de verdade é o que foi lançado na venda,
+  // não uma dedução da etapa do Kanban).
+  let vendasAlvo=[];
+  try{
+    vendasAlvo=await sbGet('vendas',`campanha_id=eq.${kbCampanha.id}&consultora_id=eq.${targetId}&select=*`);
+  }catch(e){console.error(e);}
+  const convertidoAgendado=vendasAlvo.filter(v=>v.tipo_venda==='agendado').length;
+  const convertidoEspontaneo=vendasAlvo.filter(v=>v.tipo_venda==='espontaneo').length;
+  const totalConversao=convertidoAgendado+convertidoEspontaneo;
+
+  const pct=(n,base)=>base>0?Math.round(n/base*100):0;
+
+  const funil=[
+    {lbl:'Total Leads',val:totalLeads,pct:null},
+    {lbl:'Atendimento Iniciado',val:atendimentoIniciado,pct:pct(atendimentoIniciado,totalLeads)}
+  ];
+  if(expAgendada!==null)funil.push({lbl:'Experiência Agendada',val:expAgendada,pct:pct(expAgendada,atendimentoIniciado)});
+  if(expIniciada!==null)funil.push({lbl:'Experiência Iniciada',val:expIniciada,pct:pct(expIniciada,expAgendada||1)});
+  if(agVisitaMatricula!==null){
+    funil.push({lbl:'Agendamento Visita/Matrícula',val:agVisitaMatricula,pct:pct(agVisitaMatricula,atendimentoIniciado)});
+    funil.push({lbl:'Comparecido',val:comparecido,pct:pct(comparecido,agVisitaMatricula)});
+    funil.push({lbl:'Convertido Agendado',val:convertidoAgendado,pct:pct(convertidoAgendado,comparecido)});
+  }
+  funil.push({lbl:'Convertido Espontâneo',val:convertidoEspontaneo,pct:pct(convertidoEspontaneo,atendimentoIniciado)});
+  funil.push({lbl:'Total Conversão do Funil',val:totalConversao,pct:pct(totalConversao,atendimentoIniciado),destaque:true});
+
+  const maxVal=Math.max(totalLeads,1);
+  const funilHtml=funil.map(f=>`
+    <div class="desemp-funil-row">
+      <div class="desemp-funil-lbl">${f.lbl}</div>
+      <div class="desemp-funil-bar-track"><div class="desemp-funil-bar-fill ${f.destaque?'destaque':''}" style="width:${Math.max(4,Math.round(f.val/maxVal*100))}%"></div></div>
+      <div class="desemp-funil-val">${f.val}${f.pct!==null?` <span class="desemp-funil-pct">(${f.pct}%)</span>`:''}</div>
+    </div>`).join('');
+
+  // Metas — escopo mensal (mês corrente), somando TODAS as vendas dessa pessoa na academia
+  // (não só deste funil/campanha), igual a planilha física fazia por mês.
+  const hoje=new Date();
+  const inicioMes=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`;
+  let vendasMes=[];
+  try{
+    vendasMes=await sbGet('vendas',`academia_id=eq.${sessao.academia_id}&consultora_id=eq.${targetId}&data=gte.${inicioMes}&select=valor,saldo_devedor`);
+  }catch(e){console.error(e);}
+  const totalVendidoMes=vendasMes.reduce((s,v)=>s+(parseFloat(v.valor)||0),0);
+  const totalSaldoDevedorMes=vendasMes.reduce((s,v)=>s+(parseFloat(v.saldo_devedor)||0),0);
+  const liquidoMes=totalVendidoMes-totalSaldoDevedorMes;
+  const consObj=consultoras.find(c=>c.id===targetId);
+  const metas=(consObj&&consObj.metas)||metasPadraoAcademia||{};
+  const metasHtml=[1,2,3].map(n=>{
+    const valor=metas['meta'+n];
+    if(!valor)return'';
+    const pctMeta=Math.min(100,Math.round(liquidoMes/valor*100));
+    const bateu=liquidoMes>=valor;
+    return`<div class="desemp-meta-row">
+      <div class="desemp-meta-lbl">Meta ${n} <span style="color:var(--texto2);font-weight:400;">R$${valor.toLocaleString('pt-BR')}</span> ${bateu?'✅':''}</div>
+      <div class="desemp-funil-bar-track"><div class="desemp-funil-bar-fill ${bateu?'destaque':''}" style="width:${pctMeta}%"></div></div>
+      <div class="desemp-funil-val">${pctMeta}%</div>
+    </div>`;
+  }).join('')||'<p style="font-size:12.5px;color:var(--texto2);">Nenhuma meta configurada (nem própria, nem padrão da academia).</p>';
+
+  const html=`<div class="auth-box" style="max-width:640px;max-height:85vh;overflow-y:auto;">
+    <h3 style="margin-bottom:2px;">📊 Desempenho — ${targetNome}</h3>
+    <p style="font-size:12.5px;color:var(--texto2);margin-bottom:16px;">${PERFIL_LABEL[kbPerfilAtivo]} · campanha "${kbCampanha.nome}"</p>
+
+    <h4 style="font-size:13.5px;margin-bottom:10px;color:var(--laranja);">Funil de Conversão</h4>
+    ${funilHtml}
+
+    <h4 style="font-size:13.5px;margin:18px 0 10px;color:var(--laranja);">Vendas: Agendado × Espontâneo</h4>
+    <div style="display:flex;gap:12px;margin-bottom:6px;">
+      <div class="desemp-kpi"><div class="n">${convertidoAgendado}</div><div class="l">Agendado</div></div>
+      <div class="desemp-kpi"><div class="n">${convertidoEspontaneo}</div><div class="l">Espontâneo</div></div>
+      <div class="desemp-kpi"><div class="n" style="color:var(--verde)">${totalConversao}</div><div class="l">Total</div></div>
+    </div>
+
+    <h4 style="font-size:13.5px;margin:18px 0 10px;color:var(--laranja);">Metas do Mês (líquido)</h4>
+    <p style="font-size:12px;color:var(--texto2);margin-bottom:8px;">Vendido no mês: R$${totalVendidoMes.toLocaleString('pt-BR',{minimumFractionDigits:2})} · Saldo devedor: R$${totalSaldoDevedorMes.toLocaleString('pt-BR',{minimumFractionDigits:2})} · <strong style="color:var(--texto);">Líquido: R$${liquidoMes.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></p>
+    ${metasHtml}
+
+    <button class="btn-gh" style="width:100%;margin-top:16px;" onclick="fecharModalGenerico()">Fechar</button>
+  </div>`;
+  abrirModalGenerico(html);
 }
 
 // ── EDITAR ──
@@ -1100,14 +1231,16 @@ const CHAVES_PROTEGIDAS={
 const ETAPAS={}; // preenchido por carregarJornadas() ao logar, um array por perfil
 const PTAG_CLASS={leads:'ptag-leads',rematricula:'ptag-rematricula',renovacao:'ptag-renovacao',sucesso_cliente:'ptag-sucesso_cliente'};
 
+let metasPadraoAcademia=null;
 async function carregarJornadas(){
   try{
-    const acs=await sbGet('academias',`id=eq.${sessao.academia_id}&select=jornada_leads,jornada_rematricula,jornada_renovacao,jornada_sucesso`);
+    const acs=await sbGet('academias',`id=eq.${sessao.academia_id}&select=jornada_leads,jornada_rematricula,jornada_renovacao,jornada_sucesso,metas_padrao`);
     const reg=acs&&acs[0]||{};
     ETAPAS.leads=(reg.jornada_leads&&reg.jornada_leads.length)?reg.jornada_leads:JORNADAS_PADRAO.leads;
     ETAPAS.rematricula=(reg.jornada_rematricula&&reg.jornada_rematricula.length)?reg.jornada_rematricula:JORNADAS_PADRAO.rematricula;
     ETAPAS.renovacao=(reg.jornada_renovacao&&reg.jornada_renovacao.length)?reg.jornada_renovacao:JORNADAS_PADRAO.renovacao;
     ETAPAS.sucesso_cliente=(reg.jornada_sucesso&&reg.jornada_sucesso.length)?reg.jornada_sucesso:JORNADAS_PADRAO.sucesso_cliente;
+    metasPadraoAcademia=reg.metas_padrao||null;
   }catch(e){
     console.error(e);
     Object.assign(ETAPAS,JORNADAS_PADRAO);
@@ -1689,8 +1822,22 @@ async function abrirKanban(camp){
   const tabsEl=document.getElementById('kbPerfilTabs');
   tabsEl.innerHTML=(camp.perfis||[]).map(p=>`<button class="kb-ptab" id="kbtab-${p}" onclick="trocarPerfilKanban('${p}')">${PERFIL_LABEL[p]}</button>`).join('');
   kbPerfilAtivo=(camp.perfis||[])[0];
+  kbFiltroConsultor='';
+  const selFiltro=document.getElementById('kbFiltroConsultorSel');
+  if(sessao.role==='consultor'){
+    selFiltro.style.display='none';
+  }else{
+    selFiltro.innerHTML='<option value="">👥 Todos(as) os(as) consultores(as)</option>'+consultoras.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+    selFiltro.value='';
+    selFiltro.style.display='inline-block';
+  }
   await carregarCardsKanban();
   trocarPerfilKanban(kbPerfilAtivo);
+}
+function mudarFiltroConsultorKanban(consultoraId){
+  kbFiltroConsultor=consultoraId;
+  renderKanbanBoard();
+  renderKbSummary();
 }
 function fecharKanban(){
   document.getElementById('viewKanban').style.display='none';
@@ -1725,7 +1872,8 @@ function nomeConsultora(id){const c=consultoras.find(x=>x.id===id);return c?c.no
 // Visão sempre com TODAS as consultoras juntas (visão de gestor) — sem filtro individual.
 function renderKbSummary(){
   const etapas=(ETAPAS[kbPerfilAtivo]||[]).filter(e=>!e.end);
-  const cardsDoPerfil=kbCards.filter(c=>c.perfil===kbPerfilAtivo);
+  let cardsDoPerfil=kbCards.filter(c=>c.perfil===kbPerfilAtivo);
+  if(kbFiltroConsultor)cardsDoPerfil=cardsDoPerfil.filter(c=>c.consultora_id===kbFiltroConsultor);
   const total=cardsDoPerfil.length;
   const convertidos=cardsDoPerfil.filter(c=>c.status==='convertido');
   const emEspera=cardsDoPerfil.filter(c=>c.status==='espera').length;
@@ -1792,10 +1940,12 @@ function renderKbSummary(){
   `;
 }
 
+let kbFiltroConsultor=''; // '' = todos(as) — só gestor(a)/admin usa isso
 function renderKanbanBoard(){
   const etapas=ETAPAS[kbPerfilAtivo]||[];
   const termo=(document.getElementById('kbSearch')?.value||'').trim().toLowerCase();
   let cardsDoPerfil=kbCards.filter(c=>c.perfil===kbPerfilAtivo);
+  if(kbFiltroConsultor)cardsDoPerfil=cardsDoPerfil.filter(c=>c.consultora_id===kbFiltroConsultor);
   if(termo){
     cardsDoPerfil=cardsDoPerfil.filter(c=>
       (c.nome||'').toLowerCase().includes(termo) ||
@@ -2139,6 +2289,15 @@ function renderCardModalBody(){
     </div>
   ` : '';
 
+  // "Compareceu" só faz sentido quando o card está esperando a visita/matrícula agendada —
+  // é o dado que faltava pra medir taxa de comparecimento no funil (agendou x veio de fato).
+  const blocoCompareceu = ETAPAS_AG_VISITA.includes(c.etapa_atual) ? `
+    <div class="at-perfil-box" style="${c.compareceu?'border-color:var(--verde)':''}">
+      <span class="at-perfil-lbl">Compareceu à visita/matrícula?</span>
+      <button class="at-perfil-btn ${c.compareceu?'ativo':''}" style="${c.compareceu?'background:var(--verde);border-color:var(--verde);color:#0E0E0E;':''}" onclick="toggleCompareceu(${!c.compareceu})">${c.compareceu?'✅ Compareceu':'Marcar como compareceu'}</button>
+    </div>
+  ` : '';
+
 
   const blocoQualificacao=`
     <div class="at-qual-box">
@@ -2228,6 +2387,7 @@ function renderCardModalBody(){
     ${blocoPerfil}
     ${blocoPrograma}
     ${blocoOrigemData}
+    ${blocoCompareceu}
     ${blocoQualificacao}
     ${blocoAtendimento}
     <div class="at-trava-msg" id="travaMsg">🔒 Confirme a próxima ação (registre o contato) ou envie para Perdas antes de fechar este card.</div>
@@ -2424,6 +2584,19 @@ async function salvarPerfilQualificacao(valor){
     renderCardModalBody();
     renderKanbanBoard();
   }catch(e){console.error(e);toast('Erro ao salvar classificação',true);}
+}
+
+// Marca se a pessoa realmente veio na visita/matrícula agendada — é o dado que faltava
+// pra medir taxa de comparecimento (agendou x compareceu) no funil de cada consultor(a).
+async function toggleCompareceu(val){
+  try{
+    await sbPatch('campanha_cards',cardAberto.id,{compareceu:val,compareceu_em:val?Date.now():null,updated_at:Date.now()});
+    cardAberto.compareceu=val;
+    toast(val?'Marcado como compareceu! ✅':'Desmarcado.');
+    await carregarCardsKanban();
+    cardAberto=kbCards.find(x=>x.id===cardAberto.id)||cardAberto;
+    renderCardModalBody();
+  }catch(e){console.error(e);toast('Erro ao salvar',true);}
 }
 
 // Programa/pilar QG.90 — mesma lógica do perfil, salva na hora.
