@@ -129,6 +129,11 @@ table.map-table th{color:var(--laranja);font-size:11.5px;text-transform:uppercas
 .kb-sum-item .n{font-size:22px;font-weight:800;color:var(--laranja);line-height:1.1;}
 .kb-sum-item .l{font-size:11px;color:var(--texto2);text-transform:uppercase;letter-spacing:.03em;margin-top:2px;}
 .kb-sum-fin{display:flex;gap:26px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--borda);font-size:12.5px;color:var(--texto2);}
+.kb-sum-porcons{padding:10px 0;border-top:1px solid var(--borda);}
+.kb-sum-porcons-titulo{font-size:11px;color:var(--texto2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.kb-sum-porcons-lista{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;}
+.kb-sum-porcons-item{color:var(--texto2);}
+.kb-sum-porcons-item b{color:var(--laranja);}
 .kb-sum-fin b{color:var(--texto);}
 
 /* AGENDA */
@@ -436,6 +441,7 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
       <button class="btn-primary" onclick="abrirNovoCardManual()">+ Adicionar Card</button>
       <button class="btn-gh" onclick="abrirGerenciarTreinadores()">👥 Treinadores(as)</button>
       <button class="btn-gh" id="btnJornadaSucesso" style="display:none;" onclick="abrirEditorJornada(kbPerfilAtivo)">🎯 Jornada</button>
+      <button class="btn-gh" id="btnAtribuirCarteira" style="display:none;" onclick="abrirAtribuirCarteira()">📋 Atribuir Carteira</button>
     </div>
     <div class="kb-board" id="kbBoard"></div>
   </div>
@@ -1542,6 +1548,63 @@ function adicionarEtapaJornada(){
   document.getElementById('novaEtapaJornadaNome').value='';
   renderListaJornadaSucesso();
 }
+// ── Atribuir Carteira — seleção manual de nomes pra definir/trocar consultor(a) de vez ──
+function abrirAtribuirCarteira(){
+  if(sessao.role==='consultor'){toast('Só gestor(a) pode atribuir carteira.',true);return;}
+  const cardsDoPerfil=kbCards.filter(c=>c.perfil===kbPerfilAtivo&&c.status==='ativo');
+  if(!cardsDoPerfil.length){toast('Nenhum card ativo nesse funil.',true);return;}
+  const optsCons=consultoras.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  const html=`<div class="auth-box" style="max-width:560px;max-height:80vh;overflow-y:auto;">
+    <h3 style="margin-bottom:6px;">📋 Atribuir Carteira — ${PERFIL_LABEL[kbPerfilAtivo]}</h3>
+    <p style="font-size:12.5px;color:var(--texto2);margin-bottom:12px;">Selecione os nomes, escolha o(a) consultor(a) responsável e envie pra carteira.</p>
+    <input class="fi" id="ac-busca" placeholder="🔍 Filtrar por nome..." style="margin-bottom:10px;" oninput="filtrarAtribuirCarteira()">
+    <div style="display:flex;gap:8px;margin-bottom:10px;font-size:12px;">
+      <button class="btn-gh" style="padding:4px 10px;font-size:11.5px;" onclick="marcarTodosAtribuir(true)">Marcar todos(as) visíveis</button>
+      <button class="btn-gh" style="padding:4px 10px;font-size:11.5px;" onclick="marcarTodosAtribuir(false)">Desmarcar</button>
+    </div>
+    <div id="ac-lista" style="border:1px solid var(--borda);border-radius:8px;max-height:280px;overflow-y:auto;margin-bottom:14px;"></div>
+    <div class="auth-fg"><label class="auth-fl">Enviar para:</label><select class="fsel" id="ac-consultor">${optsCons}</select></div>
+    <button class="btn-primary" style="width:100%" onclick="confirmarAtribuirCarteira()">Enviar para carteira →</button>
+  </div>`;
+  abrirModalGenerico(html);
+  window.acCardsCache=cardsDoPerfil;
+  renderListaAtribuirCarteira(cardsDoPerfil);
+}
+function renderListaAtribuirCarteira(cards){
+  const el=document.getElementById('ac-lista');
+  if(!el)return;
+  el.innerHTML=cards.map(c=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--borda);font-size:13px;cursor:pointer;">
+      <input type="checkbox" class="ac-chk" value="${c.id}">
+      <span style="flex:1;">${c.nome}</span>
+      <span style="font-size:11px;color:var(--texto2);">${nomeConsultora(c.consultora_id)||'sem consultor(a)'}</span>
+    </label>`).join('')||'<div style="padding:14px;color:var(--texto2);font-size:13px;">Nenhum nome encontrado.</div>';
+}
+function filtrarAtribuirCarteira(){
+  const termo=document.getElementById('ac-busca').value.trim().toLowerCase();
+  const filtrados=(window.acCardsCache||[]).filter(c=>c.nome.toLowerCase().includes(termo));
+  renderListaAtribuirCarteira(filtrados);
+}
+function marcarTodosAtribuir(val){
+  document.querySelectorAll('.ac-chk').forEach(el=>el.checked=val);
+}
+async function confirmarAtribuirCarteira(){
+  const ids=[...document.querySelectorAll('.ac-chk:checked')].map(el=>el.value);
+  const consultorId=document.getElementById('ac-consultor').value;
+  if(!ids.length){toast('Selecione pelo menos 1 nome.',true);return;}
+  if(!consultorId){toast('Escolha o(a) consultor(a).',true);return;}
+  try{
+    for(const id of ids){
+      await sbPatch('campanha_cards',id,{consultora_id:consultorId,updated_at:Date.now()});
+    }
+    toast(`${ids.length} card(s) enviado(s) para a carteira de ${nomeConsultora(consultorId)}!`);
+    fecharModalGenerico();
+    await carregarCardsKanban();
+    renderKanbanBoard();
+    renderKbSummary();
+  }catch(e){console.error(e);toast('Erro ao atribuir carteira',true);}
+}
+
 async function salvarJornadaSucesso(){
   if(!jornadaEmEdicao.length){toast('Adicione ao menos 1 etapa',true);return;}
   const protegidas=CHAVES_PROTEGIDAS[jornadaPerfilEmEdicao]||[];
@@ -1650,6 +1713,7 @@ function trocarPerfilKanban(perfil){
   const tabEl=document.getElementById('kbtab-'+perfil);
   if(tabEl)tabEl.classList.add('active');
   document.getElementById('btnJornadaSucesso').style.display='inline-flex';
+  document.getElementById('btnAtribuirCarteira').style.display=sessao.role==='consultor'?'none':'inline-flex';
   renderKanbanBoard();
   renderKbSummary();
 }
@@ -1685,6 +1749,27 @@ function renderKbSummary(){
   const inicio=kbCampanha.created_at?new Date(kbCampanha.created_at).toLocaleDateString('pt-BR'):'—';
   const fim=kbCampanha.status==='encerrada'?(kbCampanha.updated_at?new Date(kbCampanha.updated_at).toLocaleDateString('pt-BR'):'—'):'Em andamento';
 
+  // Quebra objetiva por consultor(a) — só visível pra gestor(a)/admin (consultor(a) já vê
+  // só os próprios cards, não precisa da comparação).
+  let blocoPorConsultor='';
+  if(sessao.role!=='consultor'){
+    const porConsultor={};
+    cardsDoPerfil.forEach(c=>{
+      const nome=nomeConsultora(c.consultora_id)||'Sem consultor(a)';
+      porConsultor[nome]=(porConsultor[nome]||0)+1;
+    });
+    const linhas=Object.entries(porConsultor).sort((a,b)=>b[1]-a[1]);
+    if(linhas.length){
+      blocoPorConsultor=`
+        <div class="kb-sum-porcons">
+          <div class="kb-sum-porcons-titulo">📋 Total lista: ${total} · por consultor(a)</div>
+          <div class="kb-sum-porcons-lista">
+            ${linhas.map(([nome,qtd])=>`<span class="kb-sum-porcons-item">${nome}: <b>${qtd}</b></span>`).join('')}
+          </div>
+        </div>`;
+    }
+  }
+
   document.getElementById('kbSummary').innerHTML=`
     <div class="kb-sum-row">
       <div class="kb-sum-item"><div class="n">${total}</div><div class="l">Total na Lista</div></div>
@@ -1693,6 +1778,7 @@ function renderKbSummary(){
       <div class="kb-sum-item"><div class="n" style="color:var(--texto2)">${emEspera}</div><div class="l">Cadência Futura</div></div>
       <div class="kb-sum-item"><div class="n" style="color:var(--vermelho)">${perdidos}</div><div class="l">Perdas</div></div>
     </div>
+    ${blocoPorConsultor}
     <div class="kb-sum-fin">
       <div>Investimento tráfego: <b>R$${invest.toLocaleString('pt-BR')}</b></div>
       <div>CPL: <b>${leadsGerados>0?'R$'+cpl.toFixed(2).replace('.',','):'—'}</b></div>
@@ -2637,8 +2723,8 @@ const selPerfilUpload=document.getElementById('w-perfil-upload');
 if(selPerfilUpload)selPerfilUpload.addEventListener('change',()=>{wiz.perfilAtual=selPerfilUpload.value;});
 
 function baixarModeloCSV(){
-  const cabecalho='nome,codigo,telefone,idade,plano,inicio,termino,ticket';
-  const exemplo='João da Silva,MAT12345,11999998888,32,Mensal,01/01/2026,01/02/2026,150,00';
+  const cabecalho='nome,codigo,telefone,idade,plano,inicio,termino,ticket,consultor_responsavel';
+  const exemplo='João da Silva,MAT12345,11999998888,32,Mensal,01/01/2026,01/02/2026,150,00,';
   const conteudo=cabecalho+'\n'+exemplo;
   const blob=new Blob(['\uFEFF'+conteudo],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
@@ -2673,7 +2759,8 @@ const CAMPOS_ESPERADOS=[
   {k:'plano',lbl:'Plano atual',guess:['plano']},
   {k:'inicio',lbl:'Início do plano',guess:['inicio','início']},
   {k:'termino',lbl:'Término do plano',guess:['termino','término','vencimento']},
-  {k:'ticket',lbl:'Ticket médio mensal',guess:['ticket','valor','mensalidade']}
+  {k:'ticket',lbl:'Ticket médio mensal',guess:['ticket','valor','mensalidade']},
+  {k:'consultor',lbl:'Consultor(a) Responsável (opcional)',guess:['consultor','responsavel','responsável']}
 ];
 function renderMapeamento(){
   const el=document.getElementById('mapFields');
@@ -2707,6 +2794,7 @@ function atualizarPreviaMapeamento(){
       <td>${c.plano_inicio||'—'}</td>
       <td>${c.plano_termino||'—'}</td>
       <td>${c.ticket_medio?'R$'+c.ticket_medio.toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
+      <td>${c.consultor_nome_planilha||'—'}</td>
     </tr>`).join('')}
   </table>`;
 }
@@ -2722,7 +2810,8 @@ function montarCard(row,idx){
     plano_atual:idx.plano>=0?(row[idx.plano]||'').trim():'',
     plano_inicio:idx.inicio>=0?normalizarData(row[idx.inicio]):null,
     plano_termino:idx.termino>=0?normalizarData(row[idx.termino]):null,
-    ticket_medio:idx.ticket>=0?normalizarValorMonetario(row[idx.ticket]):0
+    ticket_medio:idx.ticket>=0?normalizarValorMonetario(row[idx.ticket]):0,
+    consultor_nome_planilha:idx.consultor>=0?(row[idx.consultor]||'').trim():''
   };
 }
 
@@ -2808,7 +2897,22 @@ async function rodarCrossCheckPerdas(cards){
     }catch(e){console.error(e);}
   }
 
-  wiz.cardsProntos=cardsLiberados;
+  // Se a planilha já veio com "Consultor(a) Responsável" preenchido, casa pelo nome
+  // (normalizado) com quem já está cadastrado — esses vão direto pra carteira certa,
+  // sem passar pela divisão por capacidade. Só quem não veio com nome (ou não bateu com
+  // ninguém cadastrado) segue pro fluxo normal de ondas.
+  const consPorNome={};
+  consultoras.forEach(c=>{consPorNome[c.nome.trim().toLowerCase()]=c;});
+  wiz.cardsComConsultor=[];
+  const semConsultor=[];
+  cardsLiberados.forEach(c=>{
+    const nomeInformado=(c.consultor_nome_planilha||'').trim().toLowerCase();
+    const match=nomeInformado?consPorNome[nomeInformado]:null;
+    if(match){wiz.cardsComConsultor.push({...c,consultora_id:match.id,consultora_nome:match.nome});}
+    else{semConsultor.push(c);}
+  });
+
+  wiz.cardsProntos=semConsultor;
   wiz.bloqueados=bloquear.size;
   wiz.alertas=cardsLiberados.filter(c=>alertar.has(c.telefone)).map(c=>({nome:c.nome,motivo:alertar.get(c.telefone)}));
 
@@ -2817,10 +2921,37 @@ async function rodarCrossCheckPerdas(cards){
   el.innerHTML=`
     ${wiz.bloqueados>0?`<div class="alert-box">🚫 <b>${wiz.bloqueados}</b> pessoa(s) removida(s) automaticamente por já terem pedido não-contato.</div>`:''}
     ${wiz.jaExistentesQtd>0?`<div class="warn-box" style="border-color:var(--azul);color:var(--azul)">🔗 <b>${wiz.jaExistentesQtd}</b> pessoa(s) já estavam nesta campanha — não viram card duplicado, o(a) consultor(a) responsável de cada uma foi mantido.</div>`:''}
+    ${wiz.cardsComConsultor.length>0?`<div class="warn-box" style="border-color:var(--verde);color:var(--verde)">🎯 <b>${wiz.cardsComConsultor.length}</b> pessoa(s) já vieram com consultor(a) definido(a) na planilha — vão direto pra carteira certa, sem passar pela divisão por capacidade.</div>`:''}
     ${wiz.alertas.length>0?`<div class="warn-box">⚠️ <b>${wiz.alertas.length}</b> pessoa(s) já tiveram um card de Perdas antes (motivo diferente) — foram mantidas na lista, revise se quiser remover alguma manualmente depois.</div>`:''}
-    <p style="font-size:14px;margin-bottom:14px"><b>${wiz.cardsProntos.length}</b> pessoas novas, prontas para entrar na campanha (perfil: ${PERFIL_LABEL[wiz.perfilAtual]}).</p>
-    ${wiz.cardsProntos.length===0?`<button class="btn-gh" onclick="finalizarSemNovos()">Nenhuma novidade — voltar</button>`:`<button class="btn-primary" onclick="irParaStep(3);renderOndaConfig();">Continuar para divisão em ciclos →</button>`}
+    <p style="font-size:14px;margin-bottom:14px"><b>${wiz.cardsProntos.length}</b> pessoa(s) sem consultor(a) definido(a), prontas pra dividir por capacidade (perfil: ${PERFIL_LABEL[wiz.perfilAtual]}).</p>
+    ${wiz.cardsProntos.length===0
+      ?(wiz.cardsComConsultor.length>0
+        ?`<button class="btn-primary" onclick="finalizarSoComConsultor()">Enviar direto pra carteira (${wiz.cardsComConsultor.length}) →</button>`
+        :`<button class="btn-gh" onclick="finalizarSemNovos()">Nenhuma novidade — voltar</button>`)
+      :`<button class="btn-primary" onclick="irParaStep(3);renderOndaConfig();">Continuar para divisão em ciclos →</button>`}
   `;
+}
+// Quando 100% da lista já veio com consultor(a) definido, não existe divisão por
+// capacidade pra fazer — insere direto e finaliza.
+async function finalizarSoComConsultor(){
+  const etapaEntrada=(ETAPAS[wiz.perfilAtual]&&ETAPAS[wiz.perfilAtual][0]&&ETAPAS[wiz.perfilAtual][0].k)||'lista';
+  const cardsParaInserir=wiz.cardsComConsultor.map(c=>({
+    campanha_id:wiz.campanhaId,onda_id:null,perfil:wiz.perfilAtual,
+    nome:c.nome,codigo_matricula:c.codigo_matricula,telefone:c.telefone,idade:c.idade,
+    plano_atual:c.plano_atual,plano_inicio:c.plano_inicio||null,plano_termino:c.plano_termino||null,
+    ticket_medio:c.ticket_medio,etapa_atual:etapaEntrada,etapa_maxima:etapaEntrada,consultora_id:c.consultora_id,
+    cadencia_atual:0,cadencia_total:CADENCIA_TOTAL_PADRAO[wiz.perfilAtual]||5,
+    status:'ativo',created_at:Date.now(),updated_at:Date.now()
+  }));
+  try{
+    for(let i=0;i<cardsParaInserir.length;i+=200){
+      await sbPost('campanha_cards',cardsParaInserir.slice(i,i+200));
+    }
+    toast(`${cardsParaInserir.length} cards criados, já na carteira certa!`);
+    fecharModalGenerico();
+    switchITab('lista');
+    await carregarCampanhas();
+  }catch(e){console.error(e);toast('Erro ao criar cards',true);}
 }
 function finalizarSemNovos(){
   fecharModalGenerico();
@@ -2896,6 +3027,9 @@ async function confirmarOndasECards(){
       ondasSalvas.push({...o,onda_id:r[0].id});
     }
     // distribui os cards sequencialmente conforme a quantidade definida por onda/consultora
+    // etapa de entrada = primeira etapa REAL da jornada desse perfil (dinâmica — cada academia
+    // pode ter reordenado/renomeado, e Sucesso do Cliente nem tem a chave 'lista').
+    const etapaEntrada=(ETAPAS[wiz.perfilAtual]&&ETAPAS[wiz.perfilAtual][0]&&ETAPAS[wiz.perfilAtual][0].k)||'lista';
     let ponteiro=0;
     const cardsParaInserir=[];
     for(const o of ondasSalvas){
@@ -2906,7 +3040,7 @@ async function confirmarOndasECards(){
             campanha_id:wiz.campanhaId,onda_id:o.onda_id,perfil:wiz.perfilAtual,
             nome:c.nome,codigo_matricula:c.codigo_matricula,telefone:c.telefone,idade:c.idade,
             plano_atual:c.plano_atual,plano_inicio:c.plano_inicio||null,plano_termino:c.plano_termino||null,
-            ticket_medio:c.ticket_medio,etapa_atual:'lista',consultora_id:d.consultora_id,
+            ticket_medio:c.ticket_medio,etapa_atual:etapaEntrada,etapa_maxima:etapaEntrada,consultora_id:d.consultora_id,
             cadencia_atual:0,cadencia_total:CADENCIA_TOTAL_PADRAO[wiz.perfilAtual]||5,
             status:'ativo',created_at:Date.now(),updated_at:Date.now()
           });
