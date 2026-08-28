@@ -127,15 +127,66 @@ code{background:var(--fundo3);border:1px solid var(--borda);border-radius:5px;pa
 <script>
 const steps = [
 {
-  grupo:"Visão Geral",
+  grupo:"Antes de Começar",
   eyebrow:"Comece por aqui",
   title:"Como o sistema é organizado",
-  sub:"4 módulos conectados, um login, várias telas",
+  sub:"4 módulos conectados, um login por pessoa, várias telas",
   badge:"mod-geral",
   blocks:[
-    {type:'expect', title:'Os 4 módulos', text:'<strong>Desafio ROI 21 Dias</strong> — painel principal, lançamento diário de produtividade e indicadores da academia. <strong>Campanhas</strong> — CRM de vendas: funis, Kanban, agenda comercial, carteiras. <strong>Experiências</strong> — jornada operacional do aluno em experiência, do Dia 1 à conversão. <strong>Central de Scripts</strong> — biblioteca de scripts prontos, método AQÚI.'},
-    {type:'tip', title:'Um login só', text:'Você entra uma vez pelo Desafio ROI 21 Dias e navega entre os outros módulos sem digitar senha de novo, contanto que continue na mesma aba do navegador.'},
-    {type:'expect', title:'Como eles se conectam', text:'Quando um lead no Campanhas chega em "Experiência Agendada", o sistema cria automaticamente o card correspondente no módulo Experiências — sem digitar duas vezes. Quando a experiência é concluída (convertida ou não), o card volta pra atualizar o Campanhas sozinho.'}
+    {type:'expect', title:'Os 4 módulos', text:'<strong>Desafio ROI 21 Dias</strong> — painel principal, lançamento diário de produtividade e indicadores da academia. <strong>Campanhas</strong> — CRM de vendas: funis, Kanban, agenda comercial, carteiras, desempenho individual. <strong>Experiências</strong> — jornada operacional do aluno em experiência, do Dia 1 à conversão. <strong>Central de Scripts</strong> — biblioteca de scripts prontos, método AQÚI.'},
+    {type:'expect', title:'Os 4 funis de vendas', text:'Leads Novos, Rematrícula, Ciclo de Renovação e Sucesso do Cliente (retenção pós-venda). Cada um tem etapas de Kanban próprias — e hoje todas são editáveis pela academia (veja "Jornada do Funil" mais adiante).'},
+    {type:'tip', title:'Um login por pessoa, não por academia', text:'Cada consultor(a) e treinador(a) tem o próprio e-mail e senha — sem dividir uma senha genérica entre a equipe inteira. Isso é o que torna possível saber exatamente quem fez o quê.'},
+    {type:'expect', title:'Como os módulos se conectam', text:'Quando um lead no Campanhas chega em "Experiência Agendada", o sistema cria automaticamente o card correspondente no módulo Experiências — sem digitar duas vezes. Quando a experiência é concluída (convertida ou não), o card volta pra atualizar o Campanhas sozinho.'}
+  ]
+},
+{
+  grupo:"Antes de Começar",
+  eyebrow:"Fundamental pro onboarding",
+  title:"Papéis de login — quem vê o quê",
+  sub:"4 tipos de acesso, cada um com uma visão diferente do sistema",
+  badge:"mod-geral",
+  blocks:[
+    {type:'fill', title:'Admin (QG.90 · Master)', rows:[
+      ['Quem usa','A equipe QG.90/GeFit'],
+      ['O que vê','Todas as academias do sistema'],
+      ['O que só ele faz','Libera módulos por academia, acessa qualquer academia como se fosse dela']
+    ]},
+    {type:'fill', title:'Gestor(a) (dono/líder da academia)', rows:[
+      ['Quem usa','Dono(a) ou gerente da academia'],
+      ['O que vê','Tudo da própria academia: todos os funis, todos os consultores, todas as experiências'],
+      ['O que só ele faz','Cria login individual da equipe, configura metas e jornadas, redistribui carteira, libera módulos']
+    ]},
+    {type:'fill', title:'Consultor(a) (vendas)', rows:[
+      ['Quem usa','Time comercial'],
+      ['O que vê','Só os próprios cards no Campanhas — Kanban, Agenda e Desempenho já filtrados automaticamente'],
+      ['Onde não entra','Módulo Experiências (a não ser que também tenha papel de treinador) e telas de gestão da academia']
+    ]},
+    {type:'fill', title:'Treinador(a) (time técnico)', rows:[
+      ['Quem usa','Equipe que atende as experiências'],
+      ['O que vê','Só o módulo Experiências — cards onde é responsável, própria Agenda'],
+      ['Onde não entra','Módulo Campanhas (CRM de vendas)']
+    ]},
+    {type:'warn', title:'Por que essa separação importa', text:'Antes de existir login individual, a responsabilidade por uma tarefa dependia de alguém digitar o nome certo. Agora ela é rastreável de verdade: cada um só marca como concluído o que é dele — o sistema decide isso pelo login, não pelo texto digitado.'}
+  ]
+},
+{
+  grupo:"Antes de Começar",
+  eyebrow:"Passo a passo",
+  title:"Primeiro acesso de uma academia nova",
+  sub:"A ordem recomendada pra colocar tudo em pé",
+  badge:"mod-geral",
+  blocks:[
+    {type:'click', title:'Sequência recomendada', items:[
+      'Gestor(a) faz login com a conta principal da academia',
+      'Confirma quais módulos estão liberados (fale com o admin QG.90 se algum estiver bloqueado)',
+      'Cadastra consultores(as) e treinadores(as) — nome, meta, funis, carga horária',
+      'Cria o login individual de cada um(a) (🔑 Acesso, no Desafio ROI, ou aba Equipe, no Experiências)',
+      'Configura as Metas Padrão da Academia (Meta 1/2/3)',
+      'Cria a primeira campanha em Campanhas → + Nova Campanha',
+      'Sobe a lista de leads/alunos (Excel ou CSV) e divide por consultor(a)',
+      'A equipe já pode logar com o próprio e-mail/senha e começar a trabalhar'
+    ]},
+    {type:'tip', title:'Não precisa fazer tudo de uma vez', text:'Dá pra liberar módulo por módulo, testar com uma campanha pequena antes de migrar a operação inteira, e ir cadastrando a equipe aos poucos.'}
   ]
 },
 {
@@ -145,8 +196,8 @@ const steps = [
   sub:"A tela que abre ao logar",
   badge:"mod-roi",
   blocks:[
-    {type:'expect', title:'O que mostra', text:'Matrículas acumuladas, 1ªs tentativas, cadências, efetivos, taxa de conversão e total vendido — consolidado ou filtrado por consultor(a).'},
-    {type:'expect', title:'Situação por Funil', text:'Um card por funil ativo (Leads Novos, Renovação, Rematrícula, Sucesso do Cliente...). Só aparece aqui o funil que tiver campanha ativa correspondente no módulo Campanhas.'},
+    {type:'expect', title:'Situação por Funil (consolidado)', text:'Um card por funil ativo. Só aparece aqui o funil que tiver campanha ativa correspondente no Campanhas. Clicar num card leva direto pro Kanban daquele funil.'},
+    {type:'expect', title:'Funis & Indicadores (por consultor)', text:'Dropdown pra escolher "Todos(as)" ou uma pessoa específica — mostra o funil completo dela, com todos os números.'},
     {type:'tip', title:'Matrículas por dia', text:'O gráfico embaixo mostra a evolução dia a dia do desafio — útil pra ver se o ritmo está acelerando ou caindo no meio do mês.'}
   ]
 },
@@ -160,10 +211,11 @@ const steps = [
     {type:'click', title:'Como usar', items:[
       'Clique em <strong>"LANÇAR DIA"</strong> no topo',
       'Selecione o(a) consultor(a)',
-      'Clique em "▶ Carregar campos do funil"'
+      'Clique em "▶ Carregar campos do funil"',
+      'Cada funil aparece recolhido — clique no cabeçalho pra abrir e preencher'
     ]},
-    {type:'expect', title:'Modo Automático vs Manual', text:'Cada funil tem dois botões no cabeçalho: <strong>🔗 Auto</strong> (puxa os números direto do módulo Campanhas) e <strong>✎ Manual</strong> (você digita tudo). O gestor escolhe qual modo cada funil usa — fica salvo, não precisa escolher toda vez.'},
-    {type:'warn', title:'Funil sem campanha ativa', text:'Se não existir campanha ativa daquele perfil, o funil não aparece pra lançamento — some da tela com um aviso pra criar/reativar a campanha primeiro.'}
+    {type:'expect', title:'Modo Automático vs Manual', text:'Cada funil tem dois botões: <strong>🔗 Auto</strong> (puxa os números direto do Campanhas) e <strong>✎ Manual</strong> (você digita tudo). O gestor escolhe qual modo cada funil usa — fica salvo, não precisa escolher toda vez.'},
+    {type:'warn', title:'Funil sem campanha ativa', text:'Se não existir campanha ativa daquele perfil, o funil não aparece pra lançamento — crie ou reative a campanha em Campanhas primeiro.'}
   ]
 },
 {
@@ -176,9 +228,12 @@ const steps = [
     {type:'click', title:'Cadastrar novo(a) consultor(a)', items:[
       'Aba <strong>"Consultores(as)"</strong> → "+ Consultor(a)"',
       'Nome, meta (planos, R$ ou treino), horas de trabalho',
+      'Metas 1/2/3 (opcional — deixe vazio pra usar o padrão da academia)',
       'Escolha até 4 funis que essa pessoa vai trabalhar'
     ]},
-    {type:'expect', title:'🔑 Acesso individual', text:'Clique nesse botão no card do(a) consultor(a) pra criar um login próprio (e-mail + senha) — assim ela entra direto no módulo de Campanhas sem depender do login geral da academia.'}
+    {type:'expect', title:'✎ Editar', text:'Qualquer consultor(a) já cadastrado(a) pode ter nome, meta, horas e funis alterados a qualquer momento — não precisa remover e recriar.'},
+    {type:'expect', title:'🎯 Metas / Metas Padrão da Academia', text:'Meta 1/2/3 em R$, comparadas contra o valor líquido (vendido − saldo devedor). Configuráveis por pessoa, ou uma faixa padrão pra toda a academia.'},
+    {type:'expect', title:'🔑 Acesso', text:'Cria login individual (e-mail + senha) — a partir daí, a pessoa entra direto no Campanhas sem depender do login geral da academia.'}
   ]
 },
 {
@@ -202,12 +257,13 @@ const steps = [
     {type:'click', title:'Criar uma campanha nova', items:[
       '"+ Nova Campanha" → nome, mês de referência, investimento',
       'Marque os perfis (Leads, Rematrícula, Renovação, Sucesso do Cliente)',
-      'Suba a planilha CSV (nome é o único campo obrigatório)',
+      'Suba a lista — <strong>Excel (.xlsx/.xls) ou CSV</strong>, direto do seu sistema de gestão',
       'Confira o mapeamento de colunas e a prévia',
       'Divida a lista em ciclos semanais por consultor(a)'
     ]},
     {type:'expect', title:'Ícones em cada card', text:'✎ Editar (tudo: nome, investimento, perfis, datas) · 🗄 Arquivar (some da lista, mantém os dados, dá pra reativar) · 🗑 Excluir definitivamente (pede confirmação digitando o nome).'},
-    {type:'tip', title:'Adicionar mais nomes depois', text:'Numa campanha já ativa, clique em Editar → "📤 Adicionar mais nomes" — sobe uma lista extra sem duplicar quem já está na campanha (mantém o(a) consultor(a) responsável de quem já existia).'}
+    {type:'tip', title:'Adicionar mais nomes depois', text:'Numa campanha já ativa, clique em Editar → "📤 Adicionar mais nomes" — sobe uma lista extra sem duplicar quem já está na campanha. Se a planilha já trouxer "Consultor(a) Responsável" preenchido, o card vai direto pra carteira certa, sem passar pela divisão por capacidade.'},
+    {type:'expect', title:'Colunas opcionais úteis', text:'Além dos campos básicos, dá pra mapear "Consultor(a) Responsável" e "Observações" — informações que já vêm do seu sistema de gestão (SCA, Pacto, EVO, Next Fit...) entram direto no card.'}
   ]
 },
 {
@@ -217,31 +273,34 @@ const steps = [
   sub:"Onde cada lead é trabalhado, card por card",
   badge:"mod-camp",
   blocks:[
-    {type:'expect', title:'Etapas padrão (Leads/Rematrícula)', text:'Lista/Iniciar Cadência → 1ª Tentativa → Iniciou Atendimento → Experiência Agendada → Experiência Iniciada → Agendada Visita/Matrícula → Convertido / Cadência Futura.'},
-    {type:'expect', title:'Etapas padrão (Renovação)', text:'Lista/Iniciar Cadência → 1ª Tentativa → Iniciou Atendimento → Consultoria/Avaliação Agendada → Agendada Feedback/Matrícula → Convertido / Cadência Futura.'},
     {type:'click', title:'Dentro de um card', items:[
       'Classificação de perfil (5%/95%) e Programa (pilar)',
+      'Observações — editável a qualquer momento, salva sozinho ao sair do campo',
       'Script sugerido pra etapa e canal atual',
       'Registrar interação (o que foi conversado)',
       'Mover pra próxima etapa (ou marcar Perda, com motivo)'
     ]},
-    {type:'tip', title:'+ Adicionar Card', text:'Cadastra manualmente um lead que chegou fora da planilha — inclui campos de Origem do Lead (Indicação, WhatsApp, Instagram, etc.) e Data do Lead (pode ser retroativa).'}
+    {type:'expect', title:'✅ Compareceu', text:'Aparece dentro do card quando ele está na etapa de Agendamento de Visita/Matrícula — marca se a pessoa realmente veio, não só se foi agendado.'},
+    {type:'tip', title:'👥 Filtro por consultor(a)', text:'No topo do Kanban, gestor(a)/admin podem escolher "Todos(as)" ou uma pessoa específica — filtra o board e os números inteiros só daquela pessoa.'},
+    {type:'expect', title:'📋 Atribuir Carteira', text:'Seleciona vários nomes de uma vez (com busca), escolhe o(a) consultor(a) responsável e envia em lote — sem precisar abrir card por card.'},
+    {type:'expect', title:'+ Adicionar Card', text:'Cadastra manualmente um lead que chegou fora da planilha — inclui Origem do Lead (Indicação, WhatsApp, Instagram...) e Data do Lead (pode ser retroativa).'}
   ]
 },
 {
   grupo:"Campanhas",
-  eyebrow:"Retenção",
-  title:"Sucesso do Cliente",
-  sub:"O único funil com etapas editáveis pela própria academia",
+  eyebrow:"Personalização",
+  title:"Jornada do Funil (etapas editáveis)",
+  sub:"Cada funil pode ter suas próprias colunas de Kanban",
   badge:"mod-camp",
   blocks:[
-    {type:'expect', title:'Jornada padrão sugerida', text:'Onboarding → Acompanhamento Ativo → Sinal de Risco → Estabilizado/Fidelizado (Sucesso) → Perdido (Perda). Serve só de ponto de partida.'},
-    {type:'click', title:'Editar a jornada', items:[
-      'Dentro do Kanban desse funil, clique em <strong>"🎯 Jornada"</strong>',
-      'Reordene com as setas, renomeie, adicione ou remova etapas',
-      'Marque qual etapa é "Final: Sucesso" e qual é "Final: Perda"'
+    {type:'click', title:'Onde editar', items:[
+      'Dentro do Kanban de qualquer funil, clique em <strong>"🎯 Jornada"</strong>',
+      'Reordene com as setas ▲▼, renomeie qualquer etapa',
+      'Adicione etapas novas livremente',
+      'Marque uma etapa como "Final: Sucesso" ou "Final: Perda" — é isso que conta pra conversão'
     ]},
-    {type:'warn', title:'Por que marcar Sucesso/Perda', text:'É isso que faz o card contar como convertido (ou perdido) nos relatórios — sem essa marcação, mover o card pra uma etapa final não teria efeito nos números.'}
+    {type:'warn', title:'Etapas protegidas (🔒)', text:'Algumas etapas disparam automação por trás (ex: "Experiência Agendada" cria o card automático no módulo Experiências). Essas podem ser renomeadas e reordenadas, mas não excluídas — pra não quebrar a integração.'},
+    {type:'expect', title:'Sucesso do Cliente é 100% livre', text:'Esse funil não tem nenhuma etapa protegida — a academia monta a jornada de retenção do zero, do jeito que fizer sentido pro negócio.'}
   ]
 },
 {
@@ -252,7 +311,8 @@ const steps = [
   badge:"mod-camp",
   blocks:[
     {type:'expect', title:'As seções', text:'🎯 Agendamento Experiência (data marcada do Dia 1) · 🏃 Experiência em Andamento (mostra a tarefa real pendente lá no módulo Experiências, com link direto) · 🤝 Agendamento Visita/Matrícula · 🔴 Retornos Atrasados / 🟠 Retornos Hoje (cadência).'},
-    {type:'tip', title:'Duas visões', text:'Alterne entre "📄 Lista" e "📆 Semana" (calendário) no topo da agenda.'}
+    {type:'tip', title:'Duas visões', text:'Alterne entre "📄 Lista" e "📆 Semana" (calendário) no topo da agenda.'},
+    {type:'warn', title:'Não é a mesma Agenda do módulo Experiências', text:'Essa Agenda é sobre cadência comercial (ligações, retornos). A Agenda do módulo Experiências é sobre a jornada da experiência em si (feedback, áudios do treinador). São dois sistemas separados de propósito.'}
   ]
 },
 {
@@ -273,12 +333,28 @@ const steps = [
 },
 {
   grupo:"Campanhas",
+  eyebrow:"Resultados individuais",
+  title:"Desempenho",
+  sub:"O funil de conversão de cada consultor(a), em números",
+  badge:"mod-camp",
+  blocks:[
+    {type:'click', title:'Como abrir', items:[
+      'Dentro do Kanban, clique em <strong>"📊 Desempenho"</strong>',
+      'Consultor(a) vê o próprio automaticamente',
+      'Gestor(a) escolhe alguém no filtro de consultor(a) primeiro'
+    ]},
+    {type:'expect', title:'O que mostra', text:'Funil de conversão completo (Total Leads → Atendimento → Experiência → Comparecimento → Convertido), Vendas Agendado × Espontâneo, e Metas do mês calculadas sobre o valor líquido (vendido − saldo devedor).'}
+  ]
+},
+{
+  grupo:"Campanhas",
   eyebrow:"Financeiro",
   title:"Vendas",
   sub:"Livro de vendas por consultor(a) e período",
   badge:"mod-camp",
   blocks:[
-    {type:'expect', title:'O que registra', text:'Toda venda confirmada ao mover um card pra "Convertido" gera uma linha aqui automaticamente — nome do cliente, valor, tipo de plano, quem atendeu e quem lançou.'}
+    {type:'expect', title:'O que registra', text:'Toda venda confirmada ao mover um card pra etapa final de sucesso gera uma linha aqui automaticamente — nome do cliente, valor, saldo devedor, tipo (Agendado/Espontâneo), forma de pagamento, quem atendeu e quem lançou.'},
+    {type:'tip', title:'Conferido Líder', text:'Checkbox pro gestor(a) confirmar que revisou aquela venda — útil pra fechamento de caixa e auditoria.'}
   ]
 },
 {
@@ -362,7 +438,7 @@ const steps = [
       ['Experiências','Campanhas','📢 Campanhas (topo)'],
       ['Experiências','Central de Scripts','📚 Scripts (topo)'],
       ['Qualquer módulo','Painel principal','← Desafio ROI'],
-      ['Qualquer módulo','Este mapa','📖 Mapa da Ferramenta']
+      ['Qualquer módulo','Este mapa','🗺️ Mapa']
     ]}
   ]
 },
@@ -376,11 +452,12 @@ const steps = [
     {type:'warn', title:'"Meu funil sumiu do Lançar Dia"', text:'Provavelmente não existe campanha ativa desse perfil no momento. Crie ou reative uma em Campanhas → Minhas Campanhas.'},
     {type:'warn', title:'"O card sumiu da Minha Agenda do Campanhas"', text:'Normal — assim que o Dia 1 é registrado no Experiências, o card sai da seção "Agendamento Experiência" e passa pra "🏃 Experiência em Andamento", com a tarefa real pendente.'},
     {type:'warn', title:'"Não consigo marcar uma tarefa da Agenda"', text:'Só quem é o(a) responsável (por login, não por nome digitado) pode concluir. Gestor(a)/admin sempre podem, como exceção.'},
+    {type:'warn', title:'"Cadastrei um card mas ele não aparece em nenhuma coluna"', text:'Pode ser um card antigo com etapa que não existe mais na jornada atual desse funil (se a jornada foi editada depois). Confira em "🎯 Jornada" se a etapa ainda existe.'},
+    {type:'warn', title:'"Não sei se devo criar login de consultor(a) ou de treinador(a)"', text:'Consultor(a) = time comercial, acessa Campanhas. Treinador(a) = time técnico, acessa Experiências. Uma pessoa não costuma precisar dos dois — se acumula função, avise o suporte QG.90.'},
     {type:'tip', title:'Ainda com dúvida?', text:'Fale com o gestor(a) da sua academia ou com o suporte QG.90.'}
   ]
 }
 ];
-
 let current = 0;
 let filtro = '';
 
