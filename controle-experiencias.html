@@ -1546,13 +1546,20 @@ let agendaDiaSelecionado = null;
 function setAgendaFiltro(f){ agendaFiltro = f; renderAgendaTab(); }
 function setAgendaVisao(v){ agendaVisao = v; agendaDiaSelecionado = null; renderAgendaTab(); }
 
-// Abre o card do lead direto na etapa certa — a conclusão da tarefa acontece
-// LÁ (com registro do que foi feito e próxima ação já programada), nunca
-// direto na Agenda. Isso evita ter dois lugares desencontrados.
+// Abre o card certo, no módulo certo — a conclusão da tarefa acontece LÁ (com registro
+// do que foi feito), nunca direto na Agenda. Isso evita ter dois lugares desencontrados.
+// Tarefa da jornada da Experiência → abre aqui mesmo, no Kanban do Experiências.
+// Tarefa vinda do Campanhas (cadência, agendamento) → manda pra lá, já no card certo.
 function abrirCardDaTarefa(experienciaId, tarefa){
   if(!podeMarcarTarefa(tarefa)){ showToast("Só quem é responsável por essa tarefa pode registrá-la."); return; }
-  switchTab('kanban');
-  openDetail(experienciaId);
+  if(experienciaId && experienciaId!=='null' && experienciaId!=='undefined'){
+    switchTab('kanban');
+    openDetail(experienciaId);
+  } else if(tarefa.campanha_card_id){
+    window.location.href = `campanhas.html?uid=${encodeURIComponent(currentUser.id)}&openCard=${encodeURIComponent(tarefa.campanha_card_id)}`;
+  } else {
+    showToast("Não encontrei o card de origem dessa tarefa.");
+  }
 }
 
 function isMinhaTarefa(t){
@@ -1562,9 +1569,27 @@ function isMinhaTarefa(t){
   return false; // admin/gestor não têm "meus" individuais — usam Todos
 }
 
+const CATEGORIA_LABEL_AGENDA={
+  cadencia:'🔵 Cadência de Contato', exp_agendada:'🎯 Experiência Agendada',
+  visita_matricula:'🤝 Agendamento Visita/Matrícula', jornada_experiencia:'🏃 Jornada da Experiência'
+};
+function categoriaDaTarefa(t){ return t.categoria || (t.experiencia_id?'jornada_experiencia':'cadencia'); }
+
+let agendaCategoriasSelecionadas = Object.keys(CATEGORIA_LABEL_AGENDA); // todas marcadas por padrão
+function toggleCategoriaAgenda(cat){
+  if(agendaCategoriasSelecionadas.includes(cat)){
+    if(agendaCategoriasSelecionadas.length===1){ showToast("Deixe pelo menos 1 categoria marcada."); return; }
+    agendaCategoriasSelecionadas = agendaCategoriasSelecionadas.filter(c=>c!==cat);
+  }else{
+    agendaCategoriasSelecionadas = [...agendaCategoriasSelecionadas, cat];
+  }
+  renderAgendaTab();
+}
+
 function tarefasFiltradas(){
   let tarefas = [...agendaTarefas];
   if(agendaFiltro==='meus') tarefas = tarefas.filter(isMinhaTarefa);
+  tarefas = tarefas.filter(t=>agendaCategoriasSelecionadas.includes(categoriaDaTarefa(t)));
   return tarefas;
 }
 
@@ -1587,6 +1612,11 @@ function renderAgendaTab(){
         </div>
       </div>
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+      ${Object.entries(CATEGORIA_LABEL_AGENDA).map(([cat,lbl])=>`
+        <button class="status-pill ${agendaCategoriasSelecionadas.includes(cat)?'selected':''}" style="font-size:12.5px;" onclick="toggleCategoriaAgenda('${cat}')">${lbl}</button>
+      `).join('')}
+    </div>
     <div id="agendaConteudo"></div>
   `;
   if(agendaVisao==='lista') renderAgendaLista();
@@ -1595,12 +1625,14 @@ function renderAgendaTab(){
 
 function agendaTaskCard(t){
   const posso = podeMarcarTarefa(t);
+  const catLbl = CATEGORIA_LABEL_AGENDA[categoriaDaTarefa(t)]||'';
   return `
     <div class="task-item ${t.feita?'done':''}" style="cursor:${posso?'pointer':'default'};" ${posso?`onclick="abrirCardDaTarefa('${t.experiencia_id}', agendaTarefas.find(x=>x.id==='${t.id}'))"`:''}>
       <div class="task-head">
-        <span class="t-name">${TIPO_LABEL[t.tipo]||t.titulo}</span>
+        <span class="t-name">${TIPO_LABEL[t.tipo]||catLbl||t.titulo}</span>
         <span class="t-role role-${t.papel}">${t.papel==='vendas'?'Vendas':'Técnico'}</span>
       </div>
+      <div class="hint" style="margin-bottom:2px;">${catLbl}</div>
       <div class="hint" style="margin-bottom:6px;">${escapeHtml(t.titulo)} · responsável: <strong style="color:var(--white);">${escapeHtml(t.responsavel_nome)||'—'}</strong></div>
       ${t.feita
         ? `<div class="hint" style="color:var(--green);">✓ Concluída${t.obs?' · '+escapeHtml(t.obs):''}</div>`

@@ -739,6 +739,25 @@ async function iniciarApp(s){
       toast(`Nenhuma campanha ativa encontrada para "${PERFIL_LABEL[openPerfil]||openPerfil}".`,true);
     }
   }
+
+  // Veio da Agenda unificada pedindo pra abrir um card específico direto
+  const openCard=new URLSearchParams(window.location.search).get('openCard');
+  if(openCard){
+    try{
+      const res=await sbGet('campanha_cards',`id=eq.${openCard}&select=id,campanha_id,perfil`);
+      const card=res[0];
+      if(card){
+        const camp=minhasCampanhas.find(c=>c.id===card.campanha_id)||(await sbGet('campanhas',`id=eq.${card.campanha_id}`))[0];
+        if(camp){
+          await abrirKanban(camp);
+          trocarPerfilKanban(card.perfil);
+          await abrirCardModal(card.id);
+        }
+      }else{
+        toast('Card não encontrado — pode já ter sido movido ou removido.',true);
+      }
+    }catch(e){console.error(e);toast('Erro ao abrir o card vindo da Agenda.',true);}
+  }
 }
 checkSession();
 
@@ -1870,6 +1889,25 @@ function trocarPerfilKanban(perfil){
 }
 function nomeConsultora(id){const c=consultoras.find(x=>x.id===id);return c?c.nome:'—';}
 
+// ══ AGENDA UNIFICADA — gera tarefa de verdade na tabela agenda_tarefas sempre que um
+// compromisso é marcado no Campanhas (cadência, experiência agendada, visita/matrícula).
+// Antes disso, esses compromissos só existiam como campo solto no card.
+const CATEGORIA_LABEL_AGENDA={
+  cadencia:'🔵 Cadência de Contato', exp_agendada:'🎯 Experiência Agendada',
+  visita_matricula:'🤝 Agendamento Visita/Matrícula', jornada_experiencia:'🏃 Jornada da Experiência'
+};
+async function criarTarefaAgendaCampanhas(card,categoria,titulo,dataPrevista){
+  if(!dataPrevista)return;
+  try{
+    await sbPost('agenda_tarefas',{
+      id:uid(), academia_id:sessao.academia_id, campanha_card_id:card.id, campanha_id:card.campanha_id,
+      categoria, tipo:categoria, titulo,
+      responsavel_id:card.consultora_id||null, responsavel_nome:nomeConsultora(card.consultora_id),
+      papel:'vendas', data_prevista:dataPrevista, feita:false, created_at:Date.now()
+    });
+  }catch(e){console.error('Erro ao criar tarefa de agenda:',e);}
+}
+
 // Painel resumido — contagem ACUMULADA por etapa (quem chegou em "Experiência Agendada"
 // necessariamente já passou por "Iniciou Atendimento", então conta nos dois).
 // Visão sempre com TODAS as consultoras juntas (visão de gestor) — sem filtro individual.
@@ -2518,6 +2556,16 @@ async function registrarContatoCard(){
     }
     await sbPatch('campanha_cards',c.id,patch);
     toast(ehNovoRegistroHoje?`Contato registrado — tentativa ${c.cadencia_atual+1}/${c.cadencia_total}`:'Registro de hoje atualizado!');
+
+    // Gera a tarefa correspondente na Agenda unificada — o que mudou define a categoria
+    if(patch.etapa_atual==='exp_agendada'){
+      await criarTarefaAgendaCampanhas(c,'exp_agendada',`Experiência agendada — ${c.nome}`,patch.data_agendamento);
+    }else if(patch.etapa_atual==='agendada_matricula'||patch.etapa_atual==='feedback_matricula'){
+      await criarTarefaAgendaCampanhas(c,'visita_matricula',`Visita/Matrícula agendada — ${c.nome}`,patch.data_agendamento);
+    }else{
+      await criarTarefaAgendaCampanhas(c,'cadencia',`Retorno de cadência — ${c.nome}`,proximaData);
+    }
+
     acaoConfirmadaNesteCard=true;
     await carregarCardsKanban();
     renderKanbanBoard();
@@ -2570,6 +2618,9 @@ async function registrarCompromissoCard(){
     }
     await sbPatch('campanha_cards',c.id,patch);
     toast(marcados.includes('compareceu')?'Presença registrada!':(precisaNovaData?'Novo compromisso registrado!':'Confirmação registrada!'));
+    if(precisaNovaData){
+      await criarTarefaAgendaCampanhas(c,'visita_matricula',`Compromisso remarcado — ${c.nome}`,novaData);
+    }
     acaoConfirmadaNesteCard=true;
     modoScriptCompromisso=marcados.includes('nao_compareceu')?'reconexao':'confirmacao';
     await carregarCardsKanban();
@@ -2741,6 +2792,15 @@ async function moverCardParaEtapa(cardId,novaEtapa,dataAgendamento,horaAgendamen
     toast('Card atualizado!');
     if(novaEtapa==='exp_agendada' && !card.experiencia_id){
       await criarExperienciaVinculada(card);
+    }
+    // Gera a tarefa correspondente na Agenda unificada, cobrindo movimentos diretos
+    // (drag-and-drop ou seletor manual) que não passam por registrarContatoCard
+    if(novaEtapa==='exp_agendada'&&patch.data_agendamento){
+      await criarTarefaAgendaCampanhas(card,'exp_agendada',`Experiência agendada — ${card.nome}`,patch.data_agendamento);
+    }else if((novaEtapa==='agendada_matricula'||novaEtapa==='feedback_matricula')&&patch.data_agendamento){
+      await criarTarefaAgendaCampanhas(card,'visita_matricula',`Visita/Matrícula agendada — ${card.nome}`,patch.data_agendamento);
+    }else if(novaEtapa==='cadencia_futura'&&patch.proxima_acao_data){
+      await criarTarefaAgendaCampanhas(card,'cadencia',`Reativação — ${card.nome}`,patch.proxima_acao_data);
     }
     await carregarCardsKanban();
     renderKanbanBoard();
