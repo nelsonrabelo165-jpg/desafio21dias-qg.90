@@ -288,7 +288,7 @@ tbody tr:hover td{background:var(--s2)}
   <div class="tabs">
     <div class="tab active" onclick="switchTab('painel')">Painel</div>
     <div class="tab" onclick="switchTab('funis')">Funis & Indicadores</div>
-    <div class="tab" onclick="switchTab('consultoras')">Consultores(as)</div>
+    <div class="tab" onclick="switchTab('consultoras')">Equipe</div>
     <div class="tab" onclick="switchTab('relatorio')">Relatório</div>
     <div class="tab" onclick="switchTab('ranking')">Ranking</div>
     <div class="tab tab-admin" id="tab-admin" onclick="switchTab('admin')">⚡ Todas as Academias</div>
@@ -351,6 +351,12 @@ tbody tr:hover td{background:var(--s2)}
         <button class="btn-gh btn-sm" onclick="openM('m-cons')">+ Consultor(a)</button>
       </div>
       <div class="cons-grid" id="cons-grid"></div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 14px;padding-top:20px;border-top:1px solid var(--bd)">
+        <div class="lbl" style="margin:0">Treinadores(as)</div>
+        <button class="btn-gh btn-sm" onclick="abrirNovoTreinadorROI()">+ Treinador(a)</button>
+      </div>
+      <div class="cons-grid" id="treinadores-grid"></div>
     </div>
 
     <!-- RELATÓRIO -->
@@ -1029,10 +1035,11 @@ async function loadAll(){
   try{
     let acsQ='order=created_at.asc';
     if(!isAdmin()&&sessao.academia_id)acsQ=`id=eq.${sessao.academia_id}`;
-    const[acs,cons,regs]=await Promise.all([sbGet('academias',acsQ),sbGet('consultoras','order=created_at.asc'),sbGet('registros','order=dia.asc,ts.asc')]);
+    const[acs,cons,regs,treins]=await Promise.all([sbGet('academias',acsQ),sbGet('consultoras','order=created_at.asc'),sbGet('registros','order=dia.asc,ts.asc'),sbGet('treinadores','ativo=eq.true&order=created_at.asc')]);
     db.acs={};
-    acs.forEach(a=>{db.acs[a.id]={...a,consultoras:{},registros:[]}});
+    acs.forEach(a=>{db.acs[a.id]={...a,consultoras:{},registros:[],treinadores:{}}});
     cons.forEach(c=>{if(db.acs[c.academia_id])db.acs[c.academia_id].consultoras[c.id]={nome:c.nome,meta:c.meta,meta_tipo:c.meta_tipo||'planos',horas:c.horas||0,funis:c.funis||[],metas:c.metas||null}});
+    treins.forEach(t=>{if(db.acs[t.academia_id])db.acs[t.academia_id].treinadores[t.id]={nome:t.nome}});
     regs.forEach(r=>{if(db.acs[r.academia_id])db.acs[r.academia_id].registros.push({id:r.id,dia:r.dia,data:r.data,consultora_id:r.consultora_id,obs:r.obs,funis:r.funis||{},ts:r.ts})});
     if(!isAdmin()&&sessao.academia_id){acId=sessao.academia_id;}
     else if(isAdmin()){renderAcSelect();if(!acId){const k=Object.keys(db.acs);if(k.length){acId=k[0];document.getElementById('sel-ac').value=acId}}}
@@ -1511,7 +1518,7 @@ function calcProdutividade(regs){
 async function renderAll(){
   const a=ac();
   document.getElementById('topbar-ac-nome').textContent=a?a.nome:'Desafio ROI 21 Dias';
-  if(a){renderPainel(a);renderFunis();renderConsGrid(a);renderRelatorio();}
+  if(a){renderPainel(a);renderFunis();renderConsGrid(a);renderTreinadoresGrid(a);renderRelatorio();}
   renderRanking();if(isAdmin())await renderAdminPanel();
   populateFilters();populateLancCons();
 }
@@ -1891,7 +1898,7 @@ function renderConsGrid(a){
         <div class="avatar">${initials(c.nome)}</div>
         <div><div class="cons-nm">${c.nome}</div><div class="cons-sub">Meta: ${metaStr} · ${c.horas}h/dia</div></div>
         <div class="cons-funis">${fps}</div>
-        <button class="btn-gh btn-sm" style="flex-shrink:0;font-size:11px;padding:3px 10px;margin-left:6px" onclick="event.stopPropagation();abrirAcessoConsultora('${id}','${c.nome.replace(/'/g,"\\'")}')">🔑 Acesso</button>
+        <button class="btn-gh btn-sm" style="flex-shrink:0;font-size:11px;padding:3px 10px;margin-left:6px" onclick="event.stopPropagation();abrirAcessoPessoa('consultor','${id}','${c.nome.replace(/'/g,"\\'")}')">🔑 Acesso</button>
       </div>
       <div class="cons-body">
         <!-- RESULTADO -->
@@ -1938,6 +1945,130 @@ function renderConsGrid(a){
       </div>
     </div>`;
   }).join('');
+}
+
+// ══ TREINADORES(AS) ══
+function renderTreinadoresGrid(a){
+  const el=document.getElementById('treinadores-grid');if(!el)return;
+  const en=Object.entries(a.treinadores||{});
+  if(!en.length){el.innerHTML='<div style="color:var(--td);font-size:13px;padding:20px 0">Nenhum(a) treinador(a) cadastrado(a).</div>';return}
+  el.innerHTML=en.map(([id,t])=>`
+    <div class="cons-card" style="cursor:default">
+      <div class="cons-head">
+        <div class="avatar">${initials(t.nome)}</div>
+        <div><div class="cons-nm">${t.nome}</div><div class="cons-sub">Time técnico · Experiências</div></div>
+        <button class="btn-gh btn-sm" style="flex-shrink:0;font-size:11px;padding:3px 10px;margin-left:6px" onclick="abrirAcessoPessoa('treinador','${id}','${t.nome.replace(/'/g,"\\'")}')">🔑 Acesso</button>
+      </div>
+    </div>`).join('');
+}
+function abrirNovoTreinadorROI(){
+  const nome=prompt('Nome do(a) treinador(a):');
+  if(!nome||!nome.trim())return;
+  criarTreinadorROI(nome.trim());
+}
+async function criarTreinadorROI(nome){
+  if(!acId){toast('Academia não definida',true);return}
+  try{
+    await fetch(`${SB_URL}/rest/v1/treinadores`,{method:'POST',headers:H,body:JSON.stringify({id:uid(),academia_id:acId,nome,ativo:true,created_at:Date.now()})});
+    toast('Treinador(a) adicionado(a)!');
+    await loadAll();
+  }catch(e){console.error(e);toast('Erro ao salvar',true);}
+}
+
+// ══ ACESSO UNIFICADO (consultor(a) e treinador(a)) — cria login já escolhendo quais
+// módulos liberar, em vez de conceder um único módulo fixo por tela ══
+async function abrirAcessoPessoa(tipo,pessoaId,pessoaNome){
+  const el=document.getElementById('acesso-body');
+  const rotulo=tipo==='consultor'?'Consultor(a)':'Treinador(a)';
+  document.querySelector('#m-acesso .modal-hd h3').textContent=`🔑 Acesso do(a) ${rotulo}`;
+  el.innerHTML='<div style="color:var(--td);font-size:13px;padding:10px 0">Carregando...</div>';
+  openM('m-acesso');
+  const campoId=tipo==='consultor'?'consultora_id':'treinador_id';
+  try{
+    const existentes=await sbGet('gestores',`${campoId}=eq.${pessoaId}&select=id,nome,email,senha_hash,ativo,modulos_ativos`);
+    const login=existentes[0];
+    if(login){
+      el.innerHTML=`
+        <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+          <div><div style="font-size:12px;color:var(--td);margin-bottom:4px">${rotulo}</div><div style="font-weight:600;font-size:15px">${pessoaNome}</div></div>
+          <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:${login.ativo?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'};color:${login.ativo?'#22c55e':'#ef4444'}">${login.ativo?'● ATIVO':'● SUSPENSO'}</span>
+        </div>
+        <div class="divider"></div>
+        <div style="font-size:12px;color:var(--td);margin-bottom:6px">E-mail de acesso</div>
+        <div style="font-weight:600;color:var(--or);margin-bottom:14px">${login.email}</div>
+        <div style="font-size:12px;color:var(--td);margin-bottom:6px">Senha atual</div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px 14px;font-family:monospace;color:var(--gr);margin-bottom:14px">${login.senha_hash}</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <input class="fi" id="nova-senha-input" placeholder="Nova senha" style="flex:1">
+          <button class="btn-or" onclick="resetSenha('${login.id}')">Salvar</button>
+        </div>
+        <div class="divider"></div>
+        <div style="font-size:12px;color:var(--td);margin:14px 0 8px">Módulos liberados</div>
+        <div id="acesso-modulos-existente">${renderModulosCheckboxPessoa(login.id,login.modulos_ativos||[])}</div>
+        <div class="divider"></div>
+        <button class="btn-${login.ativo?'danger':'or'}" style="width:100%" onclick="toggleAtivoAcademia('${login.id}',${login.ativo})">${login.ativo?'⛔ Suspender acesso':'✅ Reativar acesso'}</button>
+      `;
+      return;
+    }
+    // Sem login ainda — verifica limite de 5 por tipo antes de mostrar o formulário
+    const todos=await sbGet('gestores',`academia_id=eq.${acId}&role=eq.${tipo}&select=id`);
+    if(todos.length>=5){
+      el.innerHTML=`<div style="color:var(--re);font-size:13.5px;padding:10px 0">⚠️ Limite de 5 ${tipo==='consultor'?'consultores(as)':'treinadores(as)'} com acesso já atingido nesta academia. Suspenda ou remova um acesso existente antes de criar outro.</div>`;
+      return;
+    }
+    const modulosDefault=tipo==='consultor'?['roi21','campanhas']:['roi21','experiencias'];
+    el.innerHTML=`
+      <div style="margin-bottom:14px"><div style="font-size:12px;color:var(--td);margin-bottom:4px">Criar acesso para</div><div style="font-weight:600;font-size:15px">${pessoaNome}</div></div>
+      <p style="font-size:12.5px;color:var(--td);margin-bottom:14px">${todos.length}/5 acessos de ${tipo==='consultor'?'consultor(a)':'treinador(a)'} usados nesta academia.</p>
+      <div class="fg" style="margin-bottom:10px"><label class="fl">E-mail de acesso</label><input class="fi" id="novo-pessoa-email" placeholder="nome@email.com"></div>
+      <div class="fg" style="margin-bottom:16px"><label class="fl">Senha</label><input class="fi" id="novo-pessoa-senha" placeholder="Defina uma senha"></div>
+      <div style="font-size:12px;color:var(--td);margin-bottom:8px">Módulos a liberar</div>
+      <div id="acesso-modulos-novo">${MODULOS_QG90.map(m=>`
+        <label style="display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;cursor:pointer;margin-bottom:8px">
+          <input type="checkbox" class="novo-modulo-chk" value="${m.key}" ${modulosDefault.includes(m.key)?'checked':''} style="width:17px;height:17px;accent-color:var(--or);flex-shrink:0">
+          <div style="flex:1"><div style="font-size:13.5px;font-weight:600">${m.label}</div><div style="font-size:11px;color:var(--td)">${m.desc}</div></div>
+        </label>`).join('')}</div>
+      <button class="btn-or" style="width:100%;margin-top:6px" onclick="criarAcessoPessoa('${tipo}','${pessoaId}','${pessoaNome.replace(/'/g,"\\'")}')">Criar acesso</button>
+    `;
+  }catch(e){console.error(e);el.innerHTML='<div style="color:var(--re);font-size:13px">Erro ao carregar. Veja o console.</div>';}
+}
+async function criarAcessoPessoa(tipo,pessoaId,pessoaNome){
+  const email=document.getElementById('novo-pessoa-email').value.trim().toLowerCase();
+  const senha=document.getElementById('novo-pessoa-senha').value;
+  const modulos=[...document.querySelectorAll('.novo-modulo-chk:checked')].map(el=>el.value);
+  if(!email||!senha||senha.length<4){toast('Preencha e-mail e uma senha com ao menos 4 caracteres',true);return}
+  if(!modulos.length){toast('Selecione ao menos 1 módulo pra liberar.',true);return}
+  try{
+    const existeEmail=await sbGet('gestores',`email=eq.${encodeURIComponent(email)}&select=id`);
+    if(existeEmail.length){toast('Já existe um acesso com esse e-mail.',true);return}
+    const campoId=tipo==='consultor'?'consultora_id':'treinador_id';
+    await fetch(`${SB_URL}/rest/v1/gestores`,{method:'POST',headers:H,body:JSON.stringify({
+      nome:pessoaNome,email,senha_hash:senha,academia_id:acId,
+      role:tipo,ativo:true,[campoId]:pessoaId,modulos_ativos:modulos
+    })});
+    toast(`Acesso criado! Já pode entrar em: ${modulos.map(m=>(MODULOS_QG90.find(x=>x.key===m)||{}).label).join(', ')}.`);
+    closeM('m-acesso');
+  }catch(e){console.error(e);toast('Erro ao criar acesso',true);}
+}
+function renderModulosCheckboxPessoa(loginId,ativos){
+  return `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+    ${MODULOS_QG90.map(m=>{
+      const ligado = ativos.includes(m.key);
+      return `<label style="display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;cursor:pointer">
+        <input type="checkbox" ${ligado?'checked':''} onchange="toggleModuloPessoa('${loginId}','${m.key}',this.checked)" style="width:17px;height:17px;accent-color:var(--or);flex-shrink:0">
+        <div style="flex:1"><div style="font-size:13.5px;font-weight:600">${m.label}</div><div style="font-size:11px;color:var(--td)">${m.desc}</div></div>
+      </label>`;
+    }).join('')}
+  </div>`;
+}
+async function toggleModuloPessoa(loginId,moduloKey,ligar){
+  try{
+    const atuais=await sbGet('gestores',`id=eq.${loginId}&select=modulos_ativos`);
+    const lista=(atuais[0]&&atuais[0].modulos_ativos)||[];
+    const novos=ligar?(lista.includes(moduloKey)?lista:[...lista,moduloKey]):lista.filter(m=>m!==moduloKey);
+    await fetch(`${SB_URL}/rest/v1/gestores?id=eq.${loginId}`,{method:'PATCH',headers:H,body:JSON.stringify({modulos_ativos:novos})});
+    toast(ligar?'Módulo liberado!':'Módulo bloqueado.');
+  }catch(e){console.error(e);toast('Erro ao atualizar módulo',true);}
 }
 
 // ══ RELATÓRIO ══
@@ -2279,64 +2410,10 @@ async function abrirDetalheConsultora(consultoraId,consultoraNome){
   }catch(e){console.error(e);body.innerHTML='<div style="color:var(--re);font-size:13px">Erro ao carregar. Veja o console.</div>';}
 }
 
-async function abrirAcessoConsultora(consultoraId,consultoraNome){
-  const el=document.getElementById('acesso-body');
-  document.querySelector('#m-acesso .modal-hd h3').textContent='🔑 Acesso do(a) Consultor(a)';
-  el.innerHTML='<div style="color:var(--td);font-size:13px;padding:10px 0">Carregando...</div>';
-  openM('m-acesso');
-  try{
-    const existentes=await sbGet('gestores',`consultora_id=eq.${consultoraId}&select=id,nome,email,senha_hash,ativo`);
-    const login=existentes[0];
-    if(login){
-      el.innerHTML=`
-        <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
-          <div><div style="font-size:12px;color:var(--td);margin-bottom:4px">Consultor(a)</div><div style="font-weight:600;font-size:15px">${consultoraNome}</div></div>
-          <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:${login.ativo?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'};color:${login.ativo?'#22c55e':'#ef4444'}">${login.ativo?'● ATIVO':'● SUSPENSO'}</span>
-        </div>
-        <div class="divider"></div>
-        <div style="font-size:12px;color:var(--td);margin-bottom:6px">E-mail de acesso</div>
-        <div style="font-weight:600;color:var(--or);margin-bottom:14px">${login.email}</div>
-        <div style="font-size:12px;color:var(--td);margin-bottom:6px">Senha atual</div>
-        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px 14px;font-family:monospace;color:var(--gr);margin-bottom:14px">${login.senha_hash}</div>
-        <div style="display:flex;gap:8px;margin-bottom:16px">
-          <input class="fi" id="nova-senha-input" placeholder="Nova senha" style="flex:1">
-          <button class="btn-or" onclick="resetSenha('${login.id}')">Salvar</button>
-        </div>
-        <div class="divider"></div>
-        <button class="btn-${login.ativo?'danger':'or'}" style="width:100%" onclick="toggleAtivoAcademia('${login.id}',${login.ativo})">${login.ativo?'⛔ Suspender acesso':'✅ Reativar acesso'}</button>
-      `;
-      return;
-    }
-    // Sem login ainda — verifica limite de 5 antes de mostrar o formulário de criação
-    const todos=await sbGet('gestores',`academia_id=eq.${acId}&role=eq.consultor&select=id`);
-    if(todos.length>=5){
-      el.innerHTML=`<div style="color:var(--re);font-size:13.5px;padding:10px 0">⚠️ Limite de 5 consultores(as) com acesso já atingido nesta academia. Suspenda ou remova um acesso existente antes de criar outro.</div>`;
-      return;
-    }
-    el.innerHTML=`
-      <div style="margin-bottom:14px"><div style="font-size:12px;color:var(--td);margin-bottom:4px">Criar acesso para</div><div style="font-weight:600;font-size:15px">${consultoraNome}</div></div>
-      <p style="font-size:12.5px;color:var(--td);margin-bottom:14px">${todos.length}/5 acessos de consultor(a) usados nesta academia.</p>
-      <div class="fg" style="margin-bottom:10px"><label class="fl">E-mail de acesso</label><input class="fi" id="novo-cons-email" placeholder="consultora@email.com"></div>
-      <div class="fg" style="margin-bottom:16px"><label class="fl">Senha</label><input class="fi" id="novo-cons-senha" placeholder="Defina uma senha"></div>
-      <button class="btn-or" style="width:100%" onclick="criarAcessoConsultora('${consultoraId}','${consultoraNome.replace(/'/g,"\\'")}')">Criar acesso</button>
-    `;
-  }catch(e){console.error(e);el.innerHTML='<div style="color:var(--re);font-size:13px">Erro ao carregar. Veja o console.</div>';}
-}
-async function criarAcessoConsultora(consultoraId,consultoraNome){
-  const email=document.getElementById('novo-cons-email').value.trim().toLowerCase();
-  const senha=document.getElementById('novo-cons-senha').value;
-  if(!email||!senha||senha.length<4){toast('Preencha e-mail e uma senha com ao menos 4 caracteres',true);return}
-  try{
-    const existeEmail=await sbGet('gestores',`email=eq.${encodeURIComponent(email)}&select=id`);
-    if(existeEmail.length){toast('Já existe um acesso com esse e-mail.',true);return}
-    await fetch(`${SB_URL}/rest/v1/gestores`,{method:'POST',headers:H,body:JSON.stringify({
-      nome:consultoraNome,email,senha_hash:senha,academia_id:acId,
-      role:'consultor',ativo:true,consultora_id:consultoraId
-    })});
-    toast('Acesso criado! O(a) consultor(a) já pode entrar pela Central de Campanhas.');
-    closeM('m-acesso');
-  }catch(e){console.error(e);toast('Erro ao criar acesso',true);}
-}
+// (abrirAcessoConsultora/criarAcessoConsultora foram substituídas por
+// abrirAcessoPessoa/criarAcessoPessoa — unificadas com consultor(a) e treinador(a),
+// e com seleção de módulos na hora da criação, corrigindo o bug antigo de não
+// conceder nenhum módulo por padrão.)
 
 async function resetSenha(gId){
   const nova=document.getElementById('nova-senha-input').value.trim();
