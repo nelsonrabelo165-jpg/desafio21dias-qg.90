@@ -703,6 +703,20 @@ async function iniciarApp(s){
     if(btnCarteiras)btnCarteiras.style.display='none';
   }
   await carregarCampanhas();
+
+  // Veio de um atalho externo (ex: card do painel Desafio ROI) pedindo pra abrir
+  // direto o Kanban de um perfil específico — acha a primeira campanha ativa com
+  // esse perfil e já entra nela, sem passar pela lista.
+  const openPerfil=new URLSearchParams(window.location.search).get('openPerfil');
+  if(openPerfil){
+    const campAlvo=minhasCampanhas.find(c=>c.status==='ativa'&&(c.perfis||[]).includes(openPerfil));
+    if(campAlvo){
+      await abrirKanban(campAlvo);
+      trocarPerfilKanban(openPerfil);
+    }else{
+      toast(`Nenhuma campanha ativa encontrada para "${PERFIL_LABEL[openPerfil]||openPerfil}".`,true);
+    }
+  }
 }
 checkSession();
 
