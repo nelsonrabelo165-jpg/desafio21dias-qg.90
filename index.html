@@ -530,6 +530,13 @@ tbody tr:hover td{background:var(--s2)}
         <div class="fg fi-full"><label class="fl">Carga horária / dia (horas)</label><input class="fi" type="number" id="cons-horas" placeholder="Ex: 6" min="1" max="12"></div>
       </div>
 
+      <div class="sec-div"><div class="sec-div-line"></div><div class="sec-div-lbl">Metas de Fechamento (R$ líquido) — opcional, deixe vazio pra usar o padrão da academia</div><div class="sec-div-line"></div></div>
+      <div class="form-row">
+        <div class="fg"><label class="fl">Meta 1 (R$)</label><input class="fi" type="number" id="cons-meta1" placeholder="Ex: 8500" min="0"></div>
+        <div class="fg"><label class="fl">Meta 2 (R$)</label><input class="fi" type="number" id="cons-meta2" placeholder="Ex: 10200" min="0"></div>
+        <div class="fg"><label class="fl">Meta 3 (R$)</label><input class="fi" type="number" id="cons-meta3" placeholder="Ex: 12000" min="0"></div>
+      </div>
+
       <div class="sec-div"><div class="sec-div-line"></div><div class="sec-div-lbl">Funis priorizados (1 a 3)</div><div class="sec-div-line"></div></div>
       <div class="funil-checks" id="funil-checks-cons"></div>
 
@@ -1025,7 +1032,7 @@ async function loadAll(){
     const[acs,cons,regs]=await Promise.all([sbGet('academias',acsQ),sbGet('consultoras','order=created_at.asc'),sbGet('registros','order=dia.asc,ts.asc')]);
     db.acs={};
     acs.forEach(a=>{db.acs[a.id]={...a,consultoras:{},registros:[]}});
-    cons.forEach(c=>{if(db.acs[c.academia_id])db.acs[c.academia_id].consultoras[c.id]={nome:c.nome,meta:c.meta,meta_tipo:c.meta_tipo||'planos',horas:c.horas||0,funis:c.funis||[]}});
+    cons.forEach(c=>{if(db.acs[c.academia_id])db.acs[c.academia_id].consultoras[c.id]={nome:c.nome,meta:c.meta,meta_tipo:c.meta_tipo||'planos',horas:c.horas||0,funis:c.funis||[],metas:c.metas||null}});
     regs.forEach(r=>{if(db.acs[r.academia_id])db.acs[r.academia_id].registros.push({id:r.id,dia:r.dia,data:r.data,consultora_id:r.consultora_id,obs:r.obs,funis:r.funis||{},ts:r.ts})});
     if(!isAdmin()&&sessao.academia_id){acId=sessao.academia_id;}
     else if(isAdmin()){renderAcSelect();if(!acId){const k=Object.keys(db.acs);if(k.length){acId=k[0];document.getElementById('sel-ac').value=acId}}}
@@ -1076,14 +1083,18 @@ async function addCons(){
   const nm=document.getElementById('cons-nm').value.trim();
   const metaVal=parseFloat(document.getElementById('cons-meta-val').value)||0;
   const horas=parseFloat(document.getElementById('cons-horas').value)||0;
+  const m1=parseFloat(document.getElementById('cons-meta1').value)||null;
+  const m2=parseFloat(document.getElementById('cons-meta2').value)||null;
+  const m3=parseFloat(document.getElementById('cons-meta3').value)||null;
   if(!nm){toast('Informe o nome',true);return}
   if(!metaTipo){toast('Selecione o tipo de meta',true);return}
   if(metaTipo!=='treino'&&metaVal<=0){toast('Informe o valor da meta',true);return}
   if(!selFunis.length){toast('Selecione ao menos 1 funil',true);return}
   const btn=document.getElementById('btn-add-cons');btn.disabled=true;btn.textContent='Salvando...';
   try{
-    await sbPost('consultoras',{id:uid(),academia_id:acId,nome:nm,meta:metaVal,meta_tipo:metaTipo,horas,funis:selFunis,lista:{}});
+    await sbPost('consultoras',{id:uid(),academia_id:acId,nome:nm,meta:metaVal,meta_tipo:metaTipo,horas,funis:selFunis,lista:{},metas:(m1||m2||m3)?{meta1:m1,meta2:m2,meta3:m3}:null});
     document.getElementById('cons-nm').value='';document.getElementById('cons-meta-val').value='';document.getElementById('cons-horas').value='';
+    document.getElementById('cons-meta1').value='';document.getElementById('cons-meta2').value='';document.getElementById('cons-meta3').value='';
     toast('Consultor(a) adicionado(a)!');await loadAll();renderConsManage();
   }catch(e){toast('Erro ao salvar',true);console.error(e)}
   btn.disabled=false;btn.textContent='Adicionar Consultor(a)';renderFunilChecks();
@@ -1098,10 +1109,142 @@ function renderConsManage(){
   const a=ac();if(!a)return;
   const en=Object.entries(a.consultoras);
   if(!en.length){el.innerHTML='<div style="color:var(--td);font-size:12px">Nenhum(a) consultor(a).</div>';return}
-  el.innerHTML=en.map(([id,c])=>{
+  el.innerHTML=`
+    <div style="margin-bottom:12px;">
+      <button class="btn-gh" style="font-size:12px;" onclick="abrirMetasPadraoAcademia()">🎯 Metas Padrão da Academia</button>
+    </div>
+    ${en.map(([id,c])=>{
     const metaStr=c.meta_tipo==='treino'?'Treinamento':c.meta_tipo==='rs'?`R$ ${c.meta}`:`${c.meta} planos`;
-    return`<div class="manage-item"><span class="manage-item-nm">${c.nome}</span><span class="manage-item-sub">${metaStr} · ${c.horas}h/dia · ${(c.funis||[]).map(f=>fInfo(f)?.nome||f).join(', ')}</span><button class="btn-danger" onclick="removeCons('${id}')">Remover</button></div>`;
-  }).join('');
+    const temMetasProprias=c.metas&&(c.metas.meta1||c.metas.meta2||c.metas.meta3);
+    return`<div class="manage-item"><span class="manage-item-nm">${c.nome}</span><span class="manage-item-sub">${metaStr} · ${c.horas}h/dia · ${(c.funis||[]).map(f=>fInfo(f)?.nome||f).join(', ')}${temMetasProprias?` · Metas próprias: R$${c.metas.meta1||0}/${c.metas.meta2||0}/${c.metas.meta3||0}`:' · Usa metas padrão da academia'}</span><button class="btn-gh" style="font-size:11px;padding:4px 9px;" onclick="abrirEditarConsultor('${id}')">✎ Editar</button><button class="btn-gh" style="font-size:11px;padding:4px 9px;" onclick="abrirEditarMetasConsultor('${id}')">🎯 Metas</button><button class="btn-danger" onclick="removeCons('${id}')">Remover</button></div>`;
+  }).join('')}`;
+}
+
+// ── Editar consultor(a) já cadastrado(a) — nome, tipo/valor de meta, horas e funis ──
+let edFunisSel=[];
+function abrirEditarConsultor(id){
+  const a=ac();const c=a.consultoras[id];if(!c)return;
+  edFunisSel=[...(c.funis||[])];
+  const html=`<div class="auth-box" style="max-width:460px;">
+    <h3 style="margin-bottom:14px;">✎ Editar ${c.nome}</h3>
+    <div class="form-row">
+      <div class="fg fi-full"><label class="fl">Nome completo</label><input class="fi" id="ecx-nome" value="${c.nome.replace(/"/g,'&quot;')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label class="fl">Tipo de Meta</label>
+        <select class="fsel" id="ecx-meta-tipo">
+          <option value="planos" ${c.meta_tipo==='planos'?'selected':''}>Nº Planos</option>
+          <option value="rs" ${c.meta_tipo==='rs'?'selected':''}>R$ Valor</option>
+          <option value="treino" ${c.meta_tipo==='treino'?'selected':''}>Treinamento</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Valor da Meta</label><input class="fi" type="number" id="ecx-meta-val" value="${c.meta||''}" min="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg fi-full"><label class="fl">Carga horária / dia (horas)</label><input class="fi" type="number" id="ecx-horas" value="${c.horas||''}" min="1" max="12"></div>
+    </div>
+    <label class="fl" style="display:block;margin-bottom:6px;">Funis priorizados (1 a 4)</label>
+    <div id="ecx-funis" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;"></div>
+    <button class="btn-primary" style="width:100%" onclick="salvarEdicaoConsultor('${id}')">Salvar</button>
+  </div>`;
+  abrirModalGenericoROI(html);
+  renderEcxFunis();
+}
+function renderEcxFunis(){
+  const el=document.getElementById('ecx-funis');if(!el)return;
+  el.innerHTML=FUNIS.map(f=>`<button type="button" class="btn-gh" style="font-size:11.5px;padding:5px 10px;${edFunisSel.includes(f.id)?`background:${f.cor};color:#0E0E0E;border-color:${f.cor};`:''}" onclick="toggleEcxFunil('${f.id}')">${f.nome}</button>`).join('');
+}
+function toggleEcxFunil(fid){
+  if(edFunisSel.includes(fid))edFunisSel=edFunisSel.filter(x=>x!==fid);
+  else{if(edFunisSel.length>=4){toast('Máximo 4 funis',true);return}edFunisSel.push(fid);}
+  renderEcxFunis();
+}
+async function salvarEdicaoConsultor(id){
+  const nome=document.getElementById('ecx-nome').value.trim();
+  const metaTipoNovo=document.getElementById('ecx-meta-tipo').value;
+  const metaVal=parseFloat(document.getElementById('ecx-meta-val').value)||0;
+  const horas=parseFloat(document.getElementById('ecx-horas').value)||0;
+  if(!nome){toast('Informe o nome',true);return}
+  if(!edFunisSel.length){toast('Selecione ao menos 1 funil',true);return}
+  try{
+    await fetch(`${SB_URL}/rest/v1/consultoras?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({nome,meta_tipo:metaTipoNovo,meta:metaVal,horas,funis:edFunisSel})});
+    Object.assign(ac().consultoras[id],{nome,meta_tipo:metaTipoNovo,meta:metaVal,horas,funis:edFunisSel});
+    toast('Consultor(a) atualizado(a)!');
+    fecharModalGenericoROI();
+    renderConsManage();
+  }catch(e){console.error(e);toast('Erro ao salvar',true);}
+}
+
+function abrirMetasPadraoAcademia(){
+  const a=ac();if(!a)return;
+  const mp=a.metas_padrao||{};
+  const html=`<div class="auth-box" style="max-width:420px;">
+    <h3 style="margin-bottom:6px;">🎯 Metas Padrão da Academia</h3>
+    <p style="font-size:12.5px;color:var(--td);margin-bottom:14px;">Vale pra todo(a) consultor(a) que não tiver meta própria configurada.</p>
+    <div class="form-row">
+      <div class="fg"><label class="fl">Meta 1 (R$)</label><input class="fi" type="number" id="mp-meta1" value="${mp.meta1||''}" min="0"></div>
+      <div class="fg"><label class="fl">Meta 2 (R$)</label><input class="fi" type="number" id="mp-meta2" value="${mp.meta2||''}" min="0"></div>
+      <div class="fg"><label class="fl">Meta 3 (R$)</label><input class="fi" type="number" id="mp-meta3" value="${mp.meta3||''}" min="0"></div>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:10px;" onclick="salvarMetasPadraoAcademia()">Salvar</button>
+  </div>`;
+  abrirModalGenericoROI(html);
+}
+async function salvarMetasPadraoAcademia(){
+  const m1=parseFloat(document.getElementById('mp-meta1').value)||null;
+  const m2=parseFloat(document.getElementById('mp-meta2').value)||null;
+  const m3=parseFloat(document.getElementById('mp-meta3').value)||null;
+  try{
+    await fetch(`${SB_URL}/rest/v1/academias?id=eq.${acId}`,{method:'PATCH',headers:H,body:JSON.stringify({metas_padrao:{meta1:m1,meta2:m2,meta3:m3}})});
+    ac().metas_padrao={meta1:m1,meta2:m2,meta3:m3};
+    toast('Metas padrão salvas!');
+    fecharModalGenericoROI();
+  }catch(e){console.error(e);toast('Erro ao salvar',true);}
+}
+function abrirEditarMetasConsultor(id){
+  const a=ac();const c=a.consultoras[id];if(!c)return;
+  const m=c.metas||{};
+  const html=`<div class="auth-box" style="max-width:420px;">
+    <h3 style="margin-bottom:6px;">✎ Metas de ${c.nome}</h3>
+    <p style="font-size:12.5px;color:var(--td);margin-bottom:14px;">Deixe em branco pra usar o padrão da academia.</p>
+    <div class="form-row">
+      <div class="fg"><label class="fl">Meta 1 (R$)</label><input class="fi" type="number" id="ec-meta1" value="${m.meta1||''}" min="0"></div>
+      <div class="fg"><label class="fl">Meta 2 (R$)</label><input class="fi" type="number" id="ec-meta2" value="${m.meta2||''}" min="0"></div>
+      <div class="fg"><label class="fl">Meta 3 (R$)</label><input class="fi" type="number" id="ec-meta3" value="${m.meta3||''}" min="0"></div>
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:10px;" onclick="salvarMetasConsultor('${id}')">Salvar</button>
+  </div>`;
+  abrirModalGenericoROI(html);
+}
+async function salvarMetasConsultor(id){
+  const m1=parseFloat(document.getElementById('ec-meta1').value)||null;
+  const m2=parseFloat(document.getElementById('ec-meta2').value)||null;
+  const m3=parseFloat(document.getElementById('ec-meta3').value)||null;
+  const metas=(m1||m2||m3)?{meta1:m1,meta2:m2,meta3:m3}:null;
+  try{
+    await fetch(`${SB_URL}/rest/v1/consultoras?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({metas})});
+    ac().consultoras[id].metas=metas;
+    toast('Metas salvas!');
+    fecharModalGenericoROI();
+    renderConsManage();
+  }catch(e){console.error(e);toast('Erro ao salvar',true);}
+}
+// Modal genérico simples, reaproveitado pelas telas de configuração de metas
+function abrirModalGenericoROI(innerHtml){
+  let overlay=document.getElementById('modalGenericoROI');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='modalGenericoROI';
+    overlay.style.cssText='display:flex;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+    overlay.onclick=(e)=>{if(e.target===overlay)fecharModalGenericoROI();};
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML=innerHtml;
+  overlay.style.display='flex';
+}
+function fecharModalGenericoROI(){
+  const overlay=document.getElementById('modalGenericoROI');
+  if(overlay)overlay.style.display='none';
 }
 
 // ══ LANÇAMENTO ══
