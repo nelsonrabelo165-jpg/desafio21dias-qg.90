@@ -435,7 +435,7 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
       <input class="kb-search" id="kbSearch" placeholder="🔍 Buscar por nome ou código..." oninput="renderKanbanBoard()" style="margin-bottom:0;flex:1;min-width:220px">
       <button class="btn-primary" onclick="abrirNovoCardManual()">+ Adicionar Card</button>
       <button class="btn-gh" onclick="abrirGerenciarTreinadores()">👥 Treinadores(as)</button>
-      <button class="btn-gh" id="btnJornadaSucesso" style="display:none;" onclick="abrirEditorJornadaSucesso()">🎯 Jornada</button>
+      <button class="btn-gh" id="btnJornadaSucesso" style="display:none;" onclick="abrirEditorJornada(kbPerfilAtivo)">🎯 Jornada</button>
     </div>
     <div class="kb-board" id="kbBoard"></div>
   </div>
@@ -523,7 +523,7 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
 
 <div class="modal-ov" id="m-jornada-sucesso">
   <div class="modal" style="max-width:460px">
-    <div class="modal-hd"><h3>🎯 Jornada de Sucesso do Cliente</h3><button class="btn-x" onclick="closeM('m-jornada-sucesso')">×</button></div>
+    <div class="modal-hd"><h3 id="jornadaModalTitulo">🎯 Jornada</h3><button class="btn-x" onclick="closeM('m-jornada-sucesso')">×</button></div>
     <p style="font-size:12.5px;color:var(--texto2);margin-bottom:14px">Etapas do Kanban desse funil — editável pra academia montar a própria jornada. Reordene, renomeie, adicione ou remova etapas.</p>
     <div id="listaJornadaSucesso" style="margin-bottom:16px"></div>
     <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -693,8 +693,8 @@ async function iniciarApp(s){
   try{
     treinadores=s.academia_id?await sbGet('treinadores',`academia_id=eq.${s.academia_id}&ativo=eq.true&select=id,nome`):[];
   }catch(e){console.error(e);treinadores=[];}
-  if(s.academia_id)await carregarJornadaSucesso();
-  else ETAPAS.sucesso_cliente=JORNADA_SUCESSO_PADRAO;
+  if(s.academia_id)await carregarJornadas();
+  else Object.assign(ETAPAS,JORNADAS_PADRAO);
   // Consultor(a) não cria campanha, não sobe listas, nem redistribui carteira alheia
   if(s.role==='consultor'){
     const btnNova=document.querySelectorAll('.itab-btn')[3];
@@ -1052,7 +1052,9 @@ function fecharModalGenerico(){
 // ══════════════════════════════════════════
 // KANBAN (Fase 2)
 // ══════════════════════════════════════════
-const ETAPAS={
+// Jornadas padrão de cada funil — servem de ponto de partida, mas toda academia pode
+// editar (renomear, reordenar, adicionar, remover) na tela "🎯 Jornada" de cada funil.
+const JORNADAS_PADRAO={
   leads:[
     {k:'lista',l:'Lista/Iniciar Cadência'},{k:'tentativa1',l:'1ª Tentativa/Contato'},
     {k:'atendimento',l:'Iniciou Atendimento'},{k:'exp_agendada',l:'Experiência Agendada'},
@@ -1070,30 +1072,39 @@ const ETAPAS={
     {k:'atendimento',l:'Iniciou Atendimento'},{k:'consultoria_agendada',l:'Consultoria/Avaliação Agendada'},
     {k:'feedback_matricula',l:'Agendada Feedback/Matrícula'},
     {k:'convertido',l:'Convertido',end:true},{k:'cadencia_futura',l:'Cadência Futura',end:true,wait:true}
+  ],
+  sucesso_cliente:[
+    {k:'onboarding',l:'Onboarding'},
+    {k:'acompanhamento',l:'Acompanhamento Ativo'},
+    {k:'risco',l:'Sinal de Risco'},
+    {k:'estabilizado',l:'Estabilizado/Fidelizado',end:true,resultado:'sucesso'},
+    {k:'perdido',l:'Perdido',end:true,resultado:'perda'}
   ]
-  // 'sucesso_cliente' é injetado dinamicamente em ETAPAS.sucesso_cliente ao carregar a
-  // academia (ver carregarJornadaSucesso) — as etapas são editáveis por academia, não fixas.
 };
+// Chaves que disparam automação interna (criação automática de Experiência, popup de
+// agendamento, etc.) — podem ser renomeadas e reordenadas livremente, mas não excluídas,
+// senão a integração correspondente para de funcionar silenciosamente.
+const CHAVES_PROTEGIDAS={
+  leads:['lista','exp_agendada','exp_iniciada','agendada_matricula','convertido','cadencia_futura'],
+  rematricula:['lista','exp_agendada','exp_iniciada','agendada_matricula','convertido','cadencia_futura'],
+  renovacao:['lista','consultoria_agendada','feedback_matricula','convertido','cadencia_futura'],
+  sucesso_cliente:[] // funil livre, nenhuma etapa é obrigatória
+};
+const ETAPAS={}; // preenchido por carregarJornadas() ao logar, um array por perfil
 const PTAG_CLASS={leads:'ptag-leads',rematricula:'ptag-rematricula',renovacao:'ptag-renovacao',sucesso_cliente:'ptag-sucesso_cliente'};
 
-// Jornada padrão sugerida — a academia pode editar livremente (renomear, reordenar,
-// adicionar, remover etapas) na tela "🎯 Jornada" dentro do funil Sucesso do Cliente.
-const JORNADA_SUCESSO_PADRAO=[
-  {k:'onboarding',l:'Onboarding'},
-  {k:'acompanhamento',l:'Acompanhamento Ativo'},
-  {k:'risco',l:'Sinal de Risco'},
-  {k:'estabilizado',l:'Estabilizado/Fidelizado',end:true,resultado:'sucesso'},
-  {k:'perdido',l:'Perdido',end:true,resultado:'perda'}
-];
-let jornadaSucessoAtual=null; // carregada por academia, cai no padrão se a academia não tiver customizado
-
-async function carregarJornadaSucesso(){
+async function carregarJornadas(){
   try{
-    const acs=await sbGet('academias',`id=eq.${sessao.academia_id}&select=jornada_sucesso`);
-    const custom=acs&&acs[0]&&acs[0].jornada_sucesso;
-    jornadaSucessoAtual=(custom&&custom.length)?custom:JORNADA_SUCESSO_PADRAO;
-  }catch(e){console.error(e);jornadaSucessoAtual=JORNADA_SUCESSO_PADRAO;}
-  ETAPAS.sucesso_cliente=jornadaSucessoAtual;
+    const acs=await sbGet('academias',`id=eq.${sessao.academia_id}&select=jornada_leads,jornada_rematricula,jornada_renovacao,jornada_sucesso`);
+    const reg=acs&&acs[0]||{};
+    ETAPAS.leads=(reg.jornada_leads&&reg.jornada_leads.length)?reg.jornada_leads:JORNADAS_PADRAO.leads;
+    ETAPAS.rematricula=(reg.jornada_rematricula&&reg.jornada_rematricula.length)?reg.jornada_rematricula:JORNADAS_PADRAO.rematricula;
+    ETAPAS.renovacao=(reg.jornada_renovacao&&reg.jornada_renovacao.length)?reg.jornada_renovacao:JORNADAS_PADRAO.renovacao;
+    ETAPAS.sucesso_cliente=(reg.jornada_sucesso&&reg.jornada_sucesso.length)?reg.jornada_sucesso:JORNADAS_PADRAO.sucesso_cliente;
+  }catch(e){
+    console.error(e);
+    Object.assign(ETAPAS,JORNADAS_PADRAO);
+  }
 }
 
 let kbCampanha=null,kbCards=[],kbPerfilAtivo=null;
@@ -1467,17 +1478,27 @@ async function removerTreinador(id){
 }
 function nomeTreinador(id){const t=treinadores.find(x=>x.id===id);return t?t.nome:'—';}
 
-// ── Editor da Jornada de Sucesso do Cliente — etapas customizáveis por academia ──
+// ── Editor de Jornada — etapas customizáveis por academia, pra qualquer funil.
+// Etapas em CHAVES_PROTEGIDAS[perfil] disparam automação interna (criação automática de
+// Experiência, popup de compromisso, cadência) — podem ser renomeadas e reordenadas
+// livremente, mas não excluídas, pra não quebrar essa integração sem querer.
 let jornadaEmEdicao=[];
-function abrirEditorJornadaSucesso(){
-  jornadaEmEdicao=(jornadaSucessoAtual||JORNADA_SUCESSO_PADRAO).map(e=>({...e}));
+let jornadaPerfilEmEdicao=null;
+function abrirEditorJornada(perfil){
+  if(!perfil)return;
+  jornadaPerfilEmEdicao=perfil;
+  jornadaEmEdicao=(ETAPAS[perfil]||JORNADAS_PADRAO[perfil]||[]).map(e=>({...e}));
   document.getElementById('novaEtapaJornadaNome').value='';
+  document.getElementById('jornadaModalTitulo').textContent=`🎯 Jornada — ${PERFIL_LABEL[perfil]||perfil}`;
   renderListaJornadaSucesso();
   openM('m-jornada-sucesso');
 }
 function renderListaJornadaSucesso(){
   const el=document.getElementById('listaJornadaSucesso');
-  el.innerHTML=jornadaEmEdicao.map((e,i)=>`
+  const protegidas=CHAVES_PROTEGIDAS[jornadaPerfilEmEdicao]||[];
+  el.innerHTML=jornadaEmEdicao.map((e,i)=>{
+    const isProtegida=protegidas.includes(e.k);
+    return`
     <div style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--borda)">
       <div style="display:flex;flex-direction:column;gap:2px">
         <button class="btn-gh" style="padding:1px 6px;font-size:10px;" ${i===0?'disabled':''} onclick="moverEtapaJornada(${i},-1)">▲</button>
@@ -1489,8 +1510,11 @@ function renderListaJornadaSucesso(){
         <option value="sucesso" ${e.resultado==='sucesso'?'selected':''}>Final: Sucesso</option>
         <option value="perda" ${e.resultado==='perda'?'selected':''}>Final: Perda</option>
       </select>
-      <button class="btn-gh" style="padding:3px 8px;font-size:11px;border-color:var(--vermelho);color:var(--vermelho)" onclick="removerEtapaJornada(${i})">✕</button>
-    </div>`).join('');
+      ${isProtegida
+        ?`<span title="Essa etapa aciona uma automação interna — não pode ser excluída, só renomeada/reordenada." style="padding:3px 8px;font-size:13px;color:var(--texto2);cursor:help;">🔒</span>`
+        :`<button class="btn-gh" style="padding:3px 8px;font-size:11px;border-color:var(--vermelho);color:var(--vermelho)" onclick="removerEtapaJornada(${i})">✕</button>`}
+    </div>`;
+  }).join('');
 }
 function setResultadoEtapaJornada(i,val){
   jornadaEmEdicao[i].resultado=val||undefined;
@@ -1504,6 +1528,8 @@ function moverEtapaJornada(i,dir){
 }
 function renomearEtapaJornada(i,valor){jornadaEmEdicao[i].l=valor.trim()||jornadaEmEdicao[i].l;}
 function removerEtapaJornada(i){
+  const protegidas=CHAVES_PROTEGIDAS[jornadaPerfilEmEdicao]||[];
+  if(protegidas.includes(jornadaEmEdicao[i].k)){toast('Essa etapa é protegida — aciona uma automação interna, não pode ser excluída.',true);return;}
   if(jornadaEmEdicao.length<=1){toast('Precisa ter pelo menos 1 etapa',true);return;}
   jornadaEmEdicao.splice(i,1);
   renderListaJornadaSucesso();
@@ -1518,16 +1544,19 @@ function adicionarEtapaJornada(){
 }
 async function salvarJornadaSucesso(){
   if(!jornadaEmEdicao.length){toast('Adicione ao menos 1 etapa',true);return;}
+  const protegidas=CHAVES_PROTEGIDAS[jornadaPerfilEmEdicao]||[];
+  const faltando=protegidas.filter(k=>!jornadaEmEdicao.some(e=>e.k===k));
+  if(faltando.length){toast('Alguma etapa protegida sumiu da lista — recarregue e tente de novo.',true);return;}
+  const campoDb={leads:'jornada_leads',rematricula:'jornada_rematricula',renovacao:'jornada_renovacao',sucesso_cliente:'jornada_sucesso'}[jornadaPerfilEmEdicao];
   try{
-    await fetch(`${SB_URL}/rest/v1/academias?id=eq.${sessao.academia_id}`,{method:'PATCH',headers:H,body:JSON.stringify({jornada_sucesso:jornadaEmEdicao})});
-    jornadaSucessoAtual=jornadaEmEdicao;
-    ETAPAS.sucesso_cliente=jornadaSucessoAtual;
+    await fetch(`${SB_URL}/rest/v1/academias?id=eq.${sessao.academia_id}`,{method:'PATCH',headers:H,body:JSON.stringify({[campoDb]:jornadaEmEdicao})});
+    ETAPAS[jornadaPerfilEmEdicao]=jornadaEmEdicao;
     toast('Jornada salva!');
     closeM('m-jornada-sucesso');
-    if(kbPerfilAtivo==='sucesso_cliente'){
+    if(kbPerfilAtivo===jornadaPerfilEmEdicao){
       const tabsEl=document.getElementById('kbPerfilTabs');
       tabsEl.innerHTML=(kbCampanha.perfis||[]).map(p=>`<button class="kb-ptab" id="kbtab-${p}" onclick="trocarPerfilKanban('${p}')">${PERFIL_LABEL[p]}</button>`).join('');
-      trocarPerfilKanban('sucesso_cliente');
+      trocarPerfilKanban(jornadaPerfilEmEdicao);
     }
   }catch(e){console.error(e);toast('Erro ao salvar jornada',true);}
 }
@@ -1620,7 +1649,7 @@ function trocarPerfilKanban(perfil){
   document.querySelectorAll('.kb-ptab').forEach(b=>b.classList.remove('active'));
   const tabEl=document.getElementById('kbtab-'+perfil);
   if(tabEl)tabEl.classList.add('active');
-  document.getElementById('btnJornadaSucesso').style.display=perfil==='sucesso_cliente'?'inline-flex':'none';
+  document.getElementById('btnJornadaSucesso').style.display='inline-flex';
   renderKanbanBoard();
   renderKbSummary();
 }
