@@ -194,6 +194,8 @@ tbody tr:hover td{background:var(--s2)}
 /* LANÇAMENTO */
 .lanc-funil-sec{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px}
 .lanc-funil-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.lanc-funil-title:hover{opacity:.85}
+.lanc-funil-body{padding-top:2px;}
 .modo-lanc-btn{background:var(--s1);border:1px solid var(--bd);color:var(--td);font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;cursor:pointer;text-transform:none;letter-spacing:0;font-family:'Barlow',sans-serif;}
 .modo-lanc-btn.active{background:var(--or);color:#0a0a0a;border-color:var(--or);}
 .lanc-funil-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
@@ -1175,27 +1177,35 @@ async function renderLancFunis(){
   const el=document.getElementById('lanc-funis-body');
   if(!cid){el.innerHTML='<div style="color:var(--td);font-size:12px">Selecione um(a) consultor(a).</div>';return}
   const c=a.consultoras[cid];
-  if(!c||!c.funis||!c.funis.length){el.innerHTML='<div style="color:var(--td);font-size:12px">Sem funis configurados.</div>';return}
+  if(!c){el.innerHTML='<div style="color:var(--td);font-size:12px">Consultor(a) não encontrado(a).</div>';return}
   el.innerHTML='<div style="color:var(--td);font-size:12px">Carregando...</div>';
   campanhasAtivasCache=null; // sempre revalida ao abrir, evita campanha encerrada há pouco continuar "colada"
 
   // calcula lista atual por funil (último valor registrado)
   const regs=consRegs(a,cid);
   const listaAtual={};
-  c.funis.forEach(fid=>{
+  FUNIS.forEach(f=>{
+    const fid=f.id;
     const ultimoComLista=[...regs].reverse().find(r=>r.funis&&r.funis[fid]&&r.funis[fid].lista_total>0);
     listaAtual[fid]=ultimoComLista?ultimoComLista.funis[fid].lista_total:0;
   });
 
-  // Um funil só fica disponível pra lançamento se: (a) não depende do Campanhas (ex: Feedback+Indicação,
-  // que ainda não existe lá), OU (b) existe pelo menos 1 campanha ATIVA daquele perfil hoje.
+  // Um funil aparece pra esse(a) consultor(a) se: tem campanha ATIVA agora daquele perfil
+  // (não depende mais de atribuição manual — qualquer campanha nova já libera aqui sozinha),
+  // OU — só pra funil sem equivalente no Campanhas ainda (ex: Feedback+Indicação) — se foi
+  // atribuído manualmente na ficha do(a) consultor(a).
   const disponibilidade={};
-  await Promise.all(c.funis.map(async fid=>{
+  await Promise.all(FUNIS.map(async f=>{
+    const fid=f.id;
     const perfil=FUNIL_PARA_PERFIL_CAMPANHA[fid];
-    disponibilidade[fid]=!perfil || (await idsCampanhasAtivasPorPerfil(perfil)).length>0;
+    disponibilidade[fid]=perfil?(await idsCampanhasAtivasPorPerfil(perfil)).length>0:(c.funis||[]).includes(fid);
   }));
-  const funisDisponiveis=c.funis.filter(fid=>disponibilidade[fid]);
-  const funisIndisponiveis=c.funis.filter(fid=>!disponibilidade[fid]);
+  const funisDisponiveis=FUNIS.map(f=>f.id).filter(fid=>disponibilidade[fid]);
+
+  if(!funisDisponiveis.length){
+    el.innerHTML='<div class="info-box" style="border-color:var(--td);color:var(--td);">Nenhum funil ativo pra este(a) consultor(a) no momento. Crie/reative uma campanha em <strong>Campanhas → Minhas Campanhas</strong>, ou atribua um funil manual na ficha do(a) consultor(a).</div>';
+    return;
+  }
 
   // busca dados automáticos do Campanhas em paralelo, um por funil disponível —
   // só quando o modo desse funil está como "automático" (config do gestor, padrão).
@@ -1206,13 +1216,7 @@ async function renderLancFunis(){
     dadosAuto[fid]=modo==='auto'?await buscarDadosCampanhaHoje(cid,FUNIL_PARA_PERFIL_CAMPANHA[fid]):null;
   }));
 
-  const avisoIndisponiveis=funisIndisponiveis.length?`
-    <div class="info-box" style="border-color:var(--td);color:var(--td);margin-bottom:12px">
-      ⏸ ${funisIndisponiveis.map(fid=>fInfo(fid)?.nome).join(', ')} — sem campanha ativa desse perfil no momento.
-      Crie ou reative uma campanha em <strong>Campanhas → Minhas Campanhas</strong> pra liberar o lançamento aqui.
-    </div>`:'';
-
-  el.innerHTML=avisoIndisponiveis+funisDisponiveis.map(fid=>{
+  el.innerHTML=funisDisponiveis.map(fid=>{
     const f=fInfo(fid);if(!f)return'';
     const auto=dadosAuto[fid]; // null = sem cards no Campanhas, segue manual
     const laAtual=auto?auto.lista_total:listaAtual[fid];
@@ -1235,17 +1239,21 @@ async function renderLancFunis(){
     const pl=f.planos?`
       <div class="sec-div" style="margin:7px 0 5px"><div class="sec-div-line"></div><div class="sec-div-lbl">Planos Vendidos</div><div class="sec-div-line"></div></div>
       <div class="planos-form">${PLANOS.map(p=>`<div class="fg"><label class="fl">${p.lbl}</label><input class="fi" type="number" id="lanc-${fid}-pl-${p.k}" placeholder="0" min="0"></div>`).join('')}</div>`:'';
+    const resumo=auto?`🔗 Automático — ${auto.lista_total} na lista`:'✎ Manual — clique para preencher';
     return`<div class="lanc-funil-sec">
-      <div class="lanc-funil-title">
+      <div class="lanc-funil-title" onclick="toggleLancFunilBody('${fid}')" style="cursor:pointer;">
         <div class="lanc-funil-dot" style="background:${f.cor}"></div>
         <span style="color:${f.cor}">${f.nome}</span>
         <span style="color:var(--td);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px">${f.sub}</span>
+        <span style="margin-left:auto;font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;color:${auto?'var(--gr)':'var(--td)'}">${resumo}</span>
         ${FUNIL_PARA_PERFIL_CAMPANHA[fid]?`
-        <span style="margin-left:auto;display:inline-flex;gap:4px;">
+        <span style="display:inline-flex;gap:4px;" onclick="event.stopPropagation()">
           <button class="modo-lanc-btn ${(modoLanc[fid]||'auto')==='auto'?'active':''}" onclick="setModoLancamento('${fid}','auto')" title="Puxar automaticamente do Campanhas">🔗 Auto</button>
           <button class="modo-lanc-btn ${(modoLanc[fid]||'auto')==='manual'?'active':''}" onclick="setModoLancamento('${fid}','manual')" title="Sempre digitar manualmente">✎ Manual</button>
         </span>`:''}
+        <span id="caret-${fid}" style="color:var(--td);font-size:13px;">▸</span>
       </div>
+      <div class="lanc-funil-body" id="body-${fid}" style="display:none;">
       <div class="info-box" style="${auto?'border-color:var(--gr);color:var(--gr)':''}">📋 ${infoLista}</div>
       <div class="form-row">
         <div class="fg"><label class="fl">${lblLista}</label><input class="fi" type="number" id="lanc-${fid}-lista_total" placeholder="${laAtual||phLista}" min="0" ${val('lista_total')} ${ro}></div>
@@ -1267,8 +1275,17 @@ async function renderLancFunis(){
         <div class="fg"><label class="fl">Total Vendido Hoje R$</label><input class="fi" type="number" id="lanc-${fid}-${isF2?'vendido_rs':'vendido'}" placeholder="Ex: 2250" min="0"></div>
       </div>
       ${pl}
+      </div>
     </div>`;
   }).join('');
+}
+function toggleLancFunilBody(fid){
+  const body=document.getElementById('body-'+fid);
+  const caret=document.getElementById('caret-'+fid);
+  if(!body)return;
+  const abrindo=body.style.display==='none';
+  body.style.display=abrindo?'block':'none';
+  if(caret)caret.textContent=abrindo?'▾':'▸';
 }
 
 async function lancarDia(){
@@ -1284,8 +1301,9 @@ async function lancarDia(){
   if(!data){toast('Informe a data',true);return}
   const a=ac();const c=a.consultoras[cid];
   const funisData={};
-  (c.funis||[]).forEach(fid=>{
-    const f=fInfo(fid);if(!f)return;
+  FUNIS.forEach(f=>{
+    const fid=f.id;
+    if(!document.getElementById(`lanc-${fid}-lista_total`))return; // funil não estava disponível/renderizado hoje
     const g=id=>parseFloat(document.getElementById(`lanc-${fid}-${id}`)?.value)||0;
     const tent_novas=g('tent_novas'),tent_cadencia=g('tent_cadencia');
     const planos={};if(f.planos)PLANOS.forEach(p=>{planos[p.k]=parseInt(document.getElementById(`lanc-${fid}-pl-${p.k}`)?.value)||0});
