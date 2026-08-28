@@ -512,6 +512,7 @@ table.vd-table th{color:var(--laranja);font-size:11px;text-transform:uppercase;}
       <div class="fg"><label>Plano atual</label><input class="fi" id="nc-plano"></div>
       <div class="fg"><label>Ticket médio (R$)</label><input class="fi" type="number" id="nc-ticket"></div>
     </div>
+    <div class="fg" style="margin-bottom:10px"><label>Observações</label><textarea class="fi" id="nc-obs" rows="2" placeholder="Anotações vindas do sistema de gestão, contexto adicional..."></textarea></div>
     <div class="fg" style="margin-bottom:10px"><label>Consultor(a) responsável</label><select class="fsel" id="nc-consultora"></select></div>
     <div class="fg" style="margin-bottom:16px"><label>Etapa inicial no Kanban</label><select class="fsel" id="nc-etapa"></select></div>
     <button class="btn-primary" style="width:100%" onclick="salvarNovoCardManual()">Adicionar ao Kanban</button>
@@ -1771,6 +1772,7 @@ function abrirNovoCardManual(){
   document.getElementById('nc-idade').value='';
   document.getElementById('nc-plano').value='';
   document.getElementById('nc-ticket').value='';
+  document.getElementById('nc-obs').value='';
   document.getElementById('nc-data-lead').value=new Date().toISOString().slice(0,10);
   document.getElementById('nc-origem').value='visita_pessoal';
   document.getElementById('nc-origem-outro').value='';
@@ -1799,6 +1801,7 @@ async function salvarNovoCardManual(){
       idade:parseInt(document.getElementById('nc-idade').value)||null,
       plano_atual:document.getElementById('nc-plano').value.trim(),
       ticket_medio:parseFloat(document.getElementById('nc-ticket').value)||0,
+      observacoes:document.getElementById('nc-obs').value.trim(),
       data_lead:dataLead, origem_lead:origemLead,
       etapa_atual:etapaInicial,etapa_maxima:etapaInicial,
       consultora_id:document.getElementById('nc-consultora').value||null,
@@ -2289,6 +2292,13 @@ function renderCardModalBody(){
     </div>
   ` : '';
 
+  const blocoObservacoes = `
+    <div class="at-perfil-box" style="display:block;">
+      <span class="at-perfil-lbl" style="display:block;margin-bottom:6px;">Observações:</span>
+      <textarea class="fi" id="card-obs" rows="2" placeholder="Anotações sobre esse lead/aluno..." onblur="salvarObservacoesCard(this.value)">${(c.observacoes||'').replace(/</g,'&lt;')}</textarea>
+    </div>
+  `;
+
   // "Compareceu" só faz sentido quando o card está esperando a visita/matrícula agendada —
   // é o dado que faltava pra medir taxa de comparecimento no funil (agendou x veio de fato).
   const blocoCompareceu = ETAPAS_AG_VISITA.includes(c.etapa_atual) ? `
@@ -2387,6 +2397,7 @@ function renderCardModalBody(){
     ${blocoPerfil}
     ${blocoPrograma}
     ${blocoOrigemData}
+    ${blocoObservacoes}
     ${blocoCompareceu}
     ${blocoQualificacao}
     ${blocoAtendimento}
@@ -2588,6 +2599,19 @@ async function salvarPerfilQualificacao(valor){
 
 // Marca se a pessoa realmente veio na visita/matrícula agendada — é o dado que faltava
 // pra medir taxa de comparecimento (agendou x compareceu) no funil de cada consultor(a).
+// Salva a observação ao sair do campo (onblur) — evita disparar uma chamada a cada
+// letra digitada.
+async function salvarObservacoesCard(valor){
+  if(!cardAberto||valor===(cardAberto.observacoes||''))return;
+  try{
+    await sbPatch('campanha_cards',cardAberto.id,{observacoes:valor,updated_at:Date.now()});
+    cardAberto.observacoes=valor;
+    const idx=kbCards.findIndex(x=>x.id===cardAberto.id);
+    if(idx>=0)kbCards[idx].observacoes=valor;
+    toast('Observação salva.');
+  }catch(e){console.error(e);toast('Erro ao salvar observação',true);}
+}
+
 async function toggleCompareceu(val){
   try{
     await sbPatch('campanha_cards',cardAberto.id,{compareceu:val,compareceu_em:val?Date.now():null,updated_at:Date.now()});
@@ -2957,7 +2981,8 @@ const CAMPOS_ESPERADOS=[
   {k:'inicio',lbl:'Início do plano',guess:['inicio','início']},
   {k:'termino',lbl:'Término do plano',guess:['termino','término','vencimento']},
   {k:'ticket',lbl:'Ticket médio mensal',guess:['ticket','valor','mensalidade']},
-  {k:'consultor',lbl:'Consultor(a) Responsável (opcional)',guess:['consultor','responsavel','responsável']}
+  {k:'consultor',lbl:'Consultor(a) Responsável (opcional)',guess:['consultor','responsavel','responsável']},
+  {k:'obs',lbl:'Observações (opcional)',guess:['observacao','observação','obs','nota','anotacao','anotação','comentario','comentário']}
 ];
 function renderMapeamento(){
   const el=document.getElementById('mapFields');
@@ -2992,6 +3017,7 @@ function atualizarPreviaMapeamento(){
       <td>${c.plano_termino||'—'}</td>
       <td>${c.ticket_medio?'R$'+c.ticket_medio.toLocaleString('pt-BR',{minimumFractionDigits:2}):'—'}</td>
       <td>${c.consultor_nome_planilha||'—'}</td>
+      <td>${c.observacoes||'—'}</td>
     </tr>`).join('')}
   </table>`;
 }
@@ -3008,7 +3034,8 @@ function montarCard(row,idx){
     plano_inicio:idx.inicio>=0?normalizarData(row[idx.inicio]):null,
     plano_termino:idx.termino>=0?normalizarData(row[idx.termino]):null,
     ticket_medio:idx.ticket>=0?normalizarValorMonetario(row[idx.ticket]):0,
-    consultor_nome_planilha:idx.consultor>=0?(row[idx.consultor]||'').trim():''
+    consultor_nome_planilha:idx.consultor>=0?(row[idx.consultor]||'').trim():'',
+    observacoes:idx.obs>=0?(row[idx.obs]||'').trim():''
   };
 }
 
@@ -3136,7 +3163,7 @@ async function finalizarSoComConsultor(){
     campanha_id:wiz.campanhaId,onda_id:null,perfil:wiz.perfilAtual,
     nome:c.nome,codigo_matricula:c.codigo_matricula,telefone:c.telefone,idade:c.idade,
     plano_atual:c.plano_atual,plano_inicio:c.plano_inicio||null,plano_termino:c.plano_termino||null,
-    ticket_medio:c.ticket_medio,etapa_atual:etapaEntrada,etapa_maxima:etapaEntrada,consultora_id:c.consultora_id,
+    ticket_medio:c.ticket_medio,observacoes:c.observacoes||'',etapa_atual:etapaEntrada,etapa_maxima:etapaEntrada,consultora_id:c.consultora_id,
     cadencia_atual:0,cadencia_total:CADENCIA_TOTAL_PADRAO[wiz.perfilAtual]||5,
     status:'ativo',created_at:Date.now(),updated_at:Date.now()
   }));
@@ -3237,7 +3264,7 @@ async function confirmarOndasECards(){
             campanha_id:wiz.campanhaId,onda_id:o.onda_id,perfil:wiz.perfilAtual,
             nome:c.nome,codigo_matricula:c.codigo_matricula,telefone:c.telefone,idade:c.idade,
             plano_atual:c.plano_atual,plano_inicio:c.plano_inicio||null,plano_termino:c.plano_termino||null,
-            ticket_medio:c.ticket_medio,etapa_atual:etapaEntrada,etapa_maxima:etapaEntrada,consultora_id:d.consultora_id,
+            ticket_medio:c.ticket_medio,observacoes:c.observacoes||'',etapa_atual:etapaEntrada,etapa_maxima:etapaEntrada,consultora_id:d.consultora_id,
             cadencia_atual:0,cadencia_total:CADENCIA_TOTAL_PADRAO[wiz.perfilAtual]||5,
             status:'ativo',created_at:Date.now(),updated_at:Date.now()
           });
