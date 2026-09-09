@@ -1039,10 +1039,25 @@ async function loadAll(){
   setSS('spin','sincronizando...');
   try{
     let acsQ='order=created_at.asc';
-    if(!isAdmin()&&sessao.academia_id)acsQ=`id=eq.${sessao.academia_id}`;
+    if(!isAdmin()){
+      // CRÍTICO: gestor(a) só pode ver a própria academia. Se por qualquer motivo
+      // academia_id não estiver definido pra essa conta, a consulta trava em algo
+      // que nunca bate com nada (falha FECHADA — nenhum dado — nunca falha aberta
+      // mostrando todas as academias).
+      acsQ = sessao.academia_id ? `id=eq.${sessao.academia_id}` : `id=eq.__sem_academia_vinculada__`;
+    }
     const[acs,cons,regs,treins]=await Promise.all([sbGet('academias',acsQ),sbGet('consultoras','order=created_at.asc'),sbGet('registros','order=dia.asc,ts.asc'),sbGet('treinadores','ativo=eq.true&order=created_at.asc')]);
     db.acs={};
     acs.forEach(a=>{db.acs[a.id]={...a,consultoras:{},registros:[],treinadores:{}}});
+    if(!isAdmin()&&!sessao.academia_id){
+      toast('Sua conta não está vinculada a nenhuma academia. Fale com o suporte QG.90.',true);
+      console.error('SEGURANÇA: gestor(a) sem academia_id tentou logar — acesso bloqueado.', sessao);
+    }
+    // Blindagem extra: mesmo que a consulta acima de alguma forma retornasse mais de uma
+    // academia pra uma conta não-admin, filtramos de novo aqui em memória antes de usar.
+    if(!isAdmin()&&sessao.academia_id){
+      Object.keys(db.acs).forEach(id=>{ if(id!==sessao.academia_id) delete db.acs[id]; });
+    }
     cons.forEach(c=>{if(db.acs[c.academia_id])db.acs[c.academia_id].consultoras[c.id]={nome:c.nome,meta:c.meta,meta_tipo:c.meta_tipo||'planos',horas:c.horas||0,funis:c.funis||[],metas:c.metas||null}});
     treins.forEach(t=>{if(db.acs[t.academia_id])db.acs[t.academia_id].treinadores[t.id]={nome:t.nome}});
     regs.forEach(r=>{if(db.acs[r.academia_id])db.acs[r.academia_id].registros.push({id:r.id,dia:r.dia,data:r.data,consultora_id:r.consultora_id,obs:r.obs,funis:r.funis||{},ts:r.ts})});
