@@ -300,20 +300,24 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
 .cal-grid-head{margin-bottom:6px;}
 .cal-label{text-align:center;font-size:11px;color:var(--grey);font-weight:700;text-transform:uppercase;}
 .cal-cell{
-  aspect-ratio:1;border-radius:8px;background:var(--bg-elev);border:1px solid var(--border-soft);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;
-  font-size:13px;color:var(--grey);
+  min-height:76px;border-radius:8px;background:var(--bg-elev);border:1px solid var(--border-soft);
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;position:relative;
+  font-size:13px;color:var(--grey);padding:6px 4px;gap:5px;
 }
-.cal-cell.empty{background:transparent;border:none;}
+.cal-cell.empty{background:transparent;border:none;min-height:76px;}
 .cal-cell.has-tasks{cursor:pointer;border-color:var(--orange-dim);color:var(--white);}
 .cal-cell.has-tasks:hover{background:var(--bg-card-hover);}
 .cal-cell.is-today{border-color:var(--orange);border-width:2px;}
 .cal-cell.is-selected{background:var(--orange-glow);border-color:var(--orange);}
 .cal-daynum{font-weight:600;}
-.cal-badge{
-  position:absolute;bottom:3px;background:var(--orange);color:#0a0a0a;font-size:9.5px;font-weight:800;
-  border-radius:20px;padding:1px 5px;min-width:14px;text-align:center;
+.cal-chips-row{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;}
+.cal-chip{
+  font-size:10px;font-weight:800;border-radius:20px;padding:1px 6px;min-width:15px;text-align:center;
+  border:1px solid;line-height:1.5;
 }
+.cal-legenda{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;font-size:11.5px;color:var(--grey);}
+.cal-legenda-item{display:flex;align-items:center;gap:5px;}
+.cal-legenda-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
 .locked-value{
   background:var(--bg-elev);border:1px dashed var(--border);padding:10px 13px;border-radius:8px;
   font-size:14px;color:var(--grey);
@@ -365,7 +369,6 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
         <button class="active" id="tabKanbanBtn" onclick="switchTab('kanban')">Kanban</button>
         <button id="tabAgendaBtn" onclick="switchTab('agenda')">Agenda</button>
         <button id="tabDashBtn" onclick="switchTab('dashboard')">Indicadores</button>
-        <button id="tabEquipeBtn" onclick="switchTab('equipe')" style="display:none;">Equipe</button>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Sair</button>
     </div>
@@ -389,9 +392,6 @@ main{padding:22px 24px 60px;max-width:1600px;margin:0 auto;}
 
     <!-- AGENDA VIEW -->
     <div id="viewAgenda" style="display:none;"></div>
-
-    <!-- EQUIPE VIEW (admin/gestor) -->
-    <div id="viewEquipe" style="display:none;"></div>
   </main>
 </div>
 
@@ -616,7 +616,6 @@ async function startApp(){
   await loadExperiencias();
   await loadAgendaTarefas();
   renderKanban();
-  atualizarVisibilidadeEquipeTab();
   if(DEMO_MODE) showToast("Modo demonstração — configure a ANON_KEY do Supabase para salvar dados de verdade.");
 }
 
@@ -641,10 +640,8 @@ async function loadEquipe(){
   }
 }
 
-function atualizarVisibilidadeEquipeTab(){
-  const podeGerenciar = currentUser && ['admin','gestor'].includes(currentUser.role);
-  document.getElementById('tabEquipeBtn').style.display = podeGerenciar ? 'inline-flex' : 'none';
-}
+// (Gestão de acesso individual — Equipe — foi centralizada no Desafio ROI 21 Dias,
+// pra não ter dois lugares diferentes criando login com regras diferentes.)
 
 // Login automático quando chega pelo painel principal (ROI 21 Dias / Campanhas),
 // via ?uid=<id do gestor> na URL — mesmo padrão de SSO usado nos outros módulos.
@@ -677,7 +674,7 @@ async function tentarLoginAutomatico(){
     if(openExpParam){
       switchTab('kanban');
       openDetail(openExpParam);
-    } else if(tabParam && ['kanban','agenda','dashboard','equipe'].includes(tabParam)){
+    } else if(tabParam && ['kanban','agenda','dashboard'].includes(tabParam)){
       switchTab(tabParam);
     }
     return true;
@@ -761,8 +758,16 @@ async function loadExperiencias(){
     let query = supabaseClient.from('experiencias').select('*').order('created_at',{ascending:false});
     if(currentUser.academia_id){
       query = query.eq('academia_id', currentUser.academia_id);
+    }else if(currentUser.role==='admin'){
+      // SEGURANÇA: só a conta master de verdade (role==='admin' E academia_id vazio
+      // de propósito) vê experiências de todas as academias — nunca só por causa de
+      // academia_id estar vazio, o que poderia acontecer por engano em qualquer conta.
+    }else{
+      experiencias = [];
+      showToast("Sua conta não está vinculada a nenhuma academia. Fale com o suporte QG.90.");
+      console.error('SEGURANÇA: usuário sem academia_id e sem role admin tentou carregar experiências — acesso bloqueado.', currentUser);
+      return;
     }
-    // conta master (academia_id null) vê experiências de todas as academias
     const {data, error} = await query;
     if(error) throw error;
     experiencias = data || [];
@@ -792,15 +797,12 @@ function switchTab(tab){
   document.getElementById('viewKanban').style.display = tab==='kanban' ? 'block':'none';
   document.getElementById('viewDashboard').style.display = tab==='dashboard' ? 'block':'none';
   document.getElementById('viewAgenda').style.display = tab==='agenda' ? 'block':'none';
-  document.getElementById('viewEquipe').style.display = tab==='equipe' ? 'block':'none';
   document.getElementById('tabKanbanBtn').classList.toggle('active', tab==='kanban');
   document.getElementById('tabDashBtn').classList.toggle('active', tab==='dashboard');
   document.getElementById('tabAgendaBtn').classList.toggle('active', tab==='agenda');
-  document.getElementById('tabEquipeBtn').classList.toggle('active', tab==='equipe');
   document.getElementById('fabBtn').style.display = tab==='kanban' ? 'flex':'none';
   if(tab==='dashboard') renderDashboard();
   if(tab==='agenda') renderAgendaTab();
-  if(tab==='equipe') renderEquipeTab();
 }
 
 /* ================= KANBAN RENDER ================= */
@@ -1456,7 +1458,14 @@ async function loadAgendaTarefas(){
   }
   try{
     let query = supabaseClient.from('agenda_tarefas').select('*').order('data_prevista',{ascending:true});
-    if(currentUser.academia_id) query = query.eq('academia_id', currentUser.academia_id);
+    if(currentUser.academia_id){
+      query = query.eq('academia_id', currentUser.academia_id);
+    }else if(currentUser.role!=='admin'){
+      // SEGURANÇA: sem academia_id e sem ser a conta master de verdade, não carrega nada.
+      agendaTarefas = [];
+      console.error('SEGURANÇA: usuário sem academia_id e sem role admin tentou carregar a agenda — acesso bloqueado.', currentUser);
+      return;
+    }
     const {data, error} = await query;
     if(error) throw error;
     agendaTarefas = data || [];
@@ -1661,6 +1670,9 @@ function renderAgendaLista(){
     `).join('') : '<div class="hint" style="padding:20px;">Nenhuma tarefa agendada ainda — as tarefas aparecem aqui automaticamente quando o Dia 1 de uma experiência é registrado.</div>';
 }
 
+const CATEGORIA_COR = {
+  cadencia:'#4A9FE0', exp_agendada:'#F2C94C', visita_matricula:'#B57BEE', jornada_experiencia:'#3DBA7A'
+};
 function renderAgendaCalendario(){
   const tarefas = tarefasFiltradas();
   const ano = agendaMesAtual.getFullYear(), mes = agendaMesAtual.getMonth();
@@ -1681,13 +1693,24 @@ function renderAgendaCalendario(){
   for(let d=1; d<=ultimoDia.getDate(); d++){
     const dateStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const tds = porDia[dateStr] || [];
-    const pendentes = tds.filter(t=>!t.feita).length;
     const isHoje = dateStr === today();
     const isSelecionado = dateStr === agendaDiaSelecionado;
+
+    // Conta pendentes por categoria, pra mostrar um chip colorido por tipo de compromisso
+    const porCategoria = {};
+    tds.forEach(t=>{
+      if(t.feita) return;
+      const cat = categoriaDaTarefa(t);
+      porCategoria[cat] = (porCategoria[cat]||0)+1;
+    });
+    const chips = Object.entries(porCategoria).map(([cat,qtd])=>
+      `<span class="cal-chip" style="background:${CATEGORIA_COR[cat]||'#999'}22;color:${CATEGORIA_COR[cat]||'#999'};border-color:${CATEGORIA_COR[cat]||'#999'}55;">${qtd}</span>`
+    ).join('');
+
     celulas += `
       <div class="cal-cell ${tds.length?'has-tasks':''} ${isHoje?'is-today':''} ${isSelecionado?'is-selected':''}" onclick="${tds.length?`selecionarDiaAgenda('${dateStr}')`:''}">
         <span class="cal-daynum">${d}</span>
-        ${tds.length ? `<span class="cal-badge">${pendentes>0?pendentes:'✓'}</span>` : ''}
+        ${chips ? `<div class="cal-chips-row">${chips}</div>` : (tds.length?'<span class="cal-chip" style="background:var(--green);color:#0a0a0a;border-color:var(--green);">✓</span>':'')}
       </div>`;
   }
 
@@ -1695,10 +1718,15 @@ function renderAgendaCalendario(){
 
   document.getElementById('agendaConteudo').innerHTML = `
     <div class="section-block">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <button class="btn btn-sm btn-ghost" onclick="mudarMesAgenda(-1)">←</button>
         <h3 style="margin:0;">${nomesMes[mes]} ${ano}</h3>
         <button class="btn btn-sm btn-ghost" onclick="mudarMesAgenda(1)">→</button>
+      </div>
+      <div class="cal-legenda">
+        ${Object.entries(CATEGORIA_LABEL_AGENDA).map(([cat,lbl])=>`
+          <span class="cal-legenda-item"><span class="cal-legenda-dot" style="background:${CATEGORIA_COR[cat]};"></span>${lbl}</span>
+        `).join('')}
       </div>
       <div class="cal-grid cal-grid-head">
         ${semanaLabels.map(l=>`<div class="cal-label">${l}</div>`).join('')}
@@ -1710,7 +1738,7 @@ function renderAgendaCalendario(){
         <h3><span class="dot"></span>${fmtDateLong(agendaDiaSelecionado)}</h3>
         ${(porDia[agendaDiaSelecionado]||[]).map(agendaTaskCard).join('') || '<div class="hint">Nenhuma tarefa neste dia.</div>'}
       </div>
-    ` : '<div class="hint" style="padding:8px 4px;">Clique num dia com tarefas para ver os detalhes.</div>'}
+    ` : '<div class="hint" style="padding:8px 4px;">Clique num dia com tarefas pra ver os detalhes — as cores mostram quantos compromissos de cada tipo tem naquele dia.</div>'}
   `;
 }
 
@@ -1736,107 +1764,6 @@ function fmtDateLong(d){
   const dt = new Date(y,m-1,day);
   const dias = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   return `${dias[dt.getDay()]}, ${day}/${m}`;
-}
-
-/* ================= EQUIPE — LOGIN INDIVIDUAL (admin/gestor) ================= */
-let equipeLoginsCache = {}; // id (consultora ou treinador) -> registro de gestores
-
-async function renderEquipeTab(){
-  const el = document.getElementById('viewEquipe');
-  if(!['admin','gestor'].includes(currentUser.role)){
-    el.innerHTML = '<div class="hint" style="padding:20px;">Apenas gestores podem gerenciar acessos da equipe.</div>';
-    return;
-  }
-  if(!currentUser.academia_id){
-    el.innerHTML = '<div class="hint" style="padding:20px;">Conta master sem academia vinculada — entre com o login de uma academia específica pra gerenciar a equipe dela.</div>';
-    return;
-  }
-  el.innerHTML = '<div class="hint" style="padding:20px;">Carregando equipe...</div>';
-
-  if(!DEMO_MODE && supabaseClient){
-    try{
-      const {data} = await supabaseClient.from('gestores').select('id,nome,email,senha_hash,ativo,consultora_id,treinador_id').eq('academia_id', currentUser.academia_id).in('role',['consultor','treinador']);
-      equipeLoginsCache = {};
-      (data||[]).forEach(g=>{ if(g.consultora_id) equipeLoginsCache['c_'+g.consultora_id]=g; if(g.treinador_id) equipeLoginsCache['t_'+g.treinador_id]=g; });
-    }catch(e){ console.error(e); equipeLoginsCache = {}; }
-  }
-
-  el.innerHTML = `
-    <div class="board-header">
-      <div>
-        <div class="board-title">Equipe — Acessos Individuais</div>
-        <div class="board-sub">Login próprio pra cada consultor(a) e treinador(a) — identidade real, sem depender de nome digitado</div>
-      </div>
-    </div>
-    <div class="section-title" style="margin-top:0;">Consultores(as)</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
-      ${equipeConsultoras.length ? equipeConsultoras.map(c=>equipeCardHtml(c,'c','vendas')).join('') : '<div class="hint">Nenhum(a) consultor(a) cadastrado(a) nesta academia ainda.</div>'}
-    </div>
-    <div class="section-title">Treinadores(as)</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
-      ${equipeTreinadores.length ? equipeTreinadores.map(t=>equipeCardHtml(t,'t','tecnico')).join('') : '<div class="hint">Nenhum(a) treinador(a) cadastrado(a) nesta academia ainda.</div>'}
-    </div>
-  `;
-}
-
-function equipeCardHtml(pessoa, prefixo, papel){
-  const login = equipeLoginsCache[prefixo+'_'+pessoa.id];
-  return `
-    <div class="section-block" style="margin-bottom:0;">
-      <h3 style="font-size:15px;"><span class="dot" style="background:${papel==='vendas'?'var(--orange)':'var(--green)'};"></span>${escapeHtml(pessoa.nome)}</h3>
-      ${login ? `
-        <div class="hint" style="margin-bottom:6px;">📧 ${escapeHtml(login.email)}</div>
-        <span class="tag ${login.ativo?'tag-95':'tag-noqual'}" style="margin-bottom:8px;display:inline-block;">${login.ativo?'● ATIVO':'● SUSPENSO'}</span>
-        <div style="display:flex;gap:6px;margin-top:8px;">
-          <input type="text" id="senha_${prefixo}_${pessoa.id}" placeholder="Nova senha" style="flex:1;font-size:12.5px;padding:6px 9px;">
-          <button class="btn btn-sm" onclick="resetSenhaEquipe('${login.id}','${prefixo}_${pessoa.id}')">Salvar</button>
-        </div>
-        <button class="btn btn-sm btn-ghost" style="width:100%;margin-top:8px;" onclick="toggleAtivoEquipe('${login.id}',${login.ativo})">${login.ativo?'⛔ Suspender':'✅ Reativar'}</button>
-      ` : `
-        <div class="hint" style="margin-bottom:8px;">Sem login ainda.</div>
-        <input type="text" id="email_${prefixo}_${pessoa.id}" placeholder="E-mail de acesso" style="margin-bottom:6px;font-size:12.5px;padding:6px 9px;">
-        <input type="text" id="senha_nova_${prefixo}_${pessoa.id}" placeholder="Senha" style="margin-bottom:8px;font-size:12.5px;padding:6px 9px;">
-        <button class="btn btn-sm" style="width:100%;" onclick="criarLoginEquipe('${pessoa.id}','${escapeHtml(pessoa.nome).replace(/'/g,"\\'")}','${prefixo}')">Criar acesso</button>
-      `}
-    </div>`;
-}
-
-async function criarLoginEquipe(pessoaId, nome, prefixo){
-  const email = document.getElementById(`email_${prefixo}_${pessoaId}`).value.trim().toLowerCase();
-  const senha = document.getElementById(`senha_nova_${prefixo}_${pessoaId}`).value;
-  if(!email || !senha || senha.length<4){ showToast("Preencha e-mail e senha (mín. 4 caracteres)."); return; }
-  try{
-    const {data:existe} = await supabaseClient.from('gestores').select('id').eq('email', email);
-    if(existe && existe.length){ showToast("Já existe um acesso com esse e-mail."); return; }
-    const payload = {
-      id: crypto.randomUUID?crypto.randomUUID():'g_'+Date.now(),
-      nome, email, senha_hash: senha, academia_id: currentUser.academia_id,
-      role: prefixo==='c'?'consultor':'treinador', ativo:true,
-      modulos_ativos: ['experiencias'],
-      [prefixo==='c'?'consultora_id':'treinador_id']: pessoaId
-    };
-    await supabaseClient.from('gestores').insert(payload);
-    showToast("Acesso criado! Já pode entrar pelo módulo de Experiências.");
-    renderEquipeTab();
-  }catch(e){ console.error(e); showToast("Erro ao criar acesso."); }
-}
-
-async function resetSenhaEquipe(gestorId, key){
-  const nova = document.getElementById('senha_'+key).value.trim();
-  if(!nova){ showToast("Digite a nova senha."); return; }
-  try{
-    await supabaseClient.from('gestores').update({senha_hash:nova}).eq('id', gestorId);
-    showToast("Senha atualizada!");
-    renderEquipeTab();
-  }catch(e){ console.error(e); showToast("Erro ao atualizar senha."); }
-}
-
-async function toggleAtivoEquipe(gestorId, ativoAtual){
-  try{
-    await supabaseClient.from('gestores').update({ativo:!ativoAtual}).eq('id', gestorId);
-    showToast(!ativoAtual?"Acesso reativado!":"Acesso suspenso.");
-    renderEquipeTab();
-  }catch(e){ console.error(e); showToast("Erro ao atualizar acesso."); }
 }
 
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }

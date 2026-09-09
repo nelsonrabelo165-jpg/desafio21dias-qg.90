@@ -747,11 +747,16 @@ async function iniciarApp(s){
       const res=await sbGet('campanha_cards',`id=eq.${openCard}&select=id,campanha_id,perfil`);
       const card=res[0];
       if(card){
-        const camp=minhasCampanhas.find(c=>c.id===card.campanha_id)||(await sbGet('campanhas',`id=eq.${card.campanha_id}`))[0];
+        // SEGURANÇA: só abre se a campanha desse card pertencer mesmo à lista de
+        // campanhas da academia logada — nunca busca campanha de outra academia
+        // como "fallback", mesmo que o card exista no banco.
+        const camp=minhasCampanhas.find(c=>c.id===card.campanha_id);
         if(camp){
           await abrirKanban(camp);
           trocarPerfilKanban(card.perfil);
           await abrirCardModal(card.id);
+        }else{
+          toast('Esse card não pertence à sua academia ou não foi encontrado.',true);
         }
       }else{
         toast('Card não encontrado — pode já ter sido movido ou removido.',true);
@@ -1045,8 +1050,10 @@ function confirmarPerfilAdicaoNomes(){
 // ── Redistribuir carteira — gestor(a) transfere cards de um(a) consultor(a) pra outro(a),
 // dentro de um perfil desta campanha. Só cards ainda ATIVOS (não convertidos/perdidos).
 async function abrirRedistribuir(campanhaId,perfilInicial,deInicial){
-  const camp=minhasCampanhas.find(c=>c.id===campanhaId)||await(async()=>{const r=await sbGet('campanhas',`id=eq.${campanhaId}`);return r[0];})();
-  if(!camp)return;
+  // SEGURANÇA: só opera em campanha que já pertence à lista carregada da própria
+  // academia — nunca busca no banco por ID solto, mesmo como fallback.
+  const camp=minhasCampanhas.find(c=>c.id===campanhaId);
+  if(!camp){toast('Campanha não encontrada nesta academia.',true);return;}
   if(sessao.role==='consultor'){toast('Só gestor(a) pode redistribuir carteira.',true);return;}
   fecharModalGenerico();
   const optsPerfil=camp.perfis.map(p=>`<option value="${p}" ${p===perfilInicial?'selected':''}>${PERFIL_LABEL[p]}</option>`).join('');
@@ -2881,6 +2888,9 @@ async function abrirCampanhaExistente(campId){
     const camps=await sbGet('campanhas',`id=eq.${campId}&select=*`);
     if(!camps.length){toast('Campanha não encontrada',true);return;}
     const camp=camps[0];
+    // SEGURANÇA: nunca abre uma campanha que não pertence à academia logada,
+    // mesmo que o ID exista no banco.
+    if(camp.academia_id!==sessao.academia_id){toast('Essa campanha não pertence à sua academia.',true);return;}
     if(camp.status!=='planejamento'){
       abrirKanban(camp);
       return;
