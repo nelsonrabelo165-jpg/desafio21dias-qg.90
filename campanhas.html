@@ -703,6 +703,7 @@ async function checkSession(){
 
 let consultoras=[];
 let treinadores=[];
+let gestoresAcademia=[];
 async function iniciarApp(s){
   sessao=s;
   sessionStorage.setItem('qg90_sessao',JSON.stringify(s));
@@ -715,6 +716,9 @@ async function iniciarApp(s){
   try{
     treinadores=s.academia_id?await sbGet('treinadores',`academia_id=eq.${s.academia_id}&ativo=eq.true&select=id,nome`):[];
   }catch(e){console.error(e);treinadores=[];}
+  try{
+    gestoresAcademia=s.academia_id?await sbGet('gestores',`academia_id=eq.${s.academia_id}&role=eq.gestor&ativo=eq.true&select=id,nome`):[];
+  }catch(e){console.error(e);gestoresAcademia=[];}
   if(s.academia_id)await carregarJornadas();
   else Object.assign(ETAPAS,JORNADAS_PADRAO);
   // Consultor(a) não cria campanha, não sobe listas, nem redistribui carteira alheia
@@ -3233,7 +3237,7 @@ async function finalizarSoComConsultor(){
     campanha_id:wiz.campanhaId,onda_id:null,perfil:wiz.perfilAtual,
     nome:c.nome,codigo_matricula:c.codigo_matricula,telefone:c.telefone,idade:c.idade,
     plano_atual:c.plano_atual,plano_inicio:c.plano_inicio||null,plano_termino:c.plano_termino||null,
-    ticket_medio:c.ticket_medio,observacoes:c.observacoes||'',etapa_atual:etapaEntrada,etapa_maxima:etapaEntrada,consultora_id:c.consultora_id,
+    ticket_medio:c.ticket_medio,observacoes:c.observacoes||'',etapa_atual:etapaEntrada,etapa_maxima:etapaEntrada,consultora_id:c.consultora_id,departamento:'comercial',
     cadencia_atual:0,cadencia_total:CADENCIA_TOTAL_PADRAO[wiz.perfilAtual]||5,
     status:'ativo',created_at:Date.now(),updated_at:Date.now()
   }));
@@ -3256,36 +3260,77 @@ function finalizarSemNovos(){
 // ── STEP 3 → divisão em ondas ──
 function renderOndaConfig(){
   const el=document.getElementById('ondaConfigArea');
+  // Departamento padrão: comercial pros funis de aquisição, deixa em aberto pra
+  // Sucesso do Cliente decidir (pode ser trabalhado por consultor(a) ou treinador(a)).
+  wiz.departamento = wiz.departamento || 'comercial';
+  const optsLideranca = `
+    <option value="">— Selecione —</option>
+    <optgroup label="Gestão">${gestoresAcademia.map(g=>`<option value="gestor:${g.id}">${g.nome}</option>`).join('')}</optgroup>
+    <optgroup label="Consultores(as)">${consultoras.map(c=>`<option value="consultor:${c.id}">${c.nome}</option>`).join('')}</optgroup>
+    <optgroup label="Treinadores(as)">${treinadores.map(t=>`<option value="treinador:${t.id}">${t.nome}</option>`).join('')}</optgroup>
+  `;
   el.innerHTML=`
     <div class="form-row">
-      <div class="fg"><label>Capacidade semanal por consultor(a)</label><input class="fi" type="number" id="w-capacidade" value="85" min="1"></div>
+      <div class="fg">
+        <label>Depto. responsável por este perfil</label>
+        <select class="fsel" id="w-departamento" onchange="mudarDepartamentoOnda(this.value)">
+          <option value="comercial" ${wiz.departamento==='comercial'?'selected':''}>Comercial (Consultores)</option>
+          <option value="tecnico" ${wiz.departamento==='tecnico'?'selected':''}>Técnico (Treinadores)</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Liderança da campanha (este perfil)</label>
+        <select class="fsel" id="w-lideranca">${optsLideranca}</select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Capacidade semanal por ${wiz.departamento==='tecnico'?'treinador(a)':'consultor(a)'}</label><input class="fi" type="number" id="w-capacidade" value="85" min="1"></div>
       <div class="fg"><label>Total nesta lista</label><input class="fi" value="${wiz.cardsProntos.length}" disabled></div>
     </div>
-    <label style="display:block;font-size:12.5px;color:var(--texto2);font-weight:600;margin:10px 0 6px;">Consultores(as) responsáveis por este perfil</label>
-    <div id="consChecks">${consultoras.map(c=>`<label class="chk-row"><input type="checkbox" class="cons-chk" value="${c.id}" data-nome="${c.nome}" checked> ${c.nome}</label>`).join('')||'<p style="color:var(--texto2);font-size:13px">Nenhum(a) consultor(a) cadastrado(a) nesta academia.</p>'}</div>
+    <label style="display:block;font-size:12.5px;color:var(--texto2);font-weight:600;margin:10px 0 6px;" id="respLabel">${wiz.departamento==='tecnico'?'Treinadores(as)':'Consultores(as)'} responsáveis por este perfil</label>
+    <div id="consChecks">${renderListaResponsaveisOnda()}</div>
     <button class="btn-gh" style="margin-top:14px" onclick="calcularOndas()">Calcular divisão sugerida</button>
     <div id="ondasPreview" style="margin-top:18px"></div>
   `;
+}
+function renderListaResponsaveisOnda(){
+  const lista = wiz.departamento==='tecnico' ? treinadores : consultoras;
+  const vazio = wiz.departamento==='tecnico'
+    ? 'Nenhum(a) treinador(a) cadastrado(a) nesta academia.'
+    : 'Nenhum(a) consultor(a) cadastrado(a) nesta academia.';
+  return lista.map(c=>`<label class="chk-row"><input type="checkbox" class="cons-chk" value="${c.id}" data-nome="${c.nome}" checked> ${c.nome}</label>`).join('') || `<p style="color:var(--texto2);font-size:13px">${vazio}</p>`;
+}
+function mudarDepartamentoOnda(valor){
+  wiz.departamento = valor;
+  document.getElementById('respLabel').textContent = (valor==='tecnico'?'Treinadores(as)':'Consultores(as)') + ' responsáveis por este perfil';
+  document.getElementById('consChecks').innerHTML = renderListaResponsaveisOnda();
+  document.getElementById('w-capacidade').previousElementSibling.textContent = 'Capacidade semanal por ' + (valor==='tecnico'?'treinador(a)':'consultor(a)');
+  document.getElementById('ondasPreview').innerHTML='';
+  ondasCalc=[];
 }
 
 let ondasCalc=[];
 function calcularOndas(){
   const capacidade=parseInt(document.getElementById('w-capacidade').value)||85;
-  const consSel=[...document.querySelectorAll('.cons-chk:checked')].map(el=>({id:el.value,nome:el.dataset.nome}));
-  if(!consSel.length){toast('Selecione ao menos 1 consultor(a)',true);return;}
+  const respSel=[...document.querySelectorAll('.cons-chk:checked')].map(el=>({id:el.value,nome:el.dataset.nome}));
+  if(!respSel.length){toast(`Selecione ao menos 1 ${wiz.departamento==='tecnico'?'treinador(a)':'consultor(a)'}`,true);return;}
+  const liderancaVal=document.getElementById('w-lideranca').value;
+  if(!liderancaVal){toast('Selecione a liderança responsável por este perfil.',true);return;}
+  const[liderancaTipo,liderancaId]=liderancaVal.split(':');
+  wiz.liderancaId=liderancaId; wiz.liderancaTipo=liderancaTipo;
   const total=wiz.cardsProntos.length;
-  const capacidadeSemanal=consSel.length*capacidade;
+  const capacidadeSemanal=respSel.length*capacidade;
   const numOndas=Math.max(1,Math.ceil(total/capacidadeSemanal));
   ondasCalc=[];
   let restante=total;
   for(let i=0;i<numOndas;i++){
     const qtdOnda=Math.min(capacidadeSemanal,restante);
     restante-=qtdOnda;
-    const porConsultora=Math.floor(qtdOnda/consSel.length);
-    let sobra=qtdOnda-porConsultora*consSel.length;
-    const dist=consSel.map(c=>{
+    const porResp=Math.floor(qtdOnda/respSel.length);
+    let sobra=qtdOnda-porResp*respSel.length;
+    const dist=respSel.map(c=>{
       const extra=sobra>0?1:0;if(sobra>0)sobra--;
-      return{consultora_id:c.id,nome:c.nome,qtd:porConsultora+extra};
+      return{id:c.id,nome:c.nome,qtd:porResp+extra};
     });
     ondasCalc.push({numero:i+1,dist});
   }
@@ -3314,16 +3359,17 @@ const CADENCIA_TOTAL_PADRAO={leads:9,rematricula:4,renovacao:4};
 async function confirmarOndasECards(){
   const btn=event.target;btn.disabled=true;btn.textContent='Salvando...';
   try{
-    // cria as ondas
+    // cria as ondas, já com o departamento decidido pra este perfil
     const ondasSalvas=[];
     for(const o of ondasCalc){
-      const r=await sbPost('campanha_ondas',{campanha_id:wiz.campanhaId,numero_onda:o.numero,status:'planejada'});
+      const r=await sbPost('campanha_ondas',{campanha_id:wiz.campanhaId,numero_onda:o.numero,status:'planejada',departamento:wiz.departamento});
       ondasSalvas.push({...o,onda_id:r[0].id});
     }
-    // distribui os cards sequencialmente conforme a quantidade definida por onda/consultora
+    // distribui os cards sequencialmente conforme a quantidade definida por onda/responsável
     // etapa de entrada = primeira etapa REAL da jornada desse perfil (dinâmica — cada academia
     // pode ter reordenado/renomeado, e Sucesso do Cliente nem tem a chave 'lista').
     const etapaEntrada=(ETAPAS[wiz.perfilAtual]&&ETAPAS[wiz.perfilAtual][0]&&ETAPAS[wiz.perfilAtual][0].k)||'lista';
+    const ehTecnico=wiz.departamento==='tecnico';
     let ponteiro=0;
     const cardsParaInserir=[];
     for(const o of ondasSalvas){
@@ -3334,7 +3380,9 @@ async function confirmarOndasECards(){
             campanha_id:wiz.campanhaId,onda_id:o.onda_id,perfil:wiz.perfilAtual,
             nome:c.nome,codigo_matricula:c.codigo_matricula,telefone:c.telefone,idade:c.idade,
             plano_atual:c.plano_atual,plano_inicio:c.plano_inicio||null,plano_termino:c.plano_termino||null,
-            ticket_medio:c.ticket_medio,observacoes:c.observacoes||'',etapa_atual:etapaEntrada,etapa_maxima:etapaEntrada,consultora_id:d.consultora_id,
+            ticket_medio:c.ticket_medio,observacoes:c.observacoes||'',etapa_atual:etapaEntrada,etapa_maxima:etapaEntrada,
+            consultora_id:ehTecnico?null:d.id, treinador_id:ehTecnico?d.id:null,
+            departamento:wiz.departamento, lideranca_id:wiz.liderancaId||null, lideranca_tipo:wiz.liderancaTipo||null,
             cadencia_atual:0,cadencia_total:CADENCIA_TOTAL_PADRAO[wiz.perfilAtual]||5,
             status:'ativo',created_at:Date.now(),updated_at:Date.now()
           });
@@ -3351,6 +3399,7 @@ async function confirmarOndasECards(){
     wiz.perfisFila=wiz.perfisFila.filter(p=>p!==wiz.perfilAtual);
     if(wiz.perfisFila.length){
       wiz.csvHeaders=[];wiz.csvRows=[];wiz.cardsProntos=[];
+      wiz.departamento=null;wiz.liderancaId=null;wiz.liderancaTipo=null;
       prepararProximoUpload();
       irParaStep(2);
     }else{
@@ -3371,6 +3420,7 @@ async function pularUploadPerfil(){
   wiz.perfisFila=wiz.perfisFila.filter(p=>p!==wiz.perfilAtual);
   if(wiz.perfisFila.length){
     wiz.csvHeaders=[];wiz.csvRows=[];wiz.cardsProntos=[];
+    wiz.departamento=null;wiz.liderancaId=null;wiz.liderancaTipo=null;
     prepararProximoUpload();
     irParaStep(2);
   }else{
